@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, User, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface LoginProps {
@@ -10,30 +10,58 @@ interface LoginProps {
 
 const Login = ({ onLogin }: LoginProps) => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('axium.contato@gmail.com');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [nome, setNome] = useState('');
+  const [sobrenome, setSobrenome] = useState('');
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setIsLoading(true);
     try {
-      if (email && password) {
-        await login(email, password);
+      if (isSignUp) {
+        if (!nome || !sobrenome || !email || !password) {
+          setError('Por favor, preencha todos os campos.');
+          setIsLoading(false);
+          return;
+        }
+        if (password.length < 6) {
+          setError('A senha deve ter pelo menos 6 caracteres.');
+          setIsLoading(false);
+          return;
+        }
+        await signup({ nome, sobrenome, email, password });
+        setSuccess('Conta criada com sucesso!');
         if (onLogin) onLogin();
         navigate('/crm/painel');
       } else {
-        setError('Por favor, preencha todos os campos.');
-        setIsLoading(false);
+        if (email && password) {
+          await login(email, password);
+          if (onLogin) onLogin();
+          navigate('/crm/painel');
+        } else {
+          setError('Por favor, preencha todos os campos.');
+          setIsLoading(false);
+        }
       }
-    } catch {
-      setError('Credenciais inválidas. Tente novamente.');
+    } catch (err) {
+      setError(isSignUp ? 'Erro ao criar conta. O email pode já estar em uso.' : 'Credenciais inválidas. Tente novamente.');
       setIsLoading(false);
     }
+  };
+
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    setError('');
+    setSuccess('');
   };
 
   return (
@@ -61,17 +89,65 @@ const Login = ({ onLogin }: LoginProps) => {
           </div>
 
           <div className="mb-6 md:mb-8">
-            <h2 className="text-xl md:text-2xl font-black text-black tracking-tight mb-1">Bem-vindo de volta</h2>
-            <p className="text-neutral-500 text-xs md:text-sm">Faça login para acessar o painel.</p>
+            {isSignUp ? (
+              <>
+                <h2 className="text-xl md:text-2xl font-black text-black tracking-tight mb-1">Criar Conta</h2>
+                <p className="text-neutral-500 text-xs md:text-sm">Preencha seus dados para se cadastrar.</p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl md:text-2xl font-black text-black tracking-tight mb-1">Bem-vindo de volta</h2>
+                <p className="text-neutral-500 text-xs md:text-sm">Faça login para acessar o painel.</p>
+              </>
+            )}
           </div>
 
-          {error && (
-            <div className="mb-4 md:mb-6 p-2 md:p-3.5 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-xs md:text-sm font-medium">{error}</p>
+          {(error || success) && (
+            <div className={`mb-4 md:mb-6 p-2 md:p-3.5 ${success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'} rounded-lg`}>
+              <p className={`${success ? 'text-green-600' : 'text-red-600'} text-xs md:text-sm font-medium`}>{success || error}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-3 md:space-y-5">
+            {isSignUp && (
+              <>
+                <div className="space-y-1.5">
+                  <label htmlFor="nome" className="block text-[10px] md:text-xs font-bold text-neutral-600 uppercase tracking-wider">
+                    Nome
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <input
+                      id="nome"
+                      type="text"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      placeholder="Seu nome"
+                      className="w-full border border-neutral-200 rounded-lg py-2 md:py-3 pl-10 md:pl-11 pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="sobrenome" className="block text-[10px] md:text-xs font-bold text-neutral-600 uppercase tracking-wider">
+                    Sobrenome
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <input
+                      id="sobrenome"
+                      type="text"
+                      value={sobrenome}
+                      onChange={(e) => setSobrenome(e.target.value)}
+                      placeholder="Seu sobrenome"
+                      className="w-full border border-neutral-200 rounded-lg py-2 md:py-3 pl-10 md:pl-11 pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="space-y-1.5">
               <label htmlFor="email" className="block text-[10px] md:text-xs font-bold text-neutral-600 uppercase tracking-wider">
                 Email
@@ -130,16 +206,25 @@ const Login = ({ onLogin }: LoginProps) => {
               className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
             >
               {isLoading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Entrando...</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> {isSignUp ? 'Criando conta...' : 'Entrando...'}</>
               ) : (
-                'Entrar no sistema'
+                isSignUp ? 'Criar conta' : 'Entrar no sistema'
               )}
             </button>
           </form>
 
           <p className="text-center text-xs text-neutral-400 mt-8">
-            Sem acesso?{' '}
-            <a href="#" className="text-black font-bold hover:underline">Solicite aqui</a>
+            {isSignUp ? (
+              <>
+                Já tem uma conta?{' '}
+                <button onClick={toggleMode} className="text-black font-bold hover:underline bg-none border-none cursor-pointer">Entre aqui</button>
+              </>
+            ) : (
+              <>
+                Não tem uma conta?{' '}
+                <button onClick={toggleMode} className="text-black font-bold hover:underline bg-none border-none cursor-pointer">Criar conta</button>
+              </>
+            )}
           </p>
         </div>
       </div>

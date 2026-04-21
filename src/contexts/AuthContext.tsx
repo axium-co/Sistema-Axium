@@ -1,10 +1,18 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, PROFILES_TABLE } from '../lib/supabase';
 
 interface AuthUser {
   id: string;
   email: string;
+  fullName?: string;
+}
+
+interface SignUpData {
+  nome: string;
+  sobrenome: string;
+  email: string;
+  password: string;
 }
 
 interface AuthContextType {
@@ -13,9 +21,23 @@ interface AuthContextType {
   user: AuthUser | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  signup: (data: SignUpData) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const fetchUserProfile = async (userId: string): Promise<string | undefined> => {
+  const { data, error } = await supabase
+    .from(PROFILES_TABLE)
+    .select('nome')
+    .eq('user_id', userId)
+    .single();
+  
+  if (!error && data) {
+    return data.nome;
+  }
+  return undefined;
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -27,13 +49,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email || '' });
+        const fullName = await fetchUserProfile(session.user.id);
+        setUser({ id: session.user.id, email: session.user.email || '', fullName });
         setIsAuthenticated(true);
       }
       
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
-          setUser({ id: session.user.id, email: session.user.email || '' });
+          const fullName = await fetchUserProfile(session.user.id);
+          setUser({ id: session.user.id, email: session.user.email || '', fullName });
           setIsAuthenticated(true);
         } else {
           setUser(null);
@@ -56,7 +80,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     if (data.user) {
-      setUser({ id: data.user.id, email: data.user.email || '' });
+      const fullName = await fetchUserProfile(data.user.id);
+      setUser({ id: data.user.id, email: data.user.email || '', fullName });
       setIsAuthenticated(true);
     }
   };
@@ -67,8 +92,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(false);
   };
 
+  const signup = async ({ nome, sobrenome, email, password }: SignUpData) => {
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        data: {
+          nome,
+          sobrenome,
+        }
+      }
+    });
+    
+    if (error) {
+      throw new Error(error.message);
+    }
+    
+    if (data.user) {
+      const fullName = `${nome} ${sobrenome}`.trim();
+      
+      const { error: profileError } = await supabase
+        .from(PROFILES_TABLE)
+        .insert({
+          user_id: data.user.id,
+          nome: fullName,
+          cargo: 'Funcionario',
+        });
+
+      if (profileError) {
+        console.error('Erro ao criar perfil:', profileError);
+      }
+      
+      setUser({ id: data.user.id, email: data.user.email || '', fullName });
+      setIsAuthenticated(true);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, signup }}>
       {children}
     </AuthContext.Provider>
   );

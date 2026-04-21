@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Search, X, User, MessageSquare, Calendar as CalendarIcon, Clock, Menu } from 'lucide-react';
+import { Bell, Search, X, User, MessageSquare, Calendar as CalendarIcon, Clock, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCRM } from '../contexts/CRMContext'
 
@@ -23,29 +23,38 @@ const routeTitles: Record<string, { title: string; subtitle: string }> = {
 const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { searchTerm, setSearchTerm, notifications, markNotificationsAsRead } = useCRM();
   
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const route = routeTitles[location.pathname] ?? { title: 'Universo Axium', subtitle: '' };
 
   const hasUnread = notifications.some(n => !n.isRead);
 
-  const initials = user?.email
-    ? user.email.split('@')[0].slice(0, 2).toUpperCase()
-    : 'UA';
+  const userDisplayName = user?.fullName || user?.email?.split('@')[0] || 'Usuário';
+  const initials = userDisplayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setIsNotificationsOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   const handleToggleNotifications = () => {
     if (!isNotificationsOpen) {
@@ -149,13 +158,40 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
         </div>
 
         {/* Avatar */}
-        <button
-          onClick={() => navigate('/configuracoes')}
-          className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold hover:bg-neutral-800 transition-colors shrink-0 shadow-sm"
-          title={user?.email}
-        >
-          {initials}
-        </button>
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold hover:bg-neutral-800 transition-colors shrink-0 shadow-sm"
+            title={user?.email}
+          >
+            {initials}
+          </button>
+
+          {isUserMenuOpen && (
+            <div className="absolute right-0 mt-3 w-56 bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+              <div className="px-4 py-3 border-b border-neutral-100">
+                <p className="text-xs font-black text-black truncate">{userDisplayName}</p>
+                <p className="text-[10px] text-neutral-500 truncate">{user?.email}</p>
+              </div>
+              <div className="py-1">
+                <button
+                  onClick={() => { setIsUserMenuOpen(false); navigate('/configuracoes'); }}
+                  className="w-full px-4 py-2.5 text-left text-xs font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-3 transition-colors"
+                >
+                  <User className="w-4 h-4" />
+                  Perfil
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full px-4 py-2.5 text-left text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sair
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
