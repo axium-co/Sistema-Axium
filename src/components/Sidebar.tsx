@@ -32,7 +32,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       )}
       
       {/* Sidebar */}
-      <aside className={`fixed md:hidden left-0 top-0 h-screen w-64 bg-white border-r border-neutral-200 flex-col overflow-y-auto z-50 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed md:hidden left-0 top-0 h-screen w-[85%] max-w-80 bg-white border-r border-neutral-200 flex-col overflow-y-auto z-50 transform transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Close button for mobile */}
         <button
           onClick={onClose}
