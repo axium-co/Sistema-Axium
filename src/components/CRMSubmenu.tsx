@@ -23,7 +23,7 @@ const CRMSubmenu = () => {
         px-2 md:px-8
       "
     >
-      <div className="flex items-center gap-1 overflow-x-auto">
+      <div className="flex items-center gap-1 overflow-x-auto scroll-smooth scrollbar-hide">
         {crmSubItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);

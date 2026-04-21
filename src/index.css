@@ -53,6 +53,14 @@ body {
   background: #a3a3a3;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 @layer components {
   /* ---- Sidebar navigation items ---- */
   .sidebar-item {

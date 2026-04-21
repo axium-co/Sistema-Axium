@@ -37,7 +37,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
         {/* Page content */}
         <div className="flex-1 bg-neutral-50">
-          <div className="p-3 md:p-8">
+          <div className="px-4 p-4 md:p-8">
             {children}
           </div>
         </div>
