@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CRMProvider } from './contexts/CRMContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import UpdatePassword from './pages/UpdatePassword';
 import MainLayout from './layouts/MainLayout';
 import CRMPainel from './pages/crm/Painel';
 import CRMLeads from './pages/crm/Leads';
@@ -24,6 +25,12 @@ function AppRoutes() {
       <Route
         path="/login"
         element={isAuthenticated ? <Navigate to="/crm/painel" replace /> : <Login onLogin={() => {}} />}
+      />
+
+      {/* Update Password Route */}
+      <Route
+        path="/update-password"
+        element={<UpdatePassword />}
       />
 
       {/* Protected Routes - CRM */}

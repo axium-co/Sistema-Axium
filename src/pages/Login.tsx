@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Loader2, User, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, User, ArrowLeft, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface LoginProps {
@@ -10,8 +10,9 @@ interface LoginProps {
 
 const Login = ({ onLogin }: LoginProps) => {
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const { login, signup, resetPassword } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [email, setEmail] = useState('axium.contato@gmail.com');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -62,6 +63,26 @@ const Login = ({ onLogin }: LoginProps) => {
     setIsSignUp(!isSignUp);
     setError('');
     setSuccess('');
+  };
+
+  const handleForgotPassword = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+    try {
+      if (!email) {
+        setError('Por favor, digite seu e-mail.');
+        setIsLoading(false);
+        return;
+      }
+      await resetPassword(email);
+      setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+      setTimeout(() => setShowForgotPassword(false), 3000);
+    } catch {
+      setError('Erro ao enviar e-mail. Tente novamente.');
+    }
+    setIsLoading(false);
   };
 
   return (
@@ -197,7 +218,7 @@ const Login = ({ onLogin }: LoginProps) => {
                 <input type="checkbox" className="w-4 h-4 rounded-sm border-neutral-300 accent-black cursor-pointer" disabled={isLoading} />
                 <span className="text-neutral-500 font-medium">Lembrar sessão</span>
               </label>
-              <a href="#" className="text-black font-semibold hover:underline">Esqueci a senha</a>
+              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-black font-semibold hover:underline">Esqueci a senha</button>
             </div>
 
             <button
@@ -228,6 +249,55 @@ const Login = ({ onLogin }: LoginProps) => {
           </p>
         </div>
       </div>
+
+      {showForgotPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowForgotPassword(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+              <h3 className="text-base font-black text-black">Recuperar Senha</h3>
+              <button onClick={() => setShowForgotPassword(false)} className="p-1 text-neutral-400 hover:text-black transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleForgotPassword} className="p-6 space-y-4">
+              {(error || success) && (
+                <div className={`p-3 rounded-lg ${success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <p className={`text-sm font-medium ${success ? 'text-green-600' : 'text-red-600'}`}>{success || error}</p>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <label htmlFor="reset-email" className="block text-[10px] font-bold text-neutral-600 uppercase tracking-wider">
+                  E-mail
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <input
+                    id="reset-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className="w-full border border-neutral-200 rounded-lg py-3 pl-10 pr-4 text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-neutral-500">Enviaremos um link para você redefinir sua senha.</p>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+              >
+                {isLoading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
+                ) : (
+                  'Enviar link'
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
