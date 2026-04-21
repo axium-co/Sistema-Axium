@@ -176,43 +176,46 @@ const Financeiro = () => {
 
   return (
     <div className="min-h-screen">
-      <div className="mb-10 flex justify-between items-end">
+      <div className="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-black text-black tracking-tight">Financeiro</h1>
+          <div className="flex items-center gap-2 md:gap-3 mb-1">
+            <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight">Financeiro</h1>
             {isAsaasConnected && (
-              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full animate-in fade-in slide-in-from-left-2 duration-500">
+              <span className="flex items-center gap-1 px-2 md:px-2.5 py-0.5 md:py-1 bg-emerald-50 text-emerald-600 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full animate-in fade-in slide-in-from-left-2 duration-500">
                 <CheckCircle2 size={10} strokeWidth={3} />
-                Asaas Conectado
+                <span className="hidden sm:inline">Asaas Conectado</span>
+                <span className="sm:hidden">Conectado</span>
               </span>
             )}
           </div>
-          <p className="text-neutral-500 text-sm font-medium">Controle de receitas, despesas e fluxo de caixa.</p>
+          <p className="text-neutral-500 text-xs md:text-sm font-medium">Controle de receitas, despesas e fluxo de caixa.</p>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto">
           {isAsaasConnected && (
             <button 
               onClick={syncAsaasData}
               disabled={isSyncing}
-              className="px-4 py-3 rounded-xl border border-neutral-200 text-neutral-400 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:border-black hover:text-black transition-all active:scale-[0.98] bg-white"
+              className="flex-1 sm:flex-none px-3 md:px-4 py-2 md:py-3 rounded-xl border border-neutral-200 text-neutral-400 font-black text-[9px] md:text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:border-black hover:text-black transition-all active:scale-[0.98] bg-white"
             >
-              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-              {isSyncing ? 'Sincronizando...' : 'Atualizar Dados'}
+              <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Atualizar'}</span>
+              <span className="sm:hidden">{isSyncing ? 'Sync...' : 'Atualizar'}</span>
             </button>
           )}
           <button 
             onClick={() => handleOpenInvoiceModal()}
-            className="bg-black text-white px-6 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
+            className="flex-1 sm:flex-none bg-black text-white px-3 md:px-6 py-2 md:py-3 rounded-xl font-black text-[9px] md:text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
           >
-            <Plus size={16} strokeWidth={3} />
-            Nova Fatura
+            <Plus size={14} strokeWidth={3} />
+            <span className="hidden sm:inline">Nova Fatura</span>
+            <span className="sm:hidden">Fatura</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {[
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4 mb-6 md:mb-10">
+          {[
           { label: 'Receita Total', value: totalRevenue, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', readonly: isAsaasConnected },
           { label: 'Despesas', value: expenses, icon: TrendingDown, color: 'text-red-500', bg: 'bg-red-50' },
           { label: 'Lucro Líquido', value: netProfit, icon: PieChart, color: 'text-black', bg: 'bg-neutral-100', readonly: true },
@@ -221,59 +224,59 @@ const Financeiro = () => {
           <div 
             key={idx} 
             onClick={() => !card.readonly && setEditingCard({ label: card.label, value: card.value })}
-            className={`bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm transition-all group ${!card.readonly ? 'cursor-pointer hover:border-black hover:shadow-md' : ''}`}
+            className={`bg-white border border-neutral-200 rounded-2xl p-3 md:p-6 shadow-sm transition-all group ${!card.readonly ? 'cursor-pointer hover:border-black hover:shadow-md' : ''}`}
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className={`w-10 h-10 ${card.bg} rounded-xl flex items-center justify-center ${card.color}`}>
-                <card.icon size={18} strokeWidth={2.5} />
+            <div className="flex justify-between items-start gap-2 mb-2 md:mb-4">
+              <div className={`w-8 md:w-10 h-8 md:h-10 ${card.bg} rounded-xl flex items-center justify-center ${card.color}`}>
+                <card.icon size={12} className="md:w-4.5 md:h-4.5 md:size-4.5" strokeWidth={2.5} />
               </div>
               {!card.readonly && (
-                <Pencil size={12} className="text-neutral-300 group-hover:text-black transition-colors" />
+                <Pencil size={10} className="text-neutral-300 group-hover:text-black transition-colors flex-shrink-0" />
               )}
               {card.readonly && isAsaasConnected && (card.label.includes('Receita') || card.label.includes('Faturamento')) && (
-                <div className="p-1 bg-emerald-50 text-emerald-500 rounded-md" title="Sincronizado com Asaas">
+                <div className="p-1 bg-emerald-50 text-emerald-500 rounded-md flex-shrink-0" title="Sincronizado com Asaas">
                   <RefreshCw size={10} strokeWidth={3} />
                 </div>
               )}
             </div>
-            <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest mb-1">{card.label}</p>
-            <p className="text-2xl font-black text-black tracking-tight">{formatCurrency(card.value)}</p>
+            <p className="text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-widest mb-1">{card.label}</p>
+            <p className="text-xl md:text-2xl font-black text-black tracking-tight">{formatCurrency(card.value)}</p>
             {card.label === 'Receita Total' && isAsaasConnected && (
-              <p className="text-[9px] text-emerald-600 font-black uppercase tracking-widest mt-2 flex items-center gap-1">
-                <CheckCircle2 size={10} />
-                Confirmado no Asaas
+              <p className="text-[8px] md:text-[9px] text-emerald-600 font-black uppercase tracking-widest mt-1 md:mt-2 flex items-center gap-1">
+                <CheckCircle2 size={8} />
+                <span className="hidden sm:inline">Confirmado</span>
               </p>
             )}
           </div>
         ))}
       </div>
 
-      <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="px-8 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/30">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white shadow-sm border border-neutral-100 flex items-center justify-center">
-              <CreditCard size={14} className="text-black" />
+      <div className="bg-white border border-neutral-200 rounded-2xl overflow-x-auto shadow-sm">
+        <div className="px-3 md:px-8 py-3 md:py-5 border-b border-neutral-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-neutral-50/30">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="w-6 md:w-8 h-6 md:h-8 rounded-lg bg-white shadow-sm border border-neutral-100 flex items-center justify-center">
+              <CreditCard size={12} className="md:w-3.5 md:h-3.5 text-black" />
             </div>
             <div>
-              <h2 className="text-[11px] font-black text-black uppercase tracking-widest">Faturas Recentes</h2>
-              {lastSync && <p className="text-[9px] text-neutral-400 font-bold uppercase tracking-tighter mt-0.5">Última sincronização: {lastSync}</p>}
+              <h2 className="text-[10px] md:text-[11px] font-black text-black uppercase tracking-widest">Faturas Recentes</h2>
+              {lastSync && <p className="text-[8px] md:text-[9px] text-neutral-400 font-bold uppercase tracking-tighter mt-0.5">Última sincronização: {lastSync}</p>}
             </div>
           </div>
           {isAsaasConnected && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-neutral-200 rounded-lg shadow-xs">
+            <div className="flex items-center gap-2 px-2 md:px-3 py-1 md:py-1.5 bg-white border border-neutral-200 rounded-lg shadow-xs whitespace-nowrap">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[9px] font-black text-black uppercase tracking-widest">Live: Asaas API</span>
+              <span className="text-[8px] md:text-[9px] font-black text-black uppercase tracking-widest">Live: Asaas</span>
             </div>
           )}
         </div>
-        <table className="w-full text-sm">
+        <table className="w-full text-xs md:text-sm">
           <thead>
             <tr className="border-b border-neutral-100 bg-neutral-50/50">
-              <th className="px-8 py-4 text-left text-[10px] text-neutral-400 font-black uppercase tracking-wider">Cliente / Descrição</th>
-              <th className="px-8 py-4 text-left text-[10px] text-neutral-400 font-black uppercase tracking-wider">Data / Vencimento</th>
-              <th className="px-8 py-4 text-right text-[10px] text-neutral-400 font-black uppercase tracking-wider">Valor</th>
-              <th className="px-8 py-4 text-center text-[10px] text-neutral-400 font-black uppercase tracking-wider">Status</th>
-              <th className="px-8 py-4 text-center text-[10px] text-neutral-400 font-black uppercase tracking-wider">Origem</th>
+              <th className="px-3 md:px-8 py-2 md:py-4 text-left text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-wider">Cliente</th>
+              <th className="px-3 md:px-8 py-2 md:py-4 text-left text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-wider">Data</th>
+              <th className="px-3 md:px-8 py-2 md:py-4 text-right text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-wider">Valor</th>
+              <th className="px-3 md:px-8 py-2 md:py-4 text-center text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-wider">Status</th>
+              <th className="px-3 md:px-8 py-2 md:py-4 text-center text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-wider whitespace-nowrap">Origem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-50">
@@ -283,34 +286,34 @@ const Financeiro = () => {
                 onClick={() => handleOpenInvoiceModal(invoice)}
                 className="hover:bg-neutral-50 transition-colors group cursor-pointer"
               >
-                <td className="px-8 py-5">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black uppercase transition-all ${
+                <td className="px-3 md:px-8 py-3 md:py-5">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className={`w-6 md:w-8 h-6 md:h-8 rounded-full flex items-center justify-center text-[9px] md:text-[10px] font-black uppercase transition-all flex-shrink-0 ${
                       invoice.source === 'asaas' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-400 group-hover:bg-black group-hover:text-white'
                     }`}>
                       {invoice.client.slice(0, 2)}
                     </div>
                     <div>
-                      <p className="font-black text-black group-hover:underline">{invoice.client}</p>
-                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tighter">ID: {invoice.id}</p>
+                      <p className="font-black text-black text-xs md:text-sm group-hover:underline">{invoice.client}</p>
+                      <p className="text-[9px] md:text-[10px] text-neutral-400 font-bold uppercase tracking-tighter">ID: {invoice.id}</p>
                     </div>
                   </div>
                 </td>
-                <td className="px-8 py-5 text-neutral-500 font-bold">{invoice.date}</td>
-                <td className="px-8 py-5 text-right font-black text-black">{invoice.amount}</td>
-                <td className="px-8 py-5 text-center">
-                  <span className={`px-3 py-1 rounded-lg text-[9px] ${statusStyle[invoice.status]}`}>
+                <td className="px-3 md:px-8 py-3 md:py-5 text-neutral-500 font-bold text-xs md:text-sm">{invoice.date}</td>
+                <td className="px-3 md:px-8 py-3 md:py-5 text-right font-black text-black text-xs md:text-sm whitespace-nowrap">{invoice.amount}</td>
+                <td className="px-3 md:px-8 py-3 md:py-5 text-center">
+                  <span className={`inline-block px-2 md:px-3 py-0.5 md:py-1 rounded-lg text-[8px] md:text-[9px] ${statusStyle[invoice.status]}`}>
                     {invoice.status}
                   </span>
                 </td>
-                <td className="px-8 py-5 text-center">
+                <td className="px-3 md:px-8 py-3 md:py-5 text-center">
                   {invoice.source === 'asaas' ? (
                     <div className="flex items-center justify-center" title="Asaas Gateway">
-                      <ExternalLink size={14} className="text-emerald-500" />
+                      <ExternalLink size={12} className="md:w-3.5 md:h-3.5 text-emerald-500" />
                     </div>
                   ) : (
                     <div className="flex items-center justify-center" title="Sistema Interno">
-                      <Save size={14} className="text-neutral-300" />
+                      <Save size={12} className="md:w-3.5 md:h-3.5 text-neutral-300" />
                     </div>
                   )}
                 </td>
@@ -318,7 +321,7 @@ const Financeiro = () => {
             ))}
             {allInvoices.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-8 py-12 text-center text-neutral-400 font-bold uppercase tracking-widest italic opacity-50">
+                <td colSpan={5} className="px-3 md:px-8 py-8 md:py-12 text-center text-neutral-400 font-bold uppercase tracking-widest italic opacity-50 text-xs md:text-sm">
                   Nenhuma fatura registrada
                 </td>
               </tr>
@@ -329,22 +332,22 @@ const Financeiro = () => {
 
       {/* Metric Edit Modal */}
       {editingCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-neutral-200 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform animate-in slide-in-from-bottom-4 duration-300">
-            <div className="px-8 py-6 border-b border-neutral-100 flex justify-between items-center">
-              <h3 className="text-lg font-black text-black tracking-tight">Editar {editingCard.label}</h3>
-              <button onClick={() => setEditingCard(null)} className="text-neutral-400 hover:text-black transition-colors"><X size={20} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-neutral-200 rounded-3xl shadow-2xl w-full max-w-xs md:max-w-sm overflow-hidden transform animate-in slide-in-from-bottom-4 duration-300">
+            <div className="px-4 md:px-8 py-4 md:py-6 border-b border-neutral-100 flex justify-between items-start md:items-center gap-3">
+              <h3 className="text-base md:text-lg font-black text-black tracking-tight">Editar {editingCard.label}</h3>
+              <button onClick={() => setEditingCard(null)} className="text-neutral-400 hover:text-black transition-colors flex-shrink-0"><X size={20} className="w-5 h-5 md:w-5 md:h-5" /></button>
             </div>
-            <div className="p-8">
-              <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-[2px] mb-3">Novo Valor (BRL)</label>
+            <div className="p-4 md:p-8">
+              <label className="block text-[9px] md:text-[10px] font-black text-neutral-400 uppercase tracking-[2px] mb-2 md:mb-3">Novo Valor (BRL)</label>
               <div className="relative flex items-center">
-                <DollarSign className="absolute left-4 text-neutral-400" size={16} />
+                <DollarSign className="absolute left-3 md:left-4 text-neutral-400" size={14} />
                 <input
                   type="number"
                   autoFocus
                   value={editingCard.value}
                   onChange={(e) => setEditingCard({ ...editingCard, value: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl pl-10 pr-4 py-4 text-xl font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
+                  className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl pl-9 md:pl-10 pr-3 md:pr-4 py-2 md:py-4 text-lg md:text-xl font-black text-black focus:ring-1 focus:ring-black outline-none transition-all text-sm md:text-base"
                 />
               </div>
               <p className="text-[10px] text-neutral-400 font-bold mt-4 italic">Isso irá sobrescrever os valores automáticos do sistema.</p>

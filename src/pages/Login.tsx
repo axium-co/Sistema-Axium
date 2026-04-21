@@ -53,27 +53,27 @@ const Login = ({ onLogin }: LoginProps) => {
       </div>
 
       {/* Right panel — form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
-          <div className="lg:hidden mb-10 text-center">
-            <img src="/logo.png" alt="Universo Axium" className="h-10 w-auto mx-auto object-contain" />
+          <div className="lg:hidden mb-6 md:mb-10 text-center">
+            <img src="/logo.png" alt="Universo Axium" className="h-8 md:h-10 w-auto mx-auto object-contain" />
           </div>
 
-          <div className="mb-8">
-            <h2 className="text-2xl font-black text-black tracking-tight mb-1">Bem-vindo de volta</h2>
-            <p className="text-neutral-500 text-sm">Faça login para acessar o painel.</p>
+          <div className="mb-6 md:mb-8">
+            <h2 className="text-xl md:text-2xl font-black text-black tracking-tight mb-1">Bem-vindo de volta</h2>
+            <p className="text-neutral-500 text-xs md:text-sm">Faça login para acessar o painel.</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-3.5 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-sm font-medium">{error}</p>
+            <div className="mb-4 md:mb-6 p-2 md:p-3.5 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-xs md:text-sm font-medium">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-5">
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-xs font-bold text-neutral-600 uppercase tracking-wider">
+              <label htmlFor="email" className="block text-[10px] md:text-xs font-bold text-neutral-600 uppercase tracking-wider">
                 Email
               </label>
               <div className="relative">
@@ -84,20 +84,20 @@ const Login = ({ onLogin }: LoginProps) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full border border-neutral-200 rounded-lg py-3 pl-11 pr-4 text-black text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                  className="w-full border border-neutral-200 rounded-lg py-2 md:py-3 pl-10 md:pl-11 pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                   disabled={isLoading}
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-xs font-bold text-neutral-600 uppercase tracking-wider">
+              <label htmlFor="password" className="block text-[10px] md:text-xs font-bold text-neutral-600 uppercase tracking-wider">
                 Senha
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                 <input
-                  id="password"
+                  id="password" className="w-full border border-neutral-200 rounded-lg py-2 md:py-3 pl-10 md:pl-11 pr-11 md:pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

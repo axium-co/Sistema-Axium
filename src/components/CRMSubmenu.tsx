@@ -20,7 +20,7 @@ const CRMSubmenu = () => {
       className="
         bg-white/70 backdrop-blur-md
         border-b border-neutral-200/60
-        px-8
+        px-2 md:px-8
       "
     >
       <div className="flex items-center gap-1 overflow-x-auto">
@@ -32,8 +32,8 @@ const CRMSubmenu = () => {
               key={item.id}
               to={item.path}
               className={`
-                relative whitespace-nowrap flex items-center gap-2
-                px-3 py-3.5 text-sm font-medium transition-colors duration-150
+                relative whitespace-nowrap flex items-center gap-1 md:gap-2
+                px-2 md:px-3 py-2 md:py-3.5 text-xs md:text-sm font-medium transition-colors duration-150
                 ${active
                   ? 'text-black font-semibold'
                   : 'text-neutral-400 hover:text-neutral-700'

@@ -46,19 +46,19 @@ const DraggableLeadCard = ({ lead, isClosed }: LeadCardProps) => {
       style={style}
       {...listeners}
       {...attributes}
-      className={`bg-white p-4 rounded-xl border border-neutral-200 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md transition-all cursor-grab active:cursor-grabbing group ${isDragging ? 'opacity-50 grayscale' : ''}`}
+      className={`bg-white p-2 md:p-4 rounded-xl border border-neutral-200 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md transition-all cursor-grab active:cursor-grabbing group ${isDragging ? 'opacity-50 grayscale' : ''}`}
     >
-      <div className="font-bold text-[13px] text-black mb-0.5">{lead.name}</div>
-      <div className="text-[10px] text-neutral-500 font-semibold mb-3">{lead.niche}</div>
+      <div className="font-bold text-[11px] md:text-[13px] text-black mb-0.5">{lead.name}</div>
+      <div className="text-[9px] md:text-[10px] text-neutral-500 font-semibold mb-2 md:mb-3">{lead.niche}</div>
       
       {isClosed && (
-        <div className="pt-3 border-t border-neutral-100 mt-3">
-          <div className="flex justify-between items-center">
+        <div className="pt-2 md:pt-3 border-t border-neutral-100 mt-2 md:mt-3">
+          <div className="flex justify-between items-center gap-2">
             <div className="flex flex-col">
-              <span className="text-[8px] text-neutral-400 font-bold uppercase tracking-[0.1em]">Valor do Contrato</span>
-              <span className="text-xs font-black text-black mt-0.5">{lead.value || 'R$ 0,00'}</span>
+              <span className="text-[7px] md:text-[8px] text-neutral-400 font-bold uppercase tracking-[0.1em]">Valor</span>
+              <span className="text-[10px] md:text-xs font-black text-black mt-0.5">{lead.value || 'R$ 0,00'}</span>
             </div>
-            <div className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold">
+            <div className="w-5 md:w-6 h-5 md:h-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[9px] md:text-[10px] font-bold flex-shrink-0">
               ✓
             </div>
           </div>

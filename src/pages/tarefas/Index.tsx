@@ -246,48 +246,49 @@ const Tarefas = () => {
   return (
     <div className="bg-white min-h-screen text-black">
       {/* Header */}
-      <div className="mb-10 flex justify-between items-end px-4 pt-4">
+      <div className="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 px-2 md:px-4 pt-2 md:pt-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight mb-1">Operações Axium</h1>
-          <p className="text-neutral-500 text-sm font-medium">Gestão dinâmica de alto desempenho.</p>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-1">Operações Axium</h1>
+          <p className="text-neutral-500 text-xs md:text-sm font-medium">Gestão dinâmica de alto desempenho.</p>
         </div>
-        <div className="flex items-center gap-10">
-          <div className="flex items-center gap-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-10 w-full md:w-auto">
+          <div className="flex items-center gap-3 md:gap-6">
             <div className="text-right">
-              <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">Progresso Total</p>
-              <p className="text-xl font-black">{totalTasksCount > 0 ? Math.round((doneTasksCount / totalTasksCount) * 100) : 0}%</p>
+              <p className="text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-widest">Progresso</p>
+              <p className="text-lg md:text-xl font-black">{totalTasksCount > 0 ? Math.round((doneTasksCount / totalTasksCount) * 100) : 0}%</p>
             </div>
-            <div className="w-40 h-2 bg-neutral-100 rounded-full overflow-hidden">
+            <div className="w-24 md:w-40 h-1.5 md:h-2 bg-neutral-100 rounded-full overflow-hidden">
               <div className="h-full bg-black rounded-full transition-all duration-700" style={{ width: `${totalTasksCount > 0 ? (doneTasksCount / totalTasksCount) * 100 : 0}%` }} />
             </div>
           </div>
           <button 
             onClick={() => { setTargetGroupId('g1'); setEditingTask({ id: Math.random().toString(36).substring(2, 9), title: '', values: {} }); setIsTaskModalOpen(true); }}
-            className="bg-black text-white px-8 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-neutral-800 transition-all shadow-lg shadow-black/10"
+            className="flex-1 sm:flex-none bg-black text-white px-4 md:px-8 py-2 md:py-3.5 rounded-2xl font-black text-[10px] md:text-[11px] uppercase tracking-widest hover:bg-neutral-800 transition-all shadow-lg shadow-black/10 whitespace-nowrap"
           >
-            <Plus size={18} strokeWidth={3} className="inline mr-2" /> Nova Tarefa
+            <Plus size={14} className="md:w-4.5 md:h-4.5 inline mr-1 md:mr-2" strokeWidth={3} /> <span className="hidden sm:inline">Nova Tarefa</span>
+            <span className="sm:hidden">Novo</span>
           </button>
         </div>
       </div>
 
       {/* Board Groups */}
-      <div className="space-y-12 px-4 pb-40">
+      <div className="space-y-6 md:space-y-12 px-2 md:px-4 pb-20 md:pb-40">
         {groups.map(group => (
           <div key={group.id}>
-            <div className="flex items-center gap-2 mb-4 cursor-pointer group/header" onClick={() => setGroups(prev => prev.map(g => g.id === group.id ? { ...g, isExpanded: !g.isExpanded } : g))}>
+            <div className="flex items-center gap-2 mb-2 md:mb-4 cursor-pointer group/header" onClick={() => setGroups(prev => prev.map(g => g.id === group.id ? { ...g, isExpanded: !g.isExpanded } : g))}>
               <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: group.color }} />
-              {group.isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-              <h2 className="text-xl font-black transition-all group-hover/header:translate-x-1" style={{ color: group.color }}>{group.title}</h2>
-              <span className="text-xs text-neutral-300 font-bold ml-2">{group.tasks.length} itens</span>
+              {group.isExpanded ? <ChevronDown size={16} className="md:w-4.5 md:h-4.5" /> : <ChevronRight size={16} className="md:w-4.5 md:h-4.5" />}
+              <h2 className="text-lg md:text-xl font-black transition-all group-hover/header:translate-x-1" style={{ color: group.color }}>{group.title}</h2>
+              <span className="text-[10px] md:text-xs text-neutral-300 font-bold ml-1 md:ml-2">{group.tasks.length} itens</span>
             </div>
 
             {group.isExpanded && (
-              <div className="border border-neutral-100 rounded-2xl bg-white shadow-sm overflow-visible">
-                <table className="w-full border-collapse">
+              <div className="border border-neutral-100 rounded-2xl bg-white shadow-sm overflow-x-auto">
+                <table className="w-full border-collapse text-[11px] md:text-sm">
                   <thead>
-                    <tr className="bg-neutral-50/30 border-b border-neutral-100 text-[10px] text-neutral-400 font-black uppercase tracking-widest">
-                      <th className="w-10 p-4 border-r border-neutral-100"><Circle size={14} className="mx-auto opacity-20" /></th>
-                      <th className="text-left p-4 min-w-[350px]">Tarefa</th>
+                    <tr className="bg-neutral-50/30 border-b border-neutral-100 text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-widest">
+                      <th className="w-8 md:w-10 p-2 md:p-4 border-r border-neutral-100"><Circle size={12} className="md:w-3.5 md:h-3.5 mx-auto opacity-20" /></th>
+                      <th className="text-left p-2 md:p-4 min-w-[180px] md:min-w-[350px]">Tarefa</th>
                       {columns.map(col => (
                         <th key={col.id} className="p-4 border-l border-neutral-100 text-center relative group/col">
                           {editingColHeader === col.id ? (
@@ -382,33 +383,33 @@ const Tarefas = () => {
 
       {/* Modals & Formula Editor (Re-used for brevity but fully functional) */}
       {isTaskModalOpen && editingTask && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
-          <div className="bg-white border border-neutral-200 rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden p-10 transform animate-in slide-in-from-bottom-8">
-            <div className="flex justify-between items-start mb-8">
-              <h2 className="text-3xl font-black text-black tracking-tighter">Configurar Tarefa</h2>
-              <button onClick={() => setIsTaskModalOpen(false)} className="p-2 text-neutral-300 hover:text-black transition-colors"><X size={24} /></button>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
+          <div className="bg-white border border-neutral-200 rounded-[32px] shadow-2xl w-full max-w-xs md:max-w-2xl overflow-hidden p-4 md:p-10 transform animate-in slide-in-from-bottom-8">
+            <div className="flex justify-between items-start mb-4 md:mb-8 gap-3">
+              <h2 className="text-xl md:text-3xl font-black text-black tracking-tighter">Configurar Tarefa</h2>
+              <button onClick={() => setIsTaskModalOpen(false)} className="p-1 md:p-2 text-neutral-300 hover:text-black transition-colors flex-shrink-0"><X size={20} className="md:w-6 md:h-6" /></button>
             </div>
             <form onSubmit={(e) => {
               e.preventDefault();
               setGroups(prev => prev.map(g => g.id === targetGroupId ? { ...g, tasks: [...g.tasks, editingTask] } : g));
               setIsTaskModalOpen(false);
-            }} className="space-y-8">
-              <div className="space-y-2"><label className="text-[10px] font-black text-neutral-400 uppercase">Nome da Tarefa</label><input autoFocus required className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 text-lg font-black" value={editingTask.title} onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })} /></div>
-              <div className="grid grid-cols-2 gap-6">{columns.filter(c => c.type !== 'formula').map(c => (
-                <div key={c.id} className="space-y-2"><label className="text-[10px] font-black text-neutral-400 uppercase">{c.title}</label><input className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-4 py-3 text-sm font-bold" value={editingTask.values[c.id] || ''} onChange={(e) => setEditingTask({ ...editingTask, values: { ...editingTask.values, [c.id]: e.target.value } })} /></div>
+            }} className="space-y-4 md:space-y-8">
+              <div className="space-y-1 md:space-y-2"><label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase">Nome da Tarefa</label><input autoFocus required className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-3 md:px-6 py-2 md:py-4 text-xs md:text-lg font-black" value={editingTask.title} onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })} /></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">{columns.filter(c => c.type !== 'formula').map(c => (
+                <div key={c.id} className="space-y-1 md:space-y-2"><label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase">{c.title}</label><input className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-bold" value={editingTask.values[c.id] || ''} onChange={(e) => setEditingTask({ ...editingTask, values: { ...editingTask.values, [c.id]: e.target.value } })} /></div>
               ))}</div>
-              <button type="submit" className="w-full bg-black text-white py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl">Salvar Tarefa</button>
+              <button type="submit" className="w-full bg-black text-white py-3 md:py-4 rounded-2xl font-black text-[10px] md:text-[11px] uppercase tracking-widest shadow-xl hover:bg-neutral-800 transition-all">Salvar Tarefa</button>
             </form>
           </div>
         </div>
       )}
 
       {editingFormulaCol && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
-          <div className="bg-white border border-neutral-200 rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden p-10 transform animate-in slide-in-from-bottom-8">
-            <div className="flex justify-between items-start mb-6"><h2 className="text-2xl font-black text-black">Editor de Fórmulas</h2><button onClick={() => setEditingFormulaCol(null)} className="p-2 text-neutral-300 hover:text-black"><X size={20} /></button></div>
-            <textarea className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl p-6 text-base font-black h-32 focus:border-black outline-none" value={editingFormulaCol.formula || ''} onChange={(e) => setEditingFormulaCol({ ...editingFormulaCol, formula: e.target.value })} />
-            <div className="mt-8 flex gap-4"><button onClick={() => setEditingFormulaCol(null)} className="flex-1 py-4 font-black text-[11px] uppercase text-neutral-400">Cancelar</button><button onClick={() => { setColumns(columns.map(c => c.id === editingFormulaCol.id ? editingFormulaCol : c)); setEditingFormulaCol(null); }} className="flex-[2] bg-black text-white py-4 rounded-2xl font-black text-[11px] uppercase shadow-xl">Salvar Fórmula</button></div>
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
+          <div className="bg-white border border-neutral-200 rounded-[32px] shadow-2xl w-full max-w-xs md:max-w-lg overflow-hidden p-4 md:p-10 transform animate-in slide-in-from-bottom-8">
+            <div className="flex justify-between items-start mb-3 md:mb-6 gap-3"><h2 className="text-lg md:text-2xl font-black text-black">Editor de Fórmulas</h2><button onClick={() => setEditingFormulaCol(null)} className="p-1 md:p-2 text-neutral-300 hover:text-black flex-shrink-0"><X size={18} className="md:w-5 md:h-5" /></button></div>
+            <textarea className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl p-3 md:p-6 text-xs md:text-base font-black h-24 md:h-32 focus:border-black outline-none" value={editingFormulaCol.formula || ''} onChange={(e) => setEditingFormulaCol({ ...editingFormulaCol, formula: e.target.value })} />
+            <div className="mt-4 md:mt-8 flex gap-2 md:gap-4"><button onClick={() => setEditingFormulaCol(null)} className="flex-1 py-2 md:py-4 font-black text-[10px] md:text-[11px] uppercase text-neutral-400 hover:text-neutral-600">Cancelar</button><button onClick={() => { setColumns(columns.map(c => c.id === editingFormulaCol.id ? editingFormulaCol : c)); setEditingFormulaCol(null); }} className="flex-[2] bg-black text-white py-2 md:py-4 rounded-2xl font-black text-[10px] md:text-[11px] uppercase shadow-xl hover:bg-neutral-800">Salvar Fórmula</button></div>
           </div>
         </div>
       )}

@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Search, X, User, MessageSquare, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Bell, Search, X, User, MessageSquare, Calendar as CalendarIcon, Clock, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useCRM } from '../contexts/CRMContext';
+import { useCRM } from '../contexts/CRMContext'
+
+interface TopHeaderProps {
+  onMenuClick?: () => void;
+}
 
 const routeTitles: Record<string, { title: string; subtitle: string }> = {
   '/crm/painel': { title: 'Painel', subtitle: 'Visão geral das oportunidades' },
@@ -16,7 +20,7 @@ const routeTitles: Record<string, { title: string; subtitle: string }> = {
   '/configuracoes': { title: 'Configurações', subtitle: 'Preferências da aplicação' },
 };
 
-const TopHeader = () => {
+const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -51,15 +55,24 @@ const TopHeader = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-neutral-200/60 px-8 py-4 flex items-center justify-between transition-all duration-300">
+    <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-neutral-200/60 px-3 md:px-8 py-2 md:py-4 flex items-center justify-between transition-all duration-300">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={onMenuClick}
+        className="p-2 -ml-2 rounded-lg hover:bg-neutral-100 md:hidden"
+        aria-label="Abrir menu"
+      >
+        <Menu className="w-5 h-5 text-neutral-600" />
+      </button>
+      
       <div>
-        <h2 className="text-lg font-black text-black tracking-tight leading-none">{route.title}</h2>
+        <h2 className="text-base md:text-lg font-black text-black tracking-tight leading-none">{route.title}</h2>
         {route.subtitle && (
-          <p className="text-xs text-neutral-400 font-medium mt-0.5">{route.subtitle}</p>
+          <p className="text-[10px] md:text-xs text-neutral-400 font-medium mt-0.5">{route.subtitle}</p>
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3">
         {/* Search */}
         <div className="relative hidden md:flex items-center">
           <Search className="absolute left-3 w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />

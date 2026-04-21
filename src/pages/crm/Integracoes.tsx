@@ -75,12 +75,12 @@ const CRMIntegracoes = () => {
 
   return (
     <div className="min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-black tracking-tight mb-1">Integrações</h1>
-        <p className="text-neutral-500 text-sm">Conecte o CRM com outras ferramentas e plataformas.</p>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Integrações</h1>
+        <p className="text-neutral-500 text-xs md:text-sm">Conecte o CRM com outras ferramentas e plataformas.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
         {integrations.map((integration, idx) => {
           const Icon = integration.icon || Shield;
           return (

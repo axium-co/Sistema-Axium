@@ -100,22 +100,21 @@ const CRMCalendario = () => {
   };
 
   return (
-    <div className="min-h-screen">
-      <div className="mb-8 flex justify-between items-end">
+    <div className="min-h-screen p-2 md:p-8">
+      <div className="mb-4 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-0">
         <div>
-          <h1 className="text-3xl font-black text-black tracking-tight mb-1">Calendário</h1>
-          <p className="text-neutral-500 text-sm">Visualize e acompanhe seus compromissos agendados.</p>
+          <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Calendário</h1>
+          <p className="text-neutral-500 text-xs md:text-sm">Visualize e acompanhe seus compromissos agendados.</p>
         </div>
         <button 
           onClick={handleOpenCreate}
-          className="bg-black text-white px-6 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
+          className="w-full md:w-auto bg-black text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-black text-[10px] md:text-[11px] uppercase tracking-widest flex items-center justify-center md:justify-start gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
         >
-          <Plus size={16} strokeWidth={3} />
-          Criar
+          <Plus size={14} className="md:w-4 md:h-4" strokeWidth={3} />
+          <span className="hidden sm:inline">Criar</span>
+          <span className="sm:hidden">Novo</span>
         </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      </div>\n\n      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-6\">
         <div className="lg:col-span-3 bg-white border border-neutral-200 rounded-xl p-6 shadow-sm overflow-hidden">
           {/* Calendar Grid Header */}
           <div className="grid grid-cols-7 gap-1 mb-4">

@@ -123,11 +123,11 @@ const CRMImportar = () => {
   };
 
   return (
-    <div className="min-h-screen">
-      <div className="mb-8 flex justify-between items-start">
+    <div className="min-h-screen p-2 md:p-8">
+      <div className="mb-4 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-start gap-3 md:gap-0">
         <div>
-          <h1 className="text-3xl font-black text-black tracking-tight mb-1">Importar</h1>
-          <p className="text-neutral-500 text-sm">Importe leads e contatos para o CRM.</p>
+          <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Importar</h1>
+          <p className="text-neutral-500 text-xs md:text-sm">Importe leads e contatos para o CRM.</p>
         </div>
       </div>
 
