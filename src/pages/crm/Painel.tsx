@@ -1,14 +1,8 @@
-import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
-} from 'recharts';
+import { useActivityLogs } from '../../contexts/ActivityContext';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const STAGES = [
   'Novos Leads',
@@ -21,8 +15,24 @@ const STAGES = [
   'Perdido'
 ];
 
+const ACTION_ICONS = {
+  lead_criado: UserPlus,
+  lead_movido: ArrowRight,
+  lead_atualizado: ArrowRight,
+  tarefa_concluida: CheckSquare,
+};
+
 const CRMDashboard = () => {
   const { leads, getLeadsByStage } = useCRM();
+  const { activityLogs, fetchActivityLogs } = useActivityLogs();
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!loaded) {
+      fetchActivityLogs(15);
+      setLoaded(true);
+    }
+  }, [loaded, fetchActivityLogs]);
 
   const chartData = STAGES.map(stage => ({
     name: stage,
@@ -37,6 +47,16 @@ const CRMDashboard = () => {
     { title: 'Leads Perdidos', value: getLeadsByStage('Perdido').length.toString(), icon: UserX },
     { title: 'Fechados', value: getLeadsByStage('Contrato Fechado').length.toString(), icon: CheckCircle },
   ];
+
+  const formatTime = (iso: string) => {
+    const date = new Date(iso);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - date.getTime()) / 60000);
+    if (diff < 1) return 'agora';
+    if (diff < 60) return `${diff}min`;
+    if (diff < 1440) return `${Math.floor(diff / 60)}h`;
+    return `${Math.floor(diff / 1440)}d`;
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -65,7 +85,7 @@ const CRMDashboard = () => {
       </div>
 
       {/* Chart Section */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 md:p-8 shadow-sm overflow-x-auto">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 md:p-8 shadow-sm overflow-x-auto mb-6 md:mb-10">
         <div className="mb-6 md:mb-8">
           <h2 className="text-lg md:text-xl font-bold text-black mb-1">Visão Geral do Pipeline</h2>
           <p className="text-slate-400 text-[10px] md:text-xs uppercase font-bold tracking-widest">Distribuição de leads por etapa</p>
@@ -114,6 +134,34 @@ const CRMDashboard = () => {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Atividades Recentes */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 md:p-8 shadow-sm">
+        <div className="flex items-center gap-2 mb-6">
+          <Activity className="w-4 h-4 text-black" />
+          <h2 className="text-lg md:text-xl font-bold text-black">Atividades Recentes</h2>
+        </div>
+        {activityLogs.length === 0 ? (
+          <p className="text-slate-400 text-xs">Nenhuma atividade registrada.</p>
+        ) : (
+          <div className="space-y-3">
+            {activityLogs.slice(0, 10).map((log) => {
+              const Icon = ACTION_ICONS[log.acao] || Activity;
+              return (
+                <div key={log.id} className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <Icon className="w-3.5 h-3.5 text-black" strokeWidth={2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs md:text-sm text-black leading-snug">{log.descricao}</p>
+                    <p className="text-[10px] md:text-xs text-slate-400 font-medium mt-0.5">há {formatTime(log.timestamp)}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

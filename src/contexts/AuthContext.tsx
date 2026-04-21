@@ -1,12 +1,18 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+
+interface AuthUser {
+  id: string;
+  email: string;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: { email: string } | null;
+  user: AuthUser | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,39 +20,51 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<{ email: string } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
-  // Check for stored auth on mount
   useEffect(() => {
-    const storedAuth = localStorage.getItem('axium_auth');
-    const storedUser = localStorage.getItem('axium_user');
-    
-    if (storedAuth === 'true' && storedUser) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email || '' });
+        setIsAuthenticated(true);
+      }
+      
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          setUser({ id: session.user.id, email: session.user.email || '' });
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      });
+
+      setIsLoading(false);
+      return () => subscription.unsubscribe();
+    };
+
+    initAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // For demo purposes, accept any non-empty password
-    if (email && password) {
-      const userData = { email };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    if (error) {
+      throw new Error(error.message);
+    }
+    
+    if (data.user) {
+      setUser({ id: data.user.id, email: data.user.email || '' });
       setIsAuthenticated(true);
-      setUser(userData);
-      localStorage.setItem('axium_auth', 'true');
-      localStorage.setItem('axium_user', JSON.stringify(userData));
     }
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('axium_auth');
-    localStorage.removeItem('axium_user');
+    setIsAuthenticated(false);
   };
 
   return (
@@ -59,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
