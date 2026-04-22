@@ -3,39 +3,49 @@ import {
   ChevronDown, 
   ChevronRight, 
   Plus, 
-  Calendar, 
+  Calendar,
   Check,
   Circle,
   X,
   Trash2,
-  Clock,
-  MoreVertical,
   Search,
   Hash,
   FileText,
-  Link2,
-  Settings,
   Type,
-  Layout,
   Calculator,
-  Smile,
-  Zap,
   Users,
-  Save,
-  MessageSquare,
   User as UserIcon,
   CheckCircle2,
   Flag,
   File,
-  Image as ImageIcon,
-  Paperclip,
   Upload,
-  Variable
+  BarChart3,
+  Clock3,
+  StickyNote,
+  Zap,
+  LayoutGrid,
+  List,
+  AlertCircle,
+  TrendingUp,
+  Clock,
+  Target,
+  CheckSquare
 } from 'lucide-react';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from 'recharts';
 
-// --- Types ---
-
-type ColumnType = 'status' | 'priority' | 'date' | 'text' | 'number' | 'file' | 'formula' | 'link';
+type ColumnType = 'checkbox' | 'text' | 'status' | 'priority' | 'date' | 'number' | 'file' | 'timeline' | 'notes' | 'users' | 'formula';
 
 interface FileMetadata {
   name: string;
@@ -66,147 +76,540 @@ interface Group {
   tasks: Task[];
 }
 
-// --- Constants ---
-
-const STATUS_OPTIONS = ['Feito', 'Trabalhando nisso', 'Parado', 'Não iniciado'];
-const STATUS_COLORS: Record<string, string> = {
-  'Feito': 'bg-[#00c875]',
-  'Trabalhando nisso': 'bg-[#fdab3d]',
-  'Parado': 'bg-[#df2f4a]',
-  'Não iniciado': 'bg-[#c4c4c4]',
+const STATUS_OPTIONS = ['Não iniciado', 'Em andamento', 'Feito', 'Parado'];
+const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
+  'Não iniciado': { bg: 'bg-neutral-400', text: 'text-white' },
+  'Em andamento': { bg: 'bg-orange-500', text: 'text-white' },
+  'Feito': { bg: 'bg-emerald-500', text: 'text-white' },
+  'Parado': { bg: 'bg-red-500', text: 'text-white' },
 };
 
-const PRIORITY_OPTIONS = ['Urgente', 'Alta', 'Média', 'Baixa'];
-const PRIORITY_COLORS: Record<string, string> = {
-  'Urgente': 'bg-[#df2f4a]',
-  'Alta': 'bg-[#fb275d]',
-  'Média': 'bg-[#fdab3d]',
-  'Baixa': 'bg-[#579bfc]',
+const PRIORITY_OPTIONS = ['Baixa', 'Média', 'Alta'];
+const PRIORITY_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
+  'Baixa': { bg: 'bg-sky-400', text: 'text-white', label: 'Baixa' },
+  'Média': { bg: 'bg-blue-500', text: 'text-white', label: 'Média' },
+  'Alta': { bg: 'bg-indigo-600', text: 'text-white', label: 'Alta' },
 };
 
 const TOOL_CATALOG = [
   {
     category: 'Essenciais',
     items: [
-      { id: 'status', label: 'Status', icon: Check, color: 'text-emerald-500', type: 'status' },
-      { id: 'text', label: 'Texto', icon: Type, color: 'text-blue-400', type: 'text' },
-      { id: 'users', label: 'Pessoas', icon: Users, color: 'text-amber-500', type: 'text' },
-      { id: 'date', label: 'Data', icon: Calendar, color: 'text-red-400', type: 'date' },
+      { id: 'status', label: 'Status', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50', type: 'status' as ColumnType },
+      { id: 'priority', label: 'Prioridade', icon: Flag, color: 'text-red-500', bg: 'bg-red-50', type: 'priority' as ColumnType },
+      { id: 'date', label: 'Data', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', type: 'date' as ColumnType },
+      { id: 'users', label: 'Pessoas', icon: Users, color: 'text-amber-500', bg: 'bg-amber-50', type: 'users' as ColumnType },
     ]
   },
   {
     category: 'Super úteis',
     items: [
-      { id: 'number', label: 'Números', icon: Hash, color: 'text-emerald-400', type: 'number' },
-      { id: 'formula', label: 'Fórmula', icon: Calculator, color: 'text-indigo-500', type: 'formula' },
-      { id: 'file', label: 'Arquivos', icon: FileText, color: 'text-amber-600', type: 'file' },
-      { id: 'link', label: 'Conectar quadros', icon: Link2, color: 'text-blue-600', type: 'link' },
+      { id: 'number', label: 'Números', icon: Hash, color: 'text-purple-500', bg: 'bg-purple-50', type: 'number' as ColumnType },
+      { id: 'formula', label: 'Fórmula', icon: Calculator, color: 'text-indigo-500', bg: 'bg-indigo-50', type: 'formula' as ColumnType },
+      { id: 'file', label: 'Arquivos', icon: FileText, color: 'text-orange-500', bg: 'bg-orange-50', type: 'file' as ColumnType },
+      { id: 'timeline', label: 'Cronograma', icon: Clock3, color: 'text-cyan-500', bg: 'bg-cyan-50', type: 'timeline' as ColumnType },
+      { id: 'notes', label: 'Notas', icon: StickyNote, color: 'text-yellow-500', bg: 'bg-yellow-50', type: 'notes' as ColumnType },
+      { id: 'text', label: 'Texto', icon: Type, color: 'text-blue-500', bg: 'bg-blue-50', type: 'text' as ColumnType },
     ]
   }
 ];
 
-// --- Main Component ---
+const DEFAULT_COLUMNS: Column[] = [
+  { id: 'col-status', title: 'Status', type: 'status', width: 140 },
+  { id: 'col-responsible', title: 'Responsável', type: 'users', width: 120 },
+  { id: 'col-priority', title: 'Prioridade', type: 'priority', width: 100 },
+  { id: 'col-deadline', title: 'Prazo', type: 'date', width: 120 },
+  { id: 'col-budget', title: 'Orçamento', type: 'number', width: 120 },
+  { id: 'col-notes', title: 'Notas', type: 'notes', width: 80 },
+  { id: 'col-files', title: 'Arquivos', type: 'file', width: 80 },
+  { id: 'col-timeline', title: 'Cronograma', type: 'timeline', width: 160 },
+  { id: 'col-updated', title: 'Última Atualização', type: 'date', width: 140 },
+];
 
-const TaskModal = ({ task, columns, onSave, onClose, onChange }: { task: Task; columns: Column[]; onSave: (t: Task) => void; onClose: () => void; onChange: (t: Task) => void }) => {
-  try {
-    const validColumns = columns?.filter?.((c: Column) => c?.type !== 'formula') || [];
+const DEFAULT_GROUPS: Group[] = [
+  {
+    id: 'g1',
+    title: 'Tarefas Pendentes',
+    color: '#579bfc',
+    isExpanded: true,
+    tasks: [
+      { id: '1', title: 'Lead - Clínica Sorriso', values: { 
+        'col-status': 'Em andamento', 
+        'col-responsible': { name: 'João Silva', avatar: null },
+        'col-priority': 'Alta',
+        'col-deadline': '2026-04-25',
+        'col-budget': 15000,
+        'col-notes': 'Aguardando aprovação',
+        'col-timeline': { start: '2026-04-20', end: '2026-04-28', progress: 60 }
+      }},
+      { id: '2', title: 'Follow-up Cliente XPTO', values: { 
+        'col-status': 'Não iniciado', 
+        'col-responsible': { name: 'Maria Santos', avatar: null },
+        'col-priority': 'Média',
+        'col-deadline': '2026-04-30',
+        'col-budget': 8500,
+        'col-timeline': { start: '2026-04-22', end: '2026-05-05', progress: 0 }
+      }},
+    ]
+  },
+  {
+    id: 'g2',
+    title: 'Concluídos',
+    color: '#00c875',
+    isExpanded: false,
+    tasks: [
+      { id: '3', title: 'Projeto Redesign Site', values: { 
+        'col-status': 'Feito', 
+        'col-responsible': { name: 'Carlos Oliveira', avatar: null },
+        'col-priority': 'Baixa',
+        'col-deadline': '2026-04-15',
+        'col-budget': 12000,
+        'col-timeline': { start: '2026-04-01', end: '2026-04-15', progress: 100 }
+      }},
+    ]
+  }
+];
+
+const Avatar = ({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) => {
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const bgColor = ['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500'][name.length % 5];
+  
+  if (size === 'md') {
     return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
-        <div className="bg-white border border-neutral-200 rounded-[32px] shadow-2xl w-full max-w-xs md:max-w-2xl overflow-hidden p-4 md:p-10 transform animate-in slide-in-from-bottom-8">
-          <div className="flex justify-between items-start mb-4 md:mb-8 gap-3">
-            <h2 className="text-xl md:text-3xl font-black text-black tracking-tighter">Configurar Tarefa</h2>
-            <button onClick={onClose} className="p-1 md:p-2 text-neutral-300 hover:text-black transition-colors flex-shrink-0"><X size={20} className="md:w-6 md:h-6" /></button>
-          </div>
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            if (task?.title) onSave(task);
-          }} className="space-y-4 md:space-y-8">
-            <div className="space-y-1 md:space-y-2">
-              <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase">Nome da Tarefa</label>
-              <input 
-                autoFocus 
-                required 
-                className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-3 md:px-6 py-2 md:py-4 text-xs md:text-lg font-black" 
-                value={task?.title || ''} 
-                onChange={(e) => onChange({ ...task, title: e.target.value })} 
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-              {validColumns.map((c: Column) => (
-                <div key={c.id} className="space-y-1 md:space-y-2">
-                  <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase">{c?.title || ''}</label>
-                  <input 
-                    className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-md px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-bold" 
-                    value={task?.values?.[c.id] || ''} 
-                    onChange={(e) => onChange({ ...task, values: { ...task.values, [c.id]: e.target.value } })} 
-                  />
-                </div>
-              ))}
-            </div>
-            <button type="submit" className="w-full bg-black text-white py-3 md:py-4 rounded-2xl font-black text-[10px] md:text-[11px] uppercase tracking-widest shadow-xl hover:bg-neutral-800 transition-all">Salvar Tarefa</button>
-          </form>
-        </div>
-      </div>
-    );
-  } catch (error) {
-    return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60">
-        <div className="bg-white p-8 rounded-2xl text-center">
-          <p className="text-red-500 font-bold mb-4">Erro ao abrir formulário</p>
-          <button onClick={onClose} className="px-4 py-2 bg-black text-white rounded-lg">Fechar</button>
-        </div>
+      <div className={`${bgColor} w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold`}>
+        {initials}
       </div>
     );
   }
+  
+  return (
+    <div className={`${bgColor} w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold`}>
+      {initials}
+    </div>
+  );
+};
+
+const TimelineBar = ({ data }: { data: { start: string; end: string; progress: number } }) => {
+  if (!data?.start || !data?.end) {
+    return <div className="h-2 bg-neutral-100 rounded-full w-24" />;
+  }
+  
+  const startDate = new Date(data.start);
+  const endDate = new Date(data.end);
+  const today = new Date();
+  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysPassed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  const elapsedPercent = Math.max(0, Math.min(100, (daysPassed / totalDays) * 100));
+  
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
+        <div 
+          className={`h-full rounded-full transition-all ${
+            data.progress === 100 ? 'bg-emerald-500' : 
+            elapsedPercent > 90 ? 'bg-red-500' : 
+            elapsedPercent > 70 ? 'bg-orange-500' : 'bg-blue-500'
+          }`}
+          style={{ width: `${Math.max(data.progress, elapsedPercent)}%` }}
+        />
+      </div>
+      <span className="text-[9px] font-medium text-neutral-400 w-8 text-right">
+        {data.progress}%
+      </span>
+    </div>
+  );
+};
+
+const StatusBadge = ({ value }: { value: string }) => {
+  const config = STATUS_CONFIG[value] || { bg: 'bg-neutral-100', text: 'text-neutral-400' };
+  return (
+    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md ${config.bg} ${config.text}`}>
+      <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+      <span className="text-[10px] font-semibold">{value || 'Não iniciado'}</span>
+    </div>
+  );
+};
+
+const PriorityBadge = ({ value }: { value: string }) => {
+  const config = PRIORITY_CONFIG[value] || { bg: 'bg-neutral-100', text: 'text-neutral-400', label: '—' };
+  return (
+    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded ${config.bg} ${config.text}`}>
+      <Flag size={10} />
+      <span className="text-[10px] font-semibold">{config.label}</span>
+    </div>
+  );
+};
+
+const FileUploadCell = ({ taskId, colId, value, onUpdate }: { taskId: string; colId: string; value: FileMetadata | null; onUpdate: (v: any) => void }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const processFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const metadata: FileMetadata = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        preview: file.type.startsWith('image/') ? reader.result as string : undefined
+      };
+      onUpdate(metadata);
+    };
+    reader.readAsDataURL(file);
+  };
+  
+  if (value) {
+    return (
+      <div className="flex items-center gap-1">
+        {value.preview ? (
+          <img src={value.preview} className="w-5 h-5 rounded object-cover" alt="" />
+        ) : (
+          <FileText size={14} className="text-blue-500" />
+        )}
+        <span className="text-[10px] font-medium text-neutral-600 truncate max-w-[60px]">{value.name}</span>
+      </div>
+    );
+  }
+  
+  return (
+    <button 
+      onClick={() => fileInputRef.current?.click()}
+      className="p-1.5 rounded-md hover:bg-neutral-100 transition-colors"
+    >
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) processFile(f); }} 
+      />
+      <Plus size={14} className="text-neutral-300" />
+    </button>
+  );
+};
+
+const NotesCell = ({ value, onUpdate }: { value: string; onUpdate: (v: string) => void }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [text, setText] = useState(value || '');
+  
+  if (isEditing) {
+    return (
+      <input
+        autoFocus
+        className="w-full h-8 bg-white border-2 border-black rounded-md px-2 text-[10px] font-medium outline-none"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => { onUpdate(text); setIsEditing(false); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { onUpdate(text); setIsEditing(false); } }}
+      />
+    );
+  }
+  
+  return (
+    <button
+      onClick={() => setIsEditing(true)}
+      className="flex items-center gap-1 text-neutral-400 hover:text-neutral-600 transition-colors"
+    >
+      <StickyNote size={14} />
+      {value ? (
+        <span className="text-[10px] font-medium text-neutral-600 truncate max-w-[60px]">{value}</span>
+      ) : (
+        <span className="text-[10px]">+</span>
+      )}
+    </button>
+  );
+};
+
+const TaskModal = ({ task, columns, onSave, onClose, onChange }: { task: Task; columns: Column[]; onSave: (t: Task) => void; onClose: () => void; onChange: (t: Task) => void }) => {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
+      <div className="bg-white border border-neutral-200 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
+        <div className="p-6 md:p-8">
+          <div className="flex justify-between items-start mb-6 md:mb-8">
+            <h2 className="text-2xl font-black text-black tracking-tight">Nova Tarefa</h2>
+            <button onClick={onClose} className="p-2 text-neutral-300 hover:text-black transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+          <form onSubmit={(e) => { e.preventDefault(); if (task.title) onSave(task); }} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Nome da Tarefa</label>
+              <input 
+                autoFocus 
+                required 
+                className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-4 py-3 text-base font-bold focus:border-black outline-none transition-colors" 
+                value={task?.title || ''} 
+                onChange={(e) => onChange({ ...task, title: e.target.value })} 
+                placeholder="Digite o nome da tarefa..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {columns.filter(c => c.type !== 'formula' && c.type !== 'timeline').map((col) => (
+                <div key={col.id} className="space-y-2">
+                  <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">{col.title}</label>
+                  {col.type === 'status' && (
+                    <select 
+                      className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-4 py-3 text-sm font-bold focus:border-black outline-none"
+                      value={task?.values?.[col.id] || ''}
+                      onChange={(e) => onChange({ ...task, values: { ...task.values, [col.id]: e.target.value } })}
+                    >
+                      {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  )}
+                  {col.type === 'priority' && (
+                    <select 
+                      className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-4 py-3 text-sm font-bold focus:border-black outline-none"
+                      value={task?.values?.[col.id] || ''}
+                      onChange={(e) => onChange({ ...task, values: { ...task.values, [col.id]: e.target.value } })}
+                    >
+                      {PRIORITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  )}
+                  {col.type === 'date' && (
+                    <input 
+                      type="date" 
+                      className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-4 py-3 text-sm font-bold focus:border-black outline-none"
+                      value={task?.values?.[col.id] || ''}
+                      onChange={(e) => onChange({ ...task, values: { ...task.values, [col.id]: e.target.value } })}
+                    />
+                  )}
+                  {col.type === 'number' && (
+                    <input 
+                      type="number" 
+                      className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-4 py-3 text-sm font-bold focus:border-black outline-none"
+                      value={task?.values?.[col.id] || ''}
+                      onChange={(e) => onChange({ ...task, values: { ...task.values, [col.id]: parseFloat(e.target.value) || 0 } })}
+                      placeholder="0"
+                    />
+                  )}
+                  {col.type === 'users' && (
+                    <input 
+                      type="text" 
+                      className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-4 py-3 text-sm font-bold focus:border-black outline-none"
+                      value={task?.values?.[col.id]?.name || ''}
+                      onChange={(e) => onChange({ ...task, values: { ...task.values, [col.id]: { name: e.target.value, avatar: null } } })}
+                      placeholder="Nome do responsável"
+                    />
+                  )}
+                  {col.type !== 'status' && col.type !== 'priority' && col.type !== 'date' && col.type !== 'number' && col.type !== 'users' && (
+                    <input 
+                      className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-4 py-3 text-sm font-bold focus:border-black outline-none"
+                      value={task?.values?.[col.id] || ''} 
+                      onChange={(e) => onChange({ ...task, values: { ...task.values, [col.id]: e.target.value } })}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            <button 
+              type="submit" 
+              className="w-full bg-black text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-neutral-800 transition-all"
+            >
+              Salvar Tarefa
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ReportsView = ({ data }: { data: any }) => {
+  const statusData = [
+    { name: 'Feito', value: data.totals.done, color: '#10b981' },
+    { name: 'Em andamento', value: data.totals.inProgress, color: '#f97316' },
+    { name: 'Parado', value: data.totals.blocked, color: '#ef4444' },
+    { name: 'Não iniciado', value: data.totals.total - data.totals.done - data.totals.inProgress - data.totals.blocked, color: '#9ca3af' },
+  ].filter(d => d.value > 0);
+
+  return (
+    <div className="px-4 pb-24">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 rounded-lg bg-neutral-100">
+              <List size={20} className="text-neutral-600" />
+            </div>
+            <span className="text-xs font-semibold text-neutral-500 uppercase">Todos os itens</span>
+          </div>
+          <p className="text-3xl font-black">{data.totals.total}</p>
+          <p className="text-xs text-neutral-400 mt-1">tarefas cadastradas</p>
+        </div>
+
+        <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 rounded-lg bg-orange-50">
+              <Clock size={20} className="text-orange-500" />
+            </div>
+            <span className="text-xs font-semibold text-neutral-500 uppercase">Em andamento</span>
+          </div>
+          <p className="text-3xl font-black text-orange-600">{data.totals.inProgress}</p>
+          <p className="text-xs text-neutral-400 mt-1">tarefas ativas</p>
+        </div>
+
+        <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 rounded-lg bg-red-50">
+              <AlertCircle size={20} className="text-red-500" />
+            </div>
+            <span className="text-xs font-semibold text-neutral-500 uppercase">Parado</span>
+          </div>
+          <p className="text-3xl font-black text-red-600">{data.totals.blocked}</p>
+          <p className="text-xs text-neutral-400 mt-1">tarefas bloqueadas</p>
+        </div>
+
+        <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 rounded-lg bg-emerald-50">
+              <CheckCircle2 size={20} className="text-emerald-500" />
+            </div>
+            <span className="text-xs font-semibold text-neutral-500 uppercase">Feito</span>
+          </div>
+          <p className="text-3xl font-black text-emerald-600">{data.totals.done}</p>
+          <p className="text-xs text-neutral-400 mt-1">tarefas concluídas</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-black mb-4">Tarefas por Status</h3>
+          <div className="h-[280px]">
+            {statusData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    formatter={(value: number) => [`${value} tarefas`, '']}
+                  />
+                  <Legend 
+                    formatter={(value) => <span className="text-sm font-medium text-neutral-600">{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-neutral-400">
+                <p className="text-sm">Nenhuma tarefa encontrada</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-black mb-4">Tarefas por Responsável</h3>
+          <div className="h-[280px]">
+            {data.responsibleData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.responsibleData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} stroke="#6b7280" width={100} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    formatter={(value: number) => [`${value} tarefas`, '']}
+                  />
+                  <Bar dataKey="tarefas" fill="#1f2937" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-neutral-400">
+                <p className="text-sm">Nenhum responsável encontrado</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <h3 className="text-lg font-black">Tarefas Atrasadas</h3>
+            <span className={`px-2 py-1 rounded-lg text-xs font-bold ${data.overdueTasks > 0 ? 'bg-red-100 text-red-600' : 'bg-neutral-100 text-neutral-400'}`}>
+              {data.overdueTasks}
+            </span>
+          </div>
+          <div className="h-[200px] flex items-center justify-center">
+            {data.overdueTasks > 0 ? (
+              <div className="text-center">
+                <p className="text-5xl font-black text-red-500">{data.overdueTasks}</p>
+                <p className="text-sm text-neutral-500 mt-2">tarefas fora do prazo</p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <CheckCircle2 size={48} className="text-emerald-400 mx-auto mb-2" />
+                <p className="text-sm text-neutral-500">Nenhuma tarefa atrasada</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-black mb-4">Tarefas por Prazo</h3>
+          <div className="h-[200px]">
+            {data.deadlineData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.deadlineData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                  <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    formatter={(value: number) => [`${value} tarefas`, '']}
+                  />
+                  <Bar dataKey="tarefas" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-neutral-400">
+                <p className="text-sm">Nenhum prazo definido</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const Tarefas = () => {
   const [columns, setColumns] = useState<Column[]>(() => {
-    const stored = localStorage.getItem('axium_cols_v4');
+    const stored = localStorage.getItem('axium_cols_v5');
     if (stored) return JSON.parse(stored);
-    return [
-      { id: 'col-status', title: 'Status', type: 'status', width: 140 },
-      { id: 'col-budget', title: 'Orçamento', type: 'number', width: 140 },
-      { id: 'col-commission', title: 'Comissão', type: 'formula', width: 140, formula: '{Orçamento} * 0.1' },
-      { id: 'col-files', title: 'Arquivos', type: 'file', width: 140 },
-    ];
+    return DEFAULT_COLUMNS;
   });
 
   const [groups, setGroups] = useState<Group[]>(() => {
-    const stored = localStorage.getItem('axium_groups_v4');
+    const stored = localStorage.getItem('axium_groups_v5');
     if (stored) return JSON.parse(stored);
-    return [
-      {
-        id: 'g1',
-        title: 'Este Mês',
-        color: '#579bfc',
-        isExpanded: true,
-        tasks: [
-          { id: '1', title: 'Lead - Clínica Sorriso', values: { 'col-status': 'Trabalhando nisso', 'col-budget': 15000 } },
-        ]
-      }
-    ];
+    return DEFAULT_GROUPS;
   });
 
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [isColumnCenterOpen, setIsColumnCenterOpen] = useState(false);
   const [searchTool, setSearchTool] = useState('');
-  const [activeCellMenu, setActiveCellMenu] = useState<{ taskId: string; colId: string; type: string } | null>(null);
-  const [editingColHeader, setEditingColHeader] = useState<string | null>(null);
+  const [activeCellMenu, setActiveCellMenu] = useState<{ taskId: string; colId: string } | null>(null);
   const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [targetGroupId, setTargetGroupId] = useState<string>('g1');
-  const [editingFormulaCol, setEditingFormulaCol] = useState<Column | null>(null);
+  const [currentView, setCurrentView] = useState<'board' | 'reports'>('board');
 
-  // Focus management
   const quickAddInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
-    localStorage.setItem('axium_cols_v4', JSON.stringify(columns));
-    localStorage.setItem('axium_groups_v4', JSON.stringify(groups));
+    localStorage.setItem('axium_cols_v5', JSON.stringify(columns));
+    localStorage.setItem('axium_groups_v5', JSON.stringify(groups));
   }, [columns, groups]);
-
-  // --- Formula Calculation ---
 
   const evaluateFormula = useCallback((formula: string, taskValues: Record<string, any>) => {
     try {
@@ -220,46 +623,11 @@ const Tarefas = () => {
         }
       });
       const sanitized = expression.replace(/[^0-9+\-*/().]/g, '');
-      // eslint-disable-next-line no-eval
       const result = eval(sanitized);
       if (isNaN(result) || !isFinite(result)) return 'Erro';
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(result);
-    } catch (e) { return 'Erro'; }
+    } catch { return 'Erro'; }
   }, [columns]);
-
-  // --- File Upload Component ---
-
-  const FileUploadCell = ({ taskId, colId, value }: { taskId: string; colId: string; value: FileMetadata | null }) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const processFile = (file: File) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const metadata: FileMetadata = {
-          name: file.name, type: file.type, size: file.size,
-          preview: file.type.startsWith('image/') ? (reader.result as string) : undefined
-        };
-        updateTaskValue(taskId, colId, metadata);
-      };
-      reader.readAsDataURL(file);
-    };
-    if (value) {
-      return (
-        <div className="h-9 group/file relative flex items-center gap-2 px-2 bg-neutral-50 rounded-md border border-neutral-100 overflow-hidden shadow-sm mx-auto w-[90%]">
-          {value.preview ? <img src={value.preview} className="w-6 h-6 rounded object-cover" alt="p" /> : <FileText size={16} className="text-blue-500" />}
-          <span className="text-[10px] font-bold text-neutral-600 truncate flex-1">{value.name}</span>
-          <button onClick={() => updateTaskValue(taskId, colId, null)} className="p-1 text-neutral-300 hover:text-red-500 hover:bg-white rounded-md transition-all"><X size={12} /></button>
-        </div>
-      );
-    }
-    return (
-      <div onClick={() => fileInputRef.current?.click()} className="h-9 w-[90%] mx-auto flex items-center justify-center border-2 border-dashed border-neutral-100 rounded-md transition-all cursor-pointer group/upload hover:border-black hover:bg-neutral-50/50">
-        <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) processFile(f); }} />
-        <Upload size={12} className="text-neutral-200 group-hover/upload:text-black group-hover/upload:animate-bounce" />
-      </div>
-    );
-  };
-
-  // --- Handlers ---
 
   const updateTaskValue = (taskId: string, colId: string, value: any) => {
     setGroups(prev => prev.map(g => ({
@@ -286,14 +654,84 @@ const Tarefas = () => {
 
   const addColumn = (tool: any) => {
     const newId = `col-${Math.random().toString(36).substring(2, 9)}`;
-    setColumns([...columns, { id: newId, title: tool.label, type: tool.type, width: 140, formula: tool.type === 'formula' ? '' : undefined }]);
+    setColumns([...columns, { 
+      id: newId, 
+      title: tool.label, 
+      type: tool.type, 
+      width: tool.type === 'timeline' ? 180 : 140,
+      formula: tool.type === 'formula' ? '' : undefined 
+    }]);
     setIsColumnCenterOpen(false);
   };
 
-  // --- Stats ---
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
+
+  const toggleAllInGroup = (groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+    
+    const allSelected = group.tasks.every(t => selectedTasks.has(t.id));
+    setSelectedTasks(prev => {
+      const next = new Set(prev);
+      group.tasks.forEach(t => {
+        if (allSelected) next.delete(t.id);
+        else next.add(t.id);
+      });
+      return next;
+    });
+  };
+
   const allTasks = groups.flatMap(g => g.tasks);
   const totalTasksCount = allTasks.length;
   const doneTasksCount = allTasks.filter(t => t.values['col-status'] === 'Feito').length;
+
+  const reportData = useMemo(() => {
+    const inProgressCount = allTasks.filter(t => t.values['col-status'] === 'Em andamento').length;
+    const pendingCount = allTasks.filter(t => t.values['col-status'] === 'Não iniciado').length;
+    const blockedCount = allTasks.filter(t => t.values['col-status'] === 'Parado').length;
+    const doneCount = allTasks.filter(t => t.values['col-status'] === 'Feito').length;
+    const total = allTasks.length;
+
+    const responsibleMap: Record<string, number> = {};
+    allTasks.forEach(task => {
+      const name = task.values['col-responsible']?.name || 'Sem responsável';
+      responsibleMap[name] = (responsibleMap[name] || 0) + 1;
+    });
+    const responsibleData = Object.entries(responsibleMap).map(([name, tarefas]) => ({ name, tarefas }));
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const overdueTasks = allTasks.filter(t => {
+      const deadline = t.values['col-deadline'];
+      if (!deadline) return false;
+      return new Date(deadline) < today && t.values['col-status'] !== 'Feito';
+    }).length;
+
+    const deadlineMap: Record<string, number> = {};
+    allTasks.forEach(task => {
+      const deadline = task.values['col-deadline'];
+      if (!deadline) return;
+      const date = new Date(deadline);
+      const key = date.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' });
+      deadlineMap[key] = (deadlineMap[key] || 0) + 1;
+    });
+    const deadlineData = Object.entries(deadlineMap).map(([name, tarefas]) => ({ name, tarefas }));
+
+    return {
+      totals: { total, inProgress: inProgressCount, blocked: blockedCount, done: doneCount },
+      responsibleData,
+      overdueTasks,
+      deadlineData,
+    };
+  }, [allTasks]);
 
   const filteredTools = searchTool
     ? TOOL_CATALOG.map(cat => ({
@@ -302,147 +740,335 @@ const Tarefas = () => {
       })).filter(cat => cat.items.length > 0)
     : TOOL_CATALOG;
 
-  // --- Render Helpers ---
-
   return (
     <div className="bg-white min-h-screen text-black">
-      {/* Header */}
-      <div className="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 px-2 md:px-4 pt-2 md:pt-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-1">Operações Axium</h1>
-          <p className="text-neutral-500 text-xs md:text-sm font-medium">Gestão dinâmica de alto desempenho.</p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-10 w-full md:w-auto">
-          <div className="flex items-center gap-3 md:gap-6">
-            <div className="text-right">
-              <p className="text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-widest">Progresso</p>
-              <p className="text-lg md:text-xl font-black">{totalTasksCount > 0 ? Math.round((doneTasksCount / totalTasksCount) * 100) : 0}%</p>
-            </div>
-            <div className="w-24 md:w-40 h-1.5 md:h-2 bg-neutral-100 rounded-full overflow-hidden">
-              <div className="h-full bg-black rounded-full transition-all duration-700" style={{ width: `${totalTasksCount > 0 ? (doneTasksCount / totalTasksCount) * 100 : 0}%` }} />
-            </div>
+      <div className="mb-6 px-4 pt-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-1">Operações Axium</h1>
+            <p className="text-neutral-500 text-sm font-medium">Gestão dinâmica de alto desempenho.</p>
           </div>
-          <button 
-            onClick={() => { setTargetGroupId('g1'); setEditingTask({ id: Math.random().toString(36).substring(2, 9), title: '', values: {} }); setIsTaskModalOpen(true); }}
-            className="flex-1 sm:flex-none bg-black text-white px-4 md:px-8 py-2 md:py-3.5 rounded-2xl font-black text-[10px] md:text-[11px] uppercase tracking-widest hover:bg-neutral-800 transition-all shadow-lg shadow-black/10 whitespace-nowrap"
-          >
-            <Plus size={14} className="md:w-4.5 md:h-4.5 inline mr-1 md:mr-2" strokeWidth={3} /> <span className="hidden sm:inline">Nova Tarefa</span>
-            <span className="sm:hidden">Novo</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Board Groups */}
-      <div className="space-y-6 md:space-y-12 px-2 md:px-4 pb-20 md:pb-40">
-        {groups.map(group => (
-          <div key={group.id}>
-            <div className="flex items-center gap-2 mb-2 md:mb-4 cursor-pointer group/header" onClick={() => setGroups(prev => prev.map(g => g.id === group.id ? { ...g, isExpanded: !g.isExpanded } : g))}>
-              <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: group.color }} />
-              {group.isExpanded ? <ChevronDown size={16} className="md:w-4.5 md:h-4.5" /> : <ChevronRight size={16} className="md:w-4.5 md:h-4.5" />}
-              <h2 className="text-lg md:text-xl font-black transition-all group-hover/header:translate-x-1" style={{ color: group.color }}>{group.title}</h2>
-              <span className="text-[10px] md:text-xs text-neutral-300 font-bold ml-1 md:ml-2">{group.tasks.length} itens</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-xl">
+              <button
+                onClick={() => setCurrentView('board')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                  currentView === 'board' ? 'bg-white text-black shadow-sm' : 'text-neutral-500 hover:text-black'
+                }`}
+              >
+                <LayoutGrid size={18} />
+                Quadro
+              </button>
+              <button
+                onClick={() => setCurrentView('reports')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                  currentView === 'reports' ? 'bg-white text-black shadow-sm' : 'text-neutral-500 hover:text-black'
+                }`}
+              >
+                <BarChart3 size={18} />
+                Painéis
+              </button>
             </div>
-
-            {group.isExpanded && (
-              <div className="border border-neutral-100 rounded-2xl bg-white shadow-sm overflow-x-auto">
-                <table className="w-full border-collapse text-[11px] md:text-sm">
-                  <thead>
-                    <tr className="bg-neutral-50/30 border-b border-neutral-100 text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-widest">
-                      <th className="w-8 md:w-10 p-2 md:p-4 border-r border-neutral-100"><Circle size={12} className="md:w-3.5 md:h-3.5 mx-auto opacity-20" /></th>
-                      <th className="text-left p-2 md:p-4 min-w-[180px] md:min-w-[350px]">Tarefa</th>
-                      {columns.map(col => (
-                        <th key={col.id} className="p-4 border-l border-neutral-100 text-center relative group/col">
-                          {editingColHeader === col.id ? (
-                            <input autoFocus className="w-full bg-transparent border-none text-center font-black outline-none" value={col.title} onChange={(e) => setColumns(columns.map(c => c.id === col.id ? { ...c, title: e.target.value } : c))} onBlur={() => setEditingColHeader(null)} />
-                          ) : (
-                            <span onDoubleClick={() => setEditingColHeader(col.id)} className="cursor-pointer">{col.title}</span>
-                          )}
-                          <button onClick={() => { if(confirm('Excluir?')) setColumns(columns.filter(c => c.id !== col.id)) }} className="absolute right-1 top-4 opacity-0 group-hover/col:opacity-100 text-neutral-300 hover:text-red-500"><X size={10} /></button>
-                        </th>
-                      ))}
-                      <th className="w-12 p-4 border-l border-neutral-100 bg-neutral-50/10 text-center relative overflow-visible">
-                        <button onClick={() => setIsColumnCenterOpen(!isColumnCenterOpen)} className="w-7 h-7 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-all text-neutral-400 hover:text-black mx-auto"><Plus size={18} /></button>
-                        {isColumnCenterOpen && (
-                          <div className="absolute top-12 right-0 z-[100] w-80 bg-white border border-neutral-200 rounded-3xl shadow-2xl overflow-hidden p-5">
-                            <div className="relative mb-6"><Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" /><input autoFocus type="text" placeholder="Pesquise sua coluna" className="w-full bg-white border border-neutral-200 rounded-md pl-10 pr-4 py-3 text-xs font-bold" value={searchTool} onChange={(e) => setSearchTool(e.target.value)} /></div>
-                            <div className="space-y-6 max-h-96 overflow-y-auto">
-                              {filteredTools.map(cat => (
-                                <div key={cat.category}><p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3">{cat.category}</p><div className="grid grid-cols-2 gap-2">{cat.items.map(tool => (<button key={tool.id} onClick={() => addColumn(tool)} className="flex items-center gap-3 p-3 bg-white border border-neutral-100 rounded-md hover:border-black transition-all text-left"><tool.icon size={16} className={tool.color} /><span className="text-[11px] font-black text-neutral-600">{tool.label}</span></button>))}</div></div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.tasks.map(task => (
-                      <tr key={task.id} className="border-b border-neutral-50 hover:bg-neutral-50/50 group/row transition-colors">
-                        <td className="p-4 border-r border-neutral-100 relative text-center">
-                          <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: group.color }} />
-                          <Check size={16} className={`${task.values['col-status'] === 'Feito' ? 'text-emerald-500' : 'text-neutral-100'}`} strokeWidth={3} />
-                        </td>
-                        <td className="p-4"><input type="text" className="w-full bg-transparent border-none focus:ring-0 font-bold text-neutral-700 outline-none p-0 focus:text-black" value={task.title} onChange={(e) => updateTaskValue(task.id, 'title', e.target.value)} /></td>
-                        {columns.map(col => (
-                          <td key={col.id} className="p-1 border-l border-neutral-50 relative overflow-visible">
-                            {col.type === 'status' && (
-                              <div onClick={() => setActiveCellMenu({ taskId: task.id, colId: col.id, type: 'status' })} className={`h-9 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-widest cursor-pointer ${STATUS_COLORS[task.values[col.id]] || 'bg-neutral-100 text-neutral-400'}`}>{task.values[col.id] || 'Não iniciado'}
-                                {activeCellMenu?.taskId === task.id && activeCellMenu.colId === col.id && (
-                                  <div className="absolute top-11 left-0 right-0 z-[60] bg-white border border-neutral-200 rounded-md shadow-2xl p-1.5">{STATUS_OPTIONS.map(opt => (<div key={opt} onClick={() => updateTaskValue(task.id, col.id, opt)} className={`p-2.5 mb-1 rounded-md text-[9px] font-black text-white text-center uppercase tracking-widest ${STATUS_COLORS[opt]}`}>{opt}</div>))}</div>
-                                )}
-                              </div>
-                            )}
-                            {col.type === 'priority' && (
-                              <div onClick={() => setActiveCellMenu({ taskId: task.id, colId: col.id, type: 'priority' })} className={`h-9 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-widest cursor-pointer ${PRIORITY_COLORS[task.values[col.id]] || 'bg-neutral-100 text-neutral-400'}`}>{task.values[col.id] || '—'}
-                                {activeCellMenu?.taskId === task.id && activeCellMenu.colId === col.id && (
-                                  <div className="absolute top-11 left-0 right-0 z-[60] bg-white border border-neutral-200 rounded-md shadow-2xl p-1.5">{PRIORITY_OPTIONS.map(opt => (<div key={opt} onClick={() => updateTaskValue(task.id, col.id, opt)} className={`p-2.5 mb-1 rounded-md text-[9px] font-black text-white text-center uppercase tracking-widest ${PRIORITY_COLORS[opt]}`}>{opt}</div>))}</div>
-                                )}
-                              </div>
-                            )}
-                            {col.type === 'date' && <input type="date" className="w-full h-9 bg-transparent border-none text-[10px] font-bold text-neutral-400 text-center outline-none" value={task.values[col.id] || ''} onChange={(e) => updateTaskValue(task.id, col.id, e.target.value)} />}
-                            {col.type === 'number' && <input type="number" className="w-full h-9 bg-transparent border-none text-[11px] font-black text-black text-center outline-none" value={task.values[col.id] || ''} onChange={(e) => updateTaskValue(task.id, col.id, e.target.value)} />}
-                            {col.type === 'file' && <FileUploadCell taskId={task.id} colId={col.id} value={task.values[col.id]} />}
-                            {col.type === 'formula' && <div onClick={() => setEditingFormulaCol(col)} className="h-9 flex items-center justify-center text-[11px] font-black text-black tracking-tight cursor-pointer hover:bg-neutral-50/80 transition-all rounded-md">{evaluateFormula(col.formula || '', task.values)}</div>}
-                            {col.type === 'text' && <input type="text" className="w-full h-9 bg-transparent border-none text-[11px] font-bold text-neutral-600 text-center outline-none" value={task.values[col.id] || ''} onChange={(e) => updateTaskValue(task.id, col.id, e.target.value)} />}
-                          </td>
-                        ))}
-                        <td className="p-4 border-l border-neutral-100 text-center"><button onClick={() => { if(confirm('Excluir?')) setGroups(prev => prev.map(g => ({ ...g, tasks: g.tasks.filter(t => t.id !== task.id) }))) }} className="text-neutral-200 hover:text-red-500 opacity-0 group-hover/row:opacity-100"><Trash2 size={16} /></button></td>
-                      </tr>
-                    ))}
-                    
-                    {/* --- Quick Add Functional Row --- */}
-                    <tr 
-                      className="bg-neutral-50/10 cursor-text"
-                      onClick={() => quickAddInputRefs.current[group.id]?.focus()}
-                    >
-                      <td colSpan={columns.length + 3} className="p-4 border-t border-neutral-50 relative group/quick">
-                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: group.color }} />
-                        <div className="flex items-center gap-4 ml-6">
-                          <Plus size={16} className={`transition-colors ${quickAddTitles[group.id] ? 'text-black' : 'text-neutral-200'}`} strokeWidth={3} />
-                          <input 
-                            ref={el => quickAddInputRefs.current[group.id] = el}
-                            type="text" 
-                            placeholder="+ ADICIONAR TAREFA (Pressione Enter)"
-                            className="flex-1 bg-transparent border-none focus:ring-0 text-[11px] font-black uppercase tracking-[3px] text-neutral-300 focus:text-black outline-none p-0 placeholder:text-neutral-200 transition-all"
-                            value={quickAddTitles[group.id] || ''}
-                            onChange={(e) => setQuickAddTitles(prev => ({ ...prev, [group.id]: e.target.value }))}
-                            onKeyDown={(e) => handleQuickAdd(group.id, e)}
-                          />
-                          {quickAddTitles[group.id] && (
-                            <span className="text-[9px] font-black text-neutral-400 uppercase tracking-widest animate-pulse">Pressione Enter para salvar</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            {currentView === 'board' && (
+              <>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">Progresso</p>
+                    <p className="text-xl font-black">{totalTasksCount > 0 ? Math.round((doneTasksCount / totalTasksCount) * 100) : 0}%</p>
+                  </div>
+                  <div className="w-40 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-black rounded-full transition-all duration-700" style={{ width: `${totalTasksCount > 0 ? (doneTasksCount / totalTasksCount) * 100 : 0}%` }} />
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setTargetGroupId('g1'); setEditingTask({ id: Math.random().toString(36).substring(2, 9), title: '', values: {} }); setIsTaskModalOpen(true); }}
+                  className="bg-black text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-neutral-800 transition-all shadow-lg"
+                >
+                  <Plus size={16} className="inline mr-2" strokeWidth={2} /> Nova Tarefa
+                </button>
+              </>
             )}
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* Modals & Formula Editor (Re-used for brevity but fully functional) */}
+      {currentView === 'board' ? (
+        <div className="space-y-6 px-4 pb-24">
+          {groups.map(group => (
+            <div key={group.id}>
+              <div 
+                className="flex items-center gap-3 mb-3 cursor-pointer group/header"
+                onClick={() => setGroups(prev => prev.map(g => g.id === group.id ? { ...g, isExpanded: !g.isExpanded } : g))}
+              >
+                <div className="w-2 h-6 rounded-full" style={{ backgroundColor: group.color }} />
+                {group.isExpanded ? <ChevronDown size={18} className="text-neutral-400" /> : <ChevronRight size={18} className="text-neutral-400" />}
+                <h2 className="text-lg font-black transition-all group-hover/header:translate-x-1" style={{ color: group.color }}>{group.title}</h2>
+                <span className="text-xs text-neutral-300 font-medium ml-2">{group.tasks.length} itens</span>
+              </div>
+
+              {group.isExpanded && (
+                <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-hidden">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-neutral-50 border-b border-neutral-200 text-[10px] text-neutral-400 font-black uppercase tracking-widest">
+                        <th className="w-10 p-3 border-r border-neutral-200">
+                          <button 
+                            onClick={() => toggleAllInGroup(group.id)}
+                            className="w-5 h-5 rounded border-2 border-neutral-200 flex items-center justify-center hover:border-black transition-colors"
+                          >
+                            {group.tasks.every(t => selectedTasks.has(t.id)) && group.tasks.length > 0 && (
+                              <Check size={12} className="text-black" strokeWidth={3} />
+                            )}
+                          </button>
+                        </th>
+                        <th className="text-left p-3 min-w-[280px] font-semibold">Tarefa</th>
+                        {columns.map(col => (
+                          <th key={col.id} className="p-3 border-l border-neutral-200 text-center font-semibold" style={{ width: col.width }}>
+                            {col.title}
+                          </th>
+                        ))}
+                        <th className="w-12 p-3 border-l border-neutral-200 bg-neutral-50/50 text-center relative">
+                          <button 
+                            onClick={() => setIsColumnCenterOpen(!isColumnCenterOpen)} 
+                            className="w-7 h-7 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-all text-neutral-400 hover:text-black"
+                          >
+                            <Plus size={18} />
+                          </button>
+                          {isColumnCenterOpen && (
+                            <div className="absolute top-12 right-0 z-[100] w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden">
+                              <div className="p-4 border-b border-neutral-100">
+                                <div className="relative">
+                                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                  <input 
+                                    autoFocus 
+                                    type="text" 
+                                    placeholder="Pesquise ou descreva sua coluna" 
+                                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium placeholder:text-neutral-400 outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all"
+                                    value={searchTool}
+                                    onChange={(e) => setSearchTool(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <div className="p-3 max-h-[320px] overflow-y-auto">
+                                {filteredTools.map(cat => (
+                                  <div key={cat.category} className="mb-4 last:mb-0">
+                                    <div className="flex items-center gap-2 mb-2 px-1">
+                                      {cat.category === 'Essenciais' && (
+                                        <>
+                                          <CheckCircle2 size={14} className="text-emerald-500" />
+                                          <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Essenciais</p>
+                                        </>
+                                      )}
+                                      {cat.category === 'Super úteis' && (
+                                        <>
+                                          <Zap size={14} className="text-amber-500" />
+                                          <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Super úteis</p>
+                                        </>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {cat.items.map(tool => (
+                                        <button 
+                                          key={tool.id} 
+                                          onClick={() => addColumn(tool)} 
+                                          className="flex items-center gap-3 p-3 bg-neutral-50 hover:bg-neutral-100 border border-neutral-100 hover:border-neutral-300 rounded-xl transition-all text-left group"
+                                        >
+                                          <div className={`p-2 rounded-lg bg-white shadow-sm`}>
+                                            <tool.icon size={18} className={tool.color} />
+                                          </div>
+                                          <span className="text-sm font-semibold text-neutral-700 group-hover:text-black">{tool.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.tasks.map(task => (
+                        <tr key={task.id} className={`border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors ${selectedTasks.has(task.id) ? 'bg-blue-50/30' : ''}`}>
+                          <td className="p-3 border-r border-neutral-100 text-center">
+                            <button 
+                              onClick={() => toggleTaskSelection(task.id)}
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                                selectedTasks.has(task.id) 
+                                  ? 'bg-black border-black text-white' 
+                                  : 'border-neutral-200 hover:border-black'
+                              }`}
+                            >
+                              {selectedTasks.has(task.id) && <Check size={12} strokeWidth={3} />}
+                            </button>
+                          </td>
+                          <td className="p-3">
+                            <span className="font-semibold text-sm text-neutral-700">{task.title}</span>
+                          </td>
+                          {columns.map(col => (
+                            <td key={col.id} className="p-2 border-l border-neutral-100 text-center">
+                              {col.type === 'status' && (
+                                <div className="relative">
+                                  <StatusBadge value={task.values[col.id]} />
+                                  <div 
+                                    className="absolute inset-0" 
+                                    onClick={() => setActiveCellMenu({ taskId: task.id, colId: col.id })} 
+                                  />
+                                  {activeCellMenu?.taskId === task.id && activeCellMenu.colId === col.id && (
+                                    <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[60] bg-white border border-neutral-200 rounded-xl shadow-xl p-1.5 min-w-[140px]">
+                                      {STATUS_OPTIONS.map(opt => (
+                                        <button 
+                                          key={opt}
+                                          onClick={() => updateTaskValue(task.id, col.id, opt)}
+                                          className={`w-full p-2 rounded-lg text-[10px] font-semibold text-white mb-1 ${STATUS_CONFIG[opt].bg}`}
+                                        >
+                                          {opt}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {col.type === 'priority' && (
+                                <div className="relative">
+                                  <PriorityBadge value={task.values[col.id]} />
+                                  <div 
+                                    className="absolute inset-0" 
+                                    onClick={() => setActiveCellMenu({ taskId: task.id, colId: col.id })} 
+                                  />
+                                  {activeCellMenu?.taskId === task.id && activeCellMenu.colId === col.id && (
+                                    <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[60] bg-white border border-neutral-200 rounded-xl shadow-xl p-1.5 min-w-[120px]">
+                                      {PRIORITY_OPTIONS.map(opt => (
+                                        <button 
+                                          key={opt}
+                                          onClick={() => updateTaskValue(task.id, col.id, opt)}
+                                          className={`w-full p-2 rounded-lg text-[10px] font-semibold text-white mb-1 ${PRIORITY_CONFIG[opt].bg}`}
+                                        >
+                                          {opt}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {col.type === 'date' && (
+                                <span className="text-xs font-medium text-neutral-600">
+                                  {task.values[col.id] ? new Date(task.values[col.id]).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'}
+                                </span>
+                              )}
+                              {col.type === 'number' && (
+                                <span className="text-xs font-bold text-neutral-700">
+                                  {task.values[col.id] ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(task.values[col.id]) : '—'}
+                                </span>
+                              )}
+                              {col.type === 'users' && (
+                                task.values[col.id]?.name ? (
+                                  <Avatar name={task.values[col.id].name} />
+                                ) : (
+                                  <button className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors">
+                                    <UserIcon size={12} className="text-neutral-400" />
+                                  </button>
+                                )
+                              )}
+                              {col.type === 'file' && (
+                                <FileUploadCell 
+                                  taskId={task.id} 
+                                  colId={col.id} 
+                                  value={task.values[col.id]} 
+                                  onUpdate={(v) => updateTaskValue(task.id, col.id, v)} 
+                                />
+                              )}
+                              {col.type === 'notes' && (
+                                <NotesCell 
+                                  value={task.values[col.id]} 
+                                  onUpdate={(v) => updateTaskValue(task.id, col.id, v)} 
+                                />
+                              )}
+                              {col.type === 'timeline' && (
+                                <TimelineBar data={task.values[col.id] || {}} />
+                              )}
+                              {col.type === 'text' && (
+                                <span className="text-xs font-medium text-neutral-600">{task.values[col.id] || '—'}</span>
+                              )}
+                              {col.type === 'formula' && (
+                                <span className="text-xs font-bold text-neutral-800">
+                                  {evaluateFormula(col.formula || '', task.values)}
+                                </span>
+                              )}
+                            </td>
+                          ))}
+                          <td className="p-3 border-l border-neutral-100 text-center">
+                            <button 
+                              onClick={() => { if (confirm('Excluir esta tarefa?')) setGroups(prev => prev.map(g => ({ ...g, tasks: g.tasks.filter(t => t.id !== task.id) }))) }} 
+                              className="p-2 text-neutral-200 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      <tr className="bg-neutral-50/30">
+                        <td colSpan={columns.length + 3} className="p-3 border-t border-neutral-100">
+                          <div 
+                            className="flex items-center gap-3 cursor-text max-w-md"
+                            onClick={() => quickAddInputRefs.current[group.id]?.focus()}
+                          >
+                            <Plus size={16} className={quickAddTitles[group.id] ? 'text-black' : 'text-neutral-200'} strokeWidth={2} />
+                            <input 
+                              ref={el => quickAddInputRefs.current[group.id] = el}
+                              type="text" 
+                              placeholder="+ Adicionar tarefa"
+                              className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-semibold text-neutral-400 focus:text-black outline-none placeholder:text-neutral-300 transition-all"
+                              value={quickAddTitles[group.id] || ''}
+                              onChange={(e) => setQuickAddTitles(prev => ({ ...prev, [group.id]: e.target.value }))}
+                              onKeyDown={(e) => handleQuickAdd(group.id, e)}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-neutral-100 border-t border-neutral-200">
+                        <td className="p-3 border-r border-neutral-200"></td>
+                        <td className="p-3">
+                          <span className="text-xs font-black text-neutral-500">{group.tasks.length} tarefas</span>
+                        </td>
+                        {columns.map(col => (
+                          <td key={col.id} className="p-3 border-l border-neutral-200 text-center">
+                            {col.type === 'number' && (
+                              <span className="text-xs font-bold text-neutral-600">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                                  group.tasks.reduce((sum, t) => sum + (parseFloat(t.values[col.id]) || 0), 0)
+                                )}
+                              </span>
+                            )}
+                            {col.type === 'status' && (
+                              <span className="text-xs font-medium text-neutral-500">
+                                {Math.round((group.tasks.filter(t => t.values[col.id] === 'Feito').length / group.tasks.length * 100) || 0)}% Feito
+                              </span>
+                            )}
+                            {col.type === 'timeline' && (
+                              <span className="text-xs font-medium text-neutral-500">
+                                {Math.round(group.tasks.reduce((sum, t) => sum + (t.values[col.id]?.progress || 0), 0) / group.tasks.length || 0)}%
+                              </span>
+                            )}
+                          </td>
+                        ))}
+                        <td className="p-3 border-l border-neutral-200"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <ReportsView data={reportData} />
+      )}
+
       {isTaskModalOpen && editingTask && (
         <TaskModal
           task={editingTask}
@@ -456,18 +1082,9 @@ const Tarefas = () => {
         />
       )}
 
-      {editingFormulaCol && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
-          <div className="bg-white border border-neutral-200 rounded-[32px] shadow-2xl w-full max-w-xs md:max-w-lg overflow-hidden p-4 md:p-10 transform animate-in slide-in-from-bottom-8">
-            <div className="flex justify-between items-start mb-3 md:mb-6 gap-3"><h2 className="text-lg md:text-2xl font-black text-black">Editor de Fórmulas</h2><button onClick={() => setEditingFormulaCol(null)} className="p-1 md:p-2 text-neutral-300 hover:text-black flex-shrink-0"><X size={18} className="md:w-5 md:h-5" /></button></div>
-            <textarea className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl p-3 md:p-6 text-xs md:text-base font-black h-24 md:h-32 focus:border-black outline-none" value={editingFormulaCol.formula || ''} onChange={(e) => setEditingFormulaCol({ ...editingFormulaCol, formula: e.target.value })} />
-            <div className="mt-4 md:mt-8 flex gap-2 md:gap-4"><button onClick={() => setEditingFormulaCol(null)} className="flex-1 py-2 md:py-4 font-black text-[10px] md:text-[11px] uppercase text-neutral-400 hover:text-neutral-600">Cancelar</button><button onClick={() => { setColumns(columns.map(c => c.id === editingFormulaCol.id ? editingFormulaCol : c)); setEditingFormulaCol(null); }} className="flex-[2] bg-black text-white py-2 md:py-4 rounded-2xl font-black text-[10px] md:text-[11px] uppercase shadow-xl hover:bg-neutral-800">Salvar Fórmula</button></div>
-          </div>
-        </div>
+      {(activeCellMenu || isColumnCenterOpen) && (
+        <div className="fixed inset-0 z-[50]" onClick={() => { setActiveCellMenu(null); setIsColumnCenterOpen(false); }} />
       )}
-
-      {/* Backdrop for cell menus */}
-      {activeCellMenu && <div className="fixed inset-0 z-[50] bg-transparent" onClick={() => setActiveCellMenu(null)} />}
     </div>
   );
 };
