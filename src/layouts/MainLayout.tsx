@@ -16,11 +16,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   return (
     <div className="flex h-screen bg-neutral-100 overflow-hidden">
-      {/* Fixed sidebar - 64 = w-64 = 256px */}
+      {/* Fixed sidebar - w-64 (256px) only on desktop */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main area: scrollable column to the right of the sidebar */}
-      <main className="flex-1 ml-64 flex flex-col overflow-y-auto">
+      {/* Main area: full width on mobile, ml-64 on desktop */}
+      <main className="flex-1 ml-0 md:ml-64 flex flex-col overflow-y-auto w-full">
         {/* 
           TopHeader is sticky so it stays at the top of this scrollable container.
           bg-white/70 + backdrop-blur lets the page content bleed through on scroll.
@@ -35,8 +35,8 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         )}
 
         {/* Page content */}
-        <div className="flex-1 bg-neutral-50">
-          <div className="px-4 p-4 md:p-8">
+        <div className="flex-1 bg-neutral-50 w-full">
+          <div className="px-4 p-4 md:p-8 w-full">
             {children}
           </div>
         </div>
