@@ -1,18 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const UpdatePassword = () => {
   const navigate = useNavigate();
-  const { updatePassword } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError('Link de recuperação expirado ou inválido. Por favor, solicite um novo link.');
+      }
+      
+      setIsCheckingSession(false);
+    };
+
+    checkSession();
+  }, []);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,10 +53,15 @@ const UpdatePassword = () => {
         return;
       }
 
-      await updatePassword(password);
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
       setSuccess('Senha atualizada com sucesso!');
       setTimeout(() => navigate('/login'), 2000);
-    } catch {
+    } catch (err) {
       setError('Erro ao atualizar senha. Tente novamente.');
     }
 
@@ -136,11 +155,13 @@ const UpdatePassword = () => {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isCheckingSession}
               className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
             >
               {isLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Atualizando...</>
+              ) : isCheckingSession ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Verificando...</>
               ) : (
                 'Atualizar senha'
               )}
