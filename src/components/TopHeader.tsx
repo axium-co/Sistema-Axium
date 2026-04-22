@@ -68,7 +68,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
       {/* Mobile Menu Button */}
       <button
         onClick={onMenuClick}
-        className="p-2 -ml-2 rounded-lg hover:bg-neutral-100 md:hidden"
+        className="p-2 -ml-2 rounded-md hover:bg-neutral-100 md:hidden"
         aria-label="Abrir menu"
       >
         <Menu className="w-5 h-5 text-neutral-600" />
@@ -90,7 +90,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar leads, atividades..."
-            className="pl-9 pr-4 py-2 text-sm border border-neutral-200 rounded-lg bg-white/80 text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 transition-colors w-48 focus:w-64 transition-all duration-300"
+            className="pl-9 pr-4 py-2 text-sm border border-neutral-200 rounded-md bg-white/80 text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 transition-colors w-48 focus:w-64 transition-all duration-300"
           />
           {searchTerm && (
             <button 
@@ -106,7 +106,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
         <div className="relative" ref={notificationRef}>
           <button 
             onClick={handleToggleNotifications}
-            className={`relative p-2 rounded-lg transition-all ${isNotificationsOpen ? 'bg-neutral-100 text-black' : 'text-neutral-400 hover:text-black hover:bg-neutral-100'}`}
+            className={`relative p-2 rounded-md transition-all ${isNotificationsOpen ? 'bg-neutral-100 text-black' : 'text-neutral-400 hover:text-black hover:bg-neutral-100'}`}
           >
             <Bell className="w-4 h-4" strokeWidth={2} />
             {hasUnread && (
@@ -126,7 +126,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
                   notifications.map((n) => (
                     <div key={n.id} className={`p-5 hover:bg-neutral-50 transition-colors cursor-pointer group ${!n.isRead ? 'bg-neutral-50/50' : ''}`}>
                       <div className="flex gap-4">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${
                           n.type === 'lead' ? 'bg-blue-50 text-blue-600' : 
                           n.type === 'meeting' ? 'bg-emerald-50 text-emerald-600' : 'bg-neutral-50 text-neutral-600'
                         }`}>

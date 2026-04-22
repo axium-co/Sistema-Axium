@@ -196,7 +196,7 @@ const Financeiro = () => {
             <button 
               onClick={syncAsaasData}
               disabled={isSyncing}
-              className="flex-1 sm:flex-none px-3 md:px-4 py-2 md:py-3 rounded-xl border border-neutral-200 text-neutral-400 font-black text-[9px] md:text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:border-black hover:text-black transition-all active:scale-[0.98] bg-white"
+              className="flex-1 sm:flex-none px-3 md:px-4 py-2 md:py-3 rounded-md border border-neutral-200 text-neutral-400 font-black text-[9px] md:text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:border-black hover:text-black transition-all active:scale-[0.98] bg-white"
             >
               <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
               <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Atualizar'}</span>
@@ -205,7 +205,7 @@ const Financeiro = () => {
           )}
           <button 
             onClick={() => handleOpenInvoiceModal()}
-            className="flex-1 sm:flex-none bg-black text-white px-3 md:px-6 py-2 md:py-3 rounded-xl font-black text-[9px] md:text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
+            className="flex-1 sm:flex-none bg-black text-white px-3 md:px-6 py-2 md:py-3 rounded-md font-black text-[9px] md:text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
           >
             <Plus size={14} strokeWidth={3} />
             <span className="hidden sm:inline">Nova Fatura</span>
@@ -227,7 +227,7 @@ const Financeiro = () => {
             className={`bg-white border border-neutral-200 rounded-2xl p-3 md:p-6 shadow-sm transition-all group ${!card.readonly ? 'cursor-pointer hover:border-black hover:shadow-md' : ''}`}
           >
             <div className="flex justify-between items-start gap-2 mb-2 md:mb-4">
-              <div className={`w-8 md:w-10 h-8 md:h-10 ${card.bg} rounded-xl flex items-center justify-center ${card.color}`}>
+              <div className={`w-8 md:w-10 h-8 md:h-10 ${card.bg} rounded-md flex items-center justify-center ${card.color}`}>
                 <card.icon size={12} className="md:w-4.5 md:h-4.5 md:size-4.5" strokeWidth={2.5} />
               </div>
               {!card.readonly && (
@@ -254,7 +254,7 @@ const Financeiro = () => {
       <div className="bg-white border border-neutral-200 rounded-2xl overflow-x-auto shadow-sm">
         <div className="px-3 md:px-8 py-3 md:py-5 border-b border-neutral-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-neutral-50/30">
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="w-6 md:w-8 h-6 md:h-8 rounded-lg bg-white shadow-sm border border-neutral-100 flex items-center justify-center">
+            <div className="w-6 md:w-8 h-6 md:h-8 rounded-md bg-white shadow-sm border border-neutral-100 flex items-center justify-center">
               <CreditCard size={12} className="md:w-3.5 md:h-3.5 text-black" />
             </div>
             <div>
@@ -263,7 +263,7 @@ const Financeiro = () => {
             </div>
           </div>
           {isAsaasConnected && (
-            <div className="flex items-center gap-2 px-2 md:px-3 py-1 md:py-1.5 bg-white border border-neutral-200 rounded-lg shadow-xs whitespace-nowrap">
+            <div className="flex items-center gap-2 px-2 md:px-3 py-1 md:py-1.5 bg-white border border-neutral-200 rounded-md shadow-xs whitespace-nowrap">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               <span className="text-[8px] md:text-[9px] font-black text-black uppercase tracking-widest">Live: Asaas</span>
             </div>
@@ -302,7 +302,7 @@ const Financeiro = () => {
                 <td className="px-3 md:px-8 py-3 md:py-5 text-neutral-500 font-bold text-xs md:text-sm">{invoice.date}</td>
                 <td className="px-3 md:px-8 py-3 md:py-5 text-right font-black text-black text-xs md:text-sm whitespace-nowrap">{invoice.amount}</td>
                 <td className="px-3 md:px-8 py-3 md:py-5 text-center">
-                  <span className={`inline-block px-2 md:px-3 py-0.5 md:py-1 rounded-lg text-[8px] md:text-[9px] ${statusStyle[invoice.status]}`}>
+                  <span className={`inline-block px-2 md:px-3 py-0.5 md:py-1 rounded-md text-[8px] md:text-[9px] ${statusStyle[invoice.status]}`}>
                     {invoice.status}
                   </span>
                 </td>
@@ -353,10 +353,10 @@ const Financeiro = () => {
               <p className="text-[10px] text-neutral-400 font-bold mt-4 italic">Isso irá sobrescrever os valores automáticos do sistema.</p>
             </div>
             <div className="px-8 py-6 bg-neutral-50 flex gap-3">
-              <button onClick={() => setEditingCard(null)} className="flex-1 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-neutral-400">Cancelar</button>
+              <button onClick={() => setEditingCard(null)} className="flex-1 py-3.5 rounded-md font-black text-[10px] uppercase tracking-widest text-neutral-400">Cancelar</button>
               <button 
                 onClick={() => handleSaveCardEdit(editingCard.value)}
-                className="flex-[2] bg-black text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all"
+                className="flex-[2] bg-black text-white py-3.5 rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all"
               >
                 Salvar Alteração
               </button>
@@ -388,7 +388,7 @@ const Financeiro = () => {
                     type="text"
                     value={editingInvoice.client}
                     onChange={(e) => setEditingInvoice({ ...editingInvoice, client: e.target.value })}
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all disabled:opacity-50"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all disabled:opacity-50"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-6">
@@ -403,7 +403,7 @@ const Financeiro = () => {
                       type="date"
                       value={editingInvoice.date}
                       onChange={(e) => setEditingInvoice({ ...editingInvoice, date: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all [color-scheme:light] disabled:opacity-50"
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all [color-scheme:light] disabled:opacity-50"
                     />
                   </div>
                   <div className="space-y-2">
@@ -417,7 +417,7 @@ const Financeiro = () => {
                       type="text"
                       value={editingInvoice.amount}
                       onChange={(e) => setEditingInvoice({ ...editingInvoice, amount: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all disabled:opacity-50"
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -430,7 +430,7 @@ const Financeiro = () => {
                     disabled={editingInvoice.source === 'asaas'}
                     value={editingInvoice.status}
                     onChange={(e) => setEditingInvoice({ ...editingInvoice, status: e.target.value as any })}
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all appearance-none cursor-pointer disabled:opacity-50"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all appearance-none cursor-pointer disabled:opacity-50"
                   >
                     <option value="Pago">Pago</option>
                     <option value="Pendente">Pendente</option>
@@ -453,18 +453,18 @@ const Financeiro = () => {
                     <button 
                       type="button"
                       onClick={() => handleDeleteInvoice(editingInvoice.id)}
-                      className="px-4 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-500 hover:bg-red-50"
+                      className="px-4 py-3.5 rounded-md font-black text-[10px] uppercase tracking-widest text-red-500 hover:bg-red-50"
                     >
                       Excluir
                     </button>
                   )}
                 </div>
                 <div className="flex gap-3 flex-1">
-                  <button type="button" onClick={() => setIsInvoiceModalOpen(false)} className="flex-1 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-neutral-400">Cancelar</button>
+                  <button type="button" onClick={() => setIsInvoiceModalOpen(false)} className="flex-1 py-3.5 rounded-md font-black text-[10px] uppercase tracking-widest text-neutral-400">Cancelar</button>
                   <button 
                     type="submit" 
                     disabled={editingInvoice.source === 'asaas'}
-                    className="flex-[2] bg-black text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="flex-[2] bg-black text-white py-3.5 rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.98] disabled:opacity-50"
                   >
                     {isNewInvoice ? 'Criar Fatura' : 'Salvar Alterações'}
                   </button>

@@ -46,7 +46,7 @@ const DraggableLeadCard = ({ lead, isClosed }: LeadCardProps) => {
       style={style}
       {...listeners}
       {...attributes}
-      className={`bg-white p-2 md:p-4 rounded-xl border border-neutral-200 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md transition-all cursor-grab active:cursor-grabbing group ${isDragging ? 'opacity-50 grayscale' : ''}`}
+      className={`bg-white p-2 md:p-4 rounded-md border border-neutral-200 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md transition-all cursor-grab active:cursor-grabbing group ${isDragging ? 'opacity-50 grayscale' : ''}`}
     >
       <div className="font-bold text-[11px] md:text-[13px] text-black mb-0.5">{lead.name}</div>
       <div className="text-[9px] md:text-[10px] text-neutral-500 font-semibold mb-2 md:mb-3">{lead.niche}</div>
@@ -78,7 +78,7 @@ const DraggableLeadCard = ({ lead, isClosed }: LeadCardProps) => {
 
 // Static card for DragOverlay
 const StaticLeadCard = ({ lead, isClosed }: LeadCardProps) => (
-  <div className="bg-white p-4 rounded-xl border border-black shadow-xl rotate-3 scale-105 pointer-events-none">
+  <div className="bg-white p-4 rounded-md border border-black shadow-xl rotate-3 scale-105 pointer-events-none">
     <div className="font-bold text-[13px] text-black mb-0.5">{lead.name}</div>
     <div className="text-[10px] text-neutral-500 font-semibold mb-3">{lead.niche}</div>
     {isClosed && (
@@ -107,7 +107,7 @@ const DroppableColumn = ({ stage, children, count, totalValue, formatCurrency }:
   return (
     <div 
       ref={setNodeRef}
-      className={`bg-neutral-50/50 border-2 rounded-xl w-[300px] shrink-0 flex flex-col max-h-full transition-colors ${isOver ? 'border-black bg-neutral-100/50' : 'border-transparent'}`}
+      className={`bg-neutral-50/50 border-2 rounded-md w-[300px] shrink-0 flex flex-col max-h-full transition-colors ${isOver ? 'border-black bg-neutral-100/50' : 'border-transparent'}`}
     >
       <div className="bg-neutral-50 border-b border-neutral-200 rounded-t-xl">
         {/* Column Header */}
@@ -135,7 +135,7 @@ const DroppableColumn = ({ stage, children, count, totalValue, formatCurrency }:
         <div className="p-3 space-y-3 overflow-y-auto min-h-[200px]">
           {children}
           {count === 0 && !isOver && (
-            <div className="py-12 border-2 border-dashed border-neutral-200 rounded-xl flex flex-col items-center justify-center opacity-40">
+            <div className="py-12 border-2 border-dashed border-neutral-200 rounded-md flex flex-col items-center justify-center opacity-40">
               <div className="w-8 h-8 rounded-full bg-neutral-100 mb-2"></div>
               <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-widest">Sem leads</span>
             </div>

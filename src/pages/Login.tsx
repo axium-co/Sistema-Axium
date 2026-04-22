@@ -124,7 +124,7 @@ const Login = ({ onLogin }: LoginProps) => {
           </div>
 
           {(error || success) && (
-            <div className={`mb-4 md:mb-6 p-2 md:p-3.5 ${success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'} rounded-lg`}>
+            <div className={`mb-4 md:mb-6 p-2 md:p-3.5 ${success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'} rounded-md`}>
               <p className={`${success ? 'text-green-600' : 'text-red-600'} text-xs md:text-sm font-medium`}>{success || error}</p>
             </div>
           )}
@@ -144,7 +144,7 @@ const Login = ({ onLogin }: LoginProps) => {
                       value={nome}
                       onChange={(e) => setNome(e.target.value)}
                       placeholder="Seu nome"
-                      className="w-full border border-neutral-200 rounded-lg py-2 md:py-3 pl-10 md:pl-11 pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                      className="w-full border border-neutral-200 rounded-md py-2 md:py-3 pl-10 md:pl-11 pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                       disabled={isLoading}
                     />
                   </div>
@@ -161,7 +161,7 @@ const Login = ({ onLogin }: LoginProps) => {
                       value={sobrenome}
                       onChange={(e) => setSobrenome(e.target.value)}
                       placeholder="Seu sobrenome"
-                      className="w-full border border-neutral-200 rounded-lg py-2 md:py-3 pl-10 md:pl-11 pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                      className="w-full border border-neutral-200 rounded-md py-2 md:py-3 pl-10 md:pl-11 pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                       disabled={isLoading}
                     />
                   </div>
@@ -181,7 +181,7 @@ const Login = ({ onLogin }: LoginProps) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full border border-neutral-200 rounded-lg py-2 md:py-3 pl-10 md:pl-11 pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                  className="w-full border border-neutral-200 rounded-md py-2 md:py-3 pl-10 md:pl-11 pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                   disabled={isLoading}
                 />
               </div>
@@ -194,12 +194,12 @@ const Login = ({ onLogin }: LoginProps) => {
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                 <input
-                  id="password" className="w-full border border-neutral-200 rounded-lg py-2 md:py-3 pl-10 md:pl-11 pr-11 md:pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                  id="password" className="w-full border border-neutral-200 rounded-md py-2 md:py-3 pl-10 md:pl-11 pr-11 md:pr-4 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Sua senha secreta"
-                  className="w-full border border-neutral-200 rounded-lg py-3 pl-11 pr-12 text-black text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                  className="w-full border border-neutral-200 rounded-md py-3 pl-11 pr-12 text-black text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                   disabled={isLoading}
                 />
                 <button
@@ -224,7 +224,7 @@ const Login = ({ onLogin }: LoginProps) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+              className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-md transition-colors flex items-center justify-center gap-2 text-sm"
             >
               {isLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> {isSignUp ? 'Criando conta...' : 'Entrando...'}</>
@@ -261,7 +261,7 @@ const Login = ({ onLogin }: LoginProps) => {
             </div>
             <form onSubmit={handleForgotPassword} className="p-6 space-y-4">
               {(error || success) && (
-                <div className={`p-3 rounded-lg ${success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                <div className={`p-3 rounded-md ${success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
                   <p className={`text-sm font-medium ${success ? 'text-green-600' : 'text-red-600'}`}>{success || error}</p>
                 </div>
               )}
@@ -277,7 +277,7 @@ const Login = ({ onLogin }: LoginProps) => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com"
-                    className="w-full border border-neutral-200 rounded-lg py-3 pl-10 pr-4 text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                    className="w-full border border-neutral-200 rounded-md py-3 pl-10 pr-4 text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                     disabled={isLoading}
                   />
                 </div>
@@ -286,7 +286,7 @@ const Login = ({ onLogin }: LoginProps) => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-md transition-colors flex items-center justify-center gap-2 text-sm"
               >
                 {isLoading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>

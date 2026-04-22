@@ -103,7 +103,7 @@ const UpdatePassword = () => {
           </div>
 
           {(error || success) && (
-            <div className={`mb-4 md:mb-6 p-2 md:p-3.5 ${success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'} rounded-lg`}>
+            <div className={`mb-4 md:mb-6 p-2 md:p-3.5 ${success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'} rounded-md`}>
               <p className={`${success ? 'text-green-600' : 'text-red-600'} text-xs md:text-sm font-medium`}>{success || error}</p>
             </div>
           )}
@@ -121,7 +121,7 @@ const UpdatePassword = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
-                  className="w-full border border-neutral-200 rounded-lg py-3 pl-11 pr-12 text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                  className="w-full border border-neutral-200 rounded-md py-3 pl-11 pr-12 text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                   disabled={isLoading}
                 />
                 <button
@@ -147,7 +147,7 @@ const UpdatePassword = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repita a senha"
-                  className="w-full border border-neutral-200 rounded-lg py-3 pl-11 pr-12 text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                  className="w-full border border-neutral-200 rounded-md py-3 pl-11 pr-12 text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                   disabled={isLoading}
                 />
               </div>
@@ -156,7 +156,7 @@ const UpdatePassword = () => {
             <button
               type="submit"
               disabled={isLoading || isCheckingSession}
-              className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+              className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-md transition-colors flex items-center justify-center gap-2 text-sm"
             >
               {isLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Atualizando...</>

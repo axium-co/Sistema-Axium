@@ -113,9 +113,9 @@ const CRMDashboard = () => {
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (
-            <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 md:p-5 hover:border-black transition-all shadow-sm">
+            <div key={idx} className="bg-white border border-slate-200 rounded-md p-3 md:p-5 hover:border-black transition-all shadow-sm">
               <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                <div className="w-6 md:w-8 h-6 md:h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                <div className="w-6 md:w-8 h-6 md:h-8 rounded-md bg-slate-100 flex items-center justify-center">
                   <Icon size={14} className="text-black md:w-4 md:h-4" />
                 </div>
                 <p className="text-slate-500 text-[9px] md:text-[11px] font-bold uppercase tracking-widest leading-none">{stat.title}</p>
@@ -190,7 +190,7 @@ const CRMDashboard = () => {
             <span className="ml-2 text-sm text-neutral-500">Carregando atividades...</span>
           </div>
         ) : fetchActivityLogsError ? (
-          <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-100 rounded-lg">
+          <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-100 rounded-md">
             <AlertCircle className="w-5 h-5 text-red-500" />
             <p className="text-sm text-red-600">{fetchActivityLogsError}</p>
           </div>

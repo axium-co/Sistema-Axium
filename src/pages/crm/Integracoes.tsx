@@ -106,7 +106,7 @@ const CRMIntegracoes = () => {
               
               <button 
                 onClick={() => handleConnectClick(integration)}
-                className={`w-full py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-[0.98] ${
+                className={`w-full py-3.5 rounded-md text-[11px] font-black uppercase tracking-widest transition-all active:scale-[0.98] ${
                   integration.connected
                     ? 'bg-neutral-50 text-neutral-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 border border-transparent'
                     : 'bg-black text-white hover:bg-neutral-800 shadow-sm'
@@ -138,7 +138,7 @@ const CRMIntegracoes = () => {
 
             <div className="p-8 space-y-6">
               <div className="bg-neutral-50 rounded-2xl p-4 flex gap-4 items-center">
-                <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-black shrink-0">
+                <div className="w-10 h-10 bg-white rounded-md shadow-sm flex items-center justify-center text-black shrink-0">
                   {selectedIntegration.icon ? <selectedIntegration.icon size={20} /> : <Shield size={20} />}
                 </div>
                 <p className="text-[11px] text-neutral-500 font-bold leading-tight italic">
@@ -157,7 +157,7 @@ const CRMIntegracoes = () => {
                     value={webhookUrl}
                     onChange={(e) => setWebhookUrl(e.target.value)}
                     placeholder="https://sua-instancia.n8n.cloud/webhook/..."
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all placeholder:text-neutral-300"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all placeholder:text-neutral-300"
                   />
                 </div>
               )}
@@ -172,7 +172,7 @@ const CRMIntegracoes = () => {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="Insira seu token de acesso..."
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all placeholder:text-neutral-300"
+                  className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all placeholder:text-neutral-300"
                 />
               </div>
             </div>
@@ -180,14 +180,14 @@ const CRMIntegracoes = () => {
             <div className="px-8 py-6 bg-neutral-50 flex gap-3">
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-neutral-400 hover:text-black transition-all"
+                className="flex-1 py-3.5 rounded-md font-black text-[10px] uppercase tracking-widest text-neutral-400 hover:text-black transition-all"
               >
                 Cancelar
               </button>
               <button 
                 onClick={handleSaveConnection}
                 disabled={!apiKey || (selectedIntegration.type === 'n8n' && !webhookUrl) || isSaving}
-                className="flex-[2] bg-black text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-[2] bg-black text-white py-3.5 rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isSaving ? (
                   <>

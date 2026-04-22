@@ -108,14 +108,14 @@ const CRMCalendario = () => {
         </div>
         <button 
           onClick={handleOpenCreate}
-          className="w-full md:w-auto bg-black text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-black text-[10px] md:text-[11px] uppercase tracking-widest flex items-center justify-center md:justify-start gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
+          className="w-full md:w-auto bg-black text-white px-4 md:px-6 py-2 md:py-3 rounded-md font-black text-[10px] md:text-[11px] uppercase tracking-widest flex items-center justify-center md:justify-start gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
         >
           <Plus size={14} className="md:w-4 md:h-4" strokeWidth={3} />
           <span className="hidden sm:inline">Criar</span>
           <span className="sm:hidden">Novo</span>
         </button>
       </div>\n\n      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-6\">
-        <div className="lg:col-span-3 bg-white border border-neutral-200 rounded-xl p-6 shadow-sm overflow-hidden">
+        <div className="lg:col-span-3 bg-white border border-neutral-200 rounded-md p-6 shadow-sm overflow-hidden">
           {/* Calendar Grid Header */}
           <div className="grid grid-cols-7 gap-1 mb-4">
             {days.map((day) => (
@@ -136,7 +136,7 @@ const CRMCalendario = () => {
               return (
                 <div 
                   key={idx} 
-                  className={`min-h-[120px] p-2 border border-neutral-100 rounded-lg flex flex-col gap-1 transition-all ${
+                  className={`min-h-[120px] p-2 border border-neutral-100 rounded-md flex flex-col gap-1 transition-all ${
                     isCurrentMonth ? 'bg-white hover:border-neutral-300' : 'bg-neutral-50/10'
                   } ${isToday ? 'ring-1 ring-black ring-inset' : ''}`}
                 >
@@ -174,7 +174,7 @@ const CRMCalendario = () => {
 
         {/* Sidebar: Upcoming Events */}
         <div className="space-y-6">
-          <div className="bg-white border border-neutral-200 rounded-xl p-6 shadow-sm">
+          <div className="bg-white border border-neutral-200 rounded-md p-6 shadow-sm">
             <h3 className="text-[10px] font-black text-black uppercase tracking-widest mb-6 border-b border-neutral-100 pb-4 flex items-center gap-2">
               <Clock size={12} />
               Próximos Eventos
@@ -248,7 +248,7 @@ const CRMCalendario = () => {
                     <select
                       value={formData.activityType}
                       onChange={(e) => setFormData({ ...formData, activityType: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
                     >
                       <option value="Reunião">Reunião</option>
                       <option value="Ligação">Ligação</option>
@@ -266,7 +266,7 @@ const CRMCalendario = () => {
                       type="datetime-local"
                       value={formData.dateTime}
                       onChange={(e) => setFormData({ ...formData, dateTime: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -281,7 +281,7 @@ const CRMCalendario = () => {
                     value={formData.createdBy}
                     onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
                     placeholder="Nome do responsável"
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
                   />
                 </div>
 
@@ -295,7 +295,7 @@ const CRMCalendario = () => {
                     value={formData.meetingLink}
                     onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
                     placeholder="https://meet.google.com/..."
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
                   />
                 </div>
 
@@ -309,7 +309,7 @@ const CRMCalendario = () => {
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Adicione observações importantes..."
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-xs font-bold text-neutral-600 focus:ring-1 focus:ring-black outline-none transition-all resize-none"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-3 py-2 text-xs font-bold text-neutral-600 focus:ring-1 focus:ring-black outline-none transition-all resize-none"
                   />
                 </div>
               </div>
@@ -320,7 +320,7 @@ const CRMCalendario = () => {
                     <button 
                       type="button"
                       onClick={handleDelete}
-                      className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
+                      className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
                     >
                       <Trash2 size={16} />
                       Excluir
@@ -331,13 +331,13 @@ const CRMCalendario = () => {
                   <button 
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-neutral-400 hover:text-black transition-all"
+                    className="px-6 py-2.5 rounded-md font-black text-[10px] uppercase tracking-widest text-neutral-400 hover:text-black transition-all"
                   >
                     Cancelar
                   </button>
                   <button 
                     type="submit"
-                    className="bg-black text-white px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
+                    className="bg-black text-white px-8 py-2.5 rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
                   >
                     {modalMode === 'create' ? 'Salvar Evento' : 'Atualizar'}
                   </button>

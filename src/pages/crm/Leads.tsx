@@ -53,7 +53,7 @@ const Field = ({ label, required, children }: { label: string; required?: boolea
 );
 
 const inputCls =
-  'w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3.5 text-black text-sm placeholder-slate-300 focus:outline-none focus:border-black transition-colors';
+  'w-full bg-white border border-slate-200 rounded-md py-2.5 px-3.5 text-black text-sm placeholder-slate-300 focus:outline-none focus:border-black transition-colors';
 
 const CRMLeads = () => {
   const { leads, addLead, updateLead, deleteLead, searchTerm } = useCRM();
@@ -104,7 +104,7 @@ const CRMLeads = () => {
       </div>
 
       {/* ── Table ── */}
-      <div className="bg-white border border-neutral-200 rounded-xl overflow-x-auto shadow-sm">
+      <div className="bg-white border border-neutral-200 rounded-md overflow-x-auto shadow-sm">
         <table className="w-full text-xs md:text-sm">
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-50">
@@ -280,13 +280,13 @@ const CRMLeads = () => {
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="flex-1 px-4 py-2 md:py-3 rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition-colors text-xs md:text-sm"
+                  className="flex-1 px-4 py-2 md:py-3 rounded-md bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition-colors text-xs md:text-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 flex items-center justify-center gap-2 bg-black text-white px-4 py-2 md:py-3 rounded-lg font-bold hover:bg-neutral-800 active:scale-[0.98] transition-all text-xs md:text-sm"
+                  className="flex-1 flex items-center justify-center gap-2 bg-black text-white px-4 py-2 md:py-3 rounded-md font-bold hover:bg-neutral-800 active:scale-[0.98] transition-all text-xs md:text-sm"
                 >
                   <Save size={15} strokeWidth={2.5} />
                   {mode === 'add' ? 'Criar' : 'Salvar'}

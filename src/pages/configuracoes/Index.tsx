@@ -132,7 +132,7 @@ const Configuracoes = () => {
                 </div>
                 <button 
                   onClick={() => setActiveModal(section.id)}
-                  className="bg-black text-white px-6 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.95] shadow-lg shadow-black/10"
+                  className="bg-black text-white px-6 py-3 rounded-md font-black text-[11px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.95] shadow-lg shadow-black/10"
                 >
                   Configurar
                 </button>
@@ -140,7 +140,7 @@ const Configuracoes = () => {
 
               <div className="flex gap-2 flex-wrap mt-8 pt-8 border-t border-neutral-50">
                 {section.items.map((item, itemIdx) => (
-                  <span key={itemIdx} className="px-4 py-2 bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-[1.5px] rounded-xl border border-neutral-100">
+                  <span key={itemIdx} className="px-4 py-2 bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-[1.5px] rounded-md border border-neutral-100">
                     {item}
                   </span>
                 ))}
@@ -309,9 +309,9 @@ const Configuracoes = () => {
                       <div className="flex justify-between items-center px-1">
                         <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Assinatura de Email</label>
                         <div className="flex gap-2">
-                          <button type="button" className="p-2 bg-neutral-100 rounded-lg hover:bg-neutral-200 text-neutral-600 transition-all"><Bold size={14} /></button>
-                          <button type="button" className="p-2 bg-neutral-100 rounded-lg hover:bg-neutral-200 text-neutral-600 transition-all"><Italic size={14} /></button>
-                          <button type="button" className="p-2 bg-neutral-100 rounded-lg hover:bg-neutral-200 text-neutral-600 transition-all"><LinkIcon size={14} /></button>
+                          <button type="button" className="p-2 bg-neutral-100 rounded-md hover:bg-neutral-200 text-neutral-600 transition-all"><Bold size={14} /></button>
+                          <button type="button" className="p-2 bg-neutral-100 rounded-md hover:bg-neutral-200 text-neutral-600 transition-all"><Italic size={14} /></button>
+                          <button type="button" className="p-2 bg-neutral-100 rounded-md hover:bg-neutral-200 text-neutral-600 transition-all"><LinkIcon size={14} /></button>
                         </div>
                       </div>
                       <textarea 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -30,8 +30,7 @@ import {
   Image as ImageIcon,
   Paperclip,
   Upload,
-  Variable,
-  FunctionSquare
+  Variable
 } from 'lucide-react';
 
 // --- Types ---
@@ -107,6 +106,59 @@ const TOOL_CATALOG = [
 ];
 
 // --- Main Component ---
+
+const TaskModal = ({ task, columns, onSave, onClose, onChange }: { task: Task; columns: Column[]; onSave: (t: Task) => void; onClose: () => void; onChange: (t: Task) => void }) => {
+  try {
+    const validColumns = columns?.filter?.((c: Column) => c?.type !== 'formula') || [];
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
+        <div className="bg-white border border-neutral-200 rounded-[32px] shadow-2xl w-full max-w-xs md:max-w-2xl overflow-hidden p-4 md:p-10 transform animate-in slide-in-from-bottom-8">
+          <div className="flex justify-between items-start mb-4 md:mb-8 gap-3">
+            <h2 className="text-xl md:text-3xl font-black text-black tracking-tighter">Configurar Tarefa</h2>
+            <button onClick={onClose} className="p-1 md:p-2 text-neutral-300 hover:text-black transition-colors flex-shrink-0"><X size={20} className="md:w-6 md:h-6" /></button>
+          </div>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (task?.title) onSave(task);
+          }} className="space-y-4 md:space-y-8">
+            <div className="space-y-1 md:space-y-2">
+              <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase">Nome da Tarefa</label>
+              <input 
+                autoFocus 
+                required 
+                className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-3 md:px-6 py-2 md:py-4 text-xs md:text-lg font-black" 
+                value={task?.title || ''} 
+                onChange={(e) => onChange({ ...task, title: e.target.value })} 
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
+              {validColumns.map((c: Column) => (
+                <div key={c.id} className="space-y-1 md:space-y-2">
+                  <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase">{c?.title || ''}</label>
+                  <input 
+                    className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-md px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-bold" 
+                    value={task?.values?.[c.id] || ''} 
+                    onChange={(e) => onChange({ ...task, values: { ...task.values, [c.id]: e.target.value } })} 
+                  />
+                </div>
+              ))}
+            </div>
+            <button type="submit" className="w-full bg-black text-white py-3 md:py-4 rounded-2xl font-black text-[10px] md:text-[11px] uppercase tracking-widest shadow-xl hover:bg-neutral-800 transition-all">Salvar Tarefa</button>
+          </form>
+        </div>
+      </div>
+    );
+  } catch (error) {
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60">
+        <div className="bg-white p-8 rounded-2xl text-center">
+          <p className="text-red-500 font-bold mb-4">Erro ao abrir formulário</p>
+          <button onClick={onClose} className="px-4 py-2 bg-black text-white rounded-lg">Fechar</button>
+        </div>
+      </div>
+    );
+  }
+};
 
 const Tarefas = () => {
   const [columns, setColumns] = useState<Column[]>(() => {
@@ -192,15 +244,15 @@ const Tarefas = () => {
     };
     if (value) {
       return (
-        <div className="h-9 group/file relative flex items-center gap-2 px-2 bg-neutral-50 rounded-xl border border-neutral-100 overflow-hidden shadow-sm mx-auto w-[90%]">
+        <div className="h-9 group/file relative flex items-center gap-2 px-2 bg-neutral-50 rounded-md border border-neutral-100 overflow-hidden shadow-sm mx-auto w-[90%]">
           {value.preview ? <img src={value.preview} className="w-6 h-6 rounded object-cover" alt="p" /> : <FileText size={16} className="text-blue-500" />}
           <span className="text-[10px] font-bold text-neutral-600 truncate flex-1">{value.name}</span>
-          <button onClick={() => updateTaskValue(taskId, colId, null)} className="p-1 text-neutral-300 hover:text-red-500 hover:bg-white rounded-lg transition-all"><X size={12} /></button>
+          <button onClick={() => updateTaskValue(taskId, colId, null)} className="p-1 text-neutral-300 hover:text-red-500 hover:bg-white rounded-md transition-all"><X size={12} /></button>
         </div>
       );
     }
     return (
-      <div onClick={() => fileInputRef.current?.click()} className="h-9 w-[90%] mx-auto flex items-center justify-center border-2 border-dashed border-neutral-100 rounded-xl transition-all cursor-pointer group/upload hover:border-black hover:bg-neutral-50/50">
+      <div onClick={() => fileInputRef.current?.click()} className="h-9 w-[90%] mx-auto flex items-center justify-center border-2 border-dashed border-neutral-100 rounded-md transition-all cursor-pointer group/upload hover:border-black hover:bg-neutral-50/50">
         <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) processFile(f); }} />
         <Upload size={12} className="text-neutral-200 group-hover/upload:text-black group-hover/upload:animate-bounce" />
       </div>
@@ -242,6 +294,15 @@ const Tarefas = () => {
   const allTasks = groups.flatMap(g => g.tasks);
   const totalTasksCount = allTasks.length;
   const doneTasksCount = allTasks.filter(t => t.values['col-status'] === 'Feito').length;
+
+  const filteredTools = searchTool
+    ? TOOL_CATALOG.map(cat => ({
+        ...cat,
+        items: cat.items.filter(item => item.label.toLowerCase().includes(searchTool.toLowerCase()))
+      })).filter(cat => cat.items.length > 0)
+    : TOOL_CATALOG;
+
+  // --- Render Helpers ---
 
   return (
     <div className="bg-white min-h-screen text-black">
@@ -303,10 +364,10 @@ const Tarefas = () => {
                         <button onClick={() => setIsColumnCenterOpen(!isColumnCenterOpen)} className="w-7 h-7 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-all text-neutral-400 hover:text-black mx-auto"><Plus size={18} /></button>
                         {isColumnCenterOpen && (
                           <div className="absolute top-12 right-0 z-[100] w-80 bg-white border border-neutral-200 rounded-3xl shadow-2xl overflow-hidden p-5">
-                            <div className="relative mb-6"><Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" /><input autoFocus type="text" placeholder="Pesquise sua coluna" className="w-full bg-white border border-neutral-200 rounded-xl pl-10 pr-4 py-3 text-xs font-bold" value={searchTool} onChange={(e) => setSearchTool(e.target.value)} /></div>
+                            <div className="relative mb-6"><Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" /><input autoFocus type="text" placeholder="Pesquise sua coluna" className="w-full bg-white border border-neutral-200 rounded-md pl-10 pr-4 py-3 text-xs font-bold" value={searchTool} onChange={(e) => setSearchTool(e.target.value)} /></div>
                             <div className="space-y-6 max-h-96 overflow-y-auto">
                               {filteredTools.map(cat => (
-                                <div key={cat.category}><p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3">{cat.category}</p><div className="grid grid-cols-2 gap-2">{cat.items.map(tool => (<button key={tool.id} onClick={() => addColumn(tool)} className="flex items-center gap-3 p-3 bg-white border border-neutral-100 rounded-xl hover:border-black transition-all text-left"><tool.icon size={16} className={tool.color} /><span className="text-[11px] font-black text-neutral-600">{tool.label}</span></button>))}</div></div>
+                                <div key={cat.category}><p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3">{cat.category}</p><div className="grid grid-cols-2 gap-2">{cat.items.map(tool => (<button key={tool.id} onClick={() => addColumn(tool)} className="flex items-center gap-3 p-3 bg-white border border-neutral-100 rounded-md hover:border-black transition-all text-left"><tool.icon size={16} className={tool.color} /><span className="text-[11px] font-black text-neutral-600">{tool.label}</span></button>))}</div></div>
                               ))}
                             </div>
                           </div>
@@ -327,21 +388,21 @@ const Tarefas = () => {
                             {col.type === 'status' && (
                               <div onClick={() => setActiveCellMenu({ taskId: task.id, colId: col.id, type: 'status' })} className={`h-9 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-widest cursor-pointer ${STATUS_COLORS[task.values[col.id]] || 'bg-neutral-100 text-neutral-400'}`}>{task.values[col.id] || 'Não iniciado'}
                                 {activeCellMenu?.taskId === task.id && activeCellMenu.colId === col.id && (
-                                  <div className="absolute top-11 left-0 right-0 z-[60] bg-white border border-neutral-200 rounded-xl shadow-2xl p-1.5">{STATUS_OPTIONS.map(opt => (<div key={opt} onClick={() => updateTaskValue(task.id, col.id, opt)} className={`p-2.5 mb-1 rounded-lg text-[9px] font-black text-white text-center uppercase tracking-widest ${STATUS_COLORS[opt]}`}>{opt}</div>))}</div>
+                                  <div className="absolute top-11 left-0 right-0 z-[60] bg-white border border-neutral-200 rounded-md shadow-2xl p-1.5">{STATUS_OPTIONS.map(opt => (<div key={opt} onClick={() => updateTaskValue(task.id, col.id, opt)} className={`p-2.5 mb-1 rounded-md text-[9px] font-black text-white text-center uppercase tracking-widest ${STATUS_COLORS[opt]}`}>{opt}</div>))}</div>
                                 )}
                               </div>
                             )}
                             {col.type === 'priority' && (
                               <div onClick={() => setActiveCellMenu({ taskId: task.id, colId: col.id, type: 'priority' })} className={`h-9 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-widest cursor-pointer ${PRIORITY_COLORS[task.values[col.id]] || 'bg-neutral-100 text-neutral-400'}`}>{task.values[col.id] || '—'}
                                 {activeCellMenu?.taskId === task.id && activeCellMenu.colId === col.id && (
-                                  <div className="absolute top-11 left-0 right-0 z-[60] bg-white border border-neutral-200 rounded-xl shadow-2xl p-1.5">{PRIORITY_OPTIONS.map(opt => (<div key={opt} onClick={() => updateTaskValue(task.id, col.id, opt)} className={`p-2.5 mb-1 rounded-lg text-[9px] font-black text-white text-center uppercase tracking-widest ${PRIORITY_COLORS[opt]}`}>{opt}</div>))}</div>
+                                  <div className="absolute top-11 left-0 right-0 z-[60] bg-white border border-neutral-200 rounded-md shadow-2xl p-1.5">{PRIORITY_OPTIONS.map(opt => (<div key={opt} onClick={() => updateTaskValue(task.id, col.id, opt)} className={`p-2.5 mb-1 rounded-md text-[9px] font-black text-white text-center uppercase tracking-widest ${PRIORITY_COLORS[opt]}`}>{opt}</div>))}</div>
                                 )}
                               </div>
                             )}
                             {col.type === 'date' && <input type="date" className="w-full h-9 bg-transparent border-none text-[10px] font-bold text-neutral-400 text-center outline-none" value={task.values[col.id] || ''} onChange={(e) => updateTaskValue(task.id, col.id, e.target.value)} />}
                             {col.type === 'number' && <input type="number" className="w-full h-9 bg-transparent border-none text-[11px] font-black text-black text-center outline-none" value={task.values[col.id] || ''} onChange={(e) => updateTaskValue(task.id, col.id, e.target.value)} />}
                             {col.type === 'file' && <FileUploadCell taskId={task.id} colId={col.id} value={task.values[col.id]} />}
-                            {col.type === 'formula' && <div onClick={() => setEditingFormulaCol(col)} className="h-9 flex items-center justify-center text-[11px] font-black text-black tracking-tight cursor-pointer hover:bg-neutral-50/80 transition-all rounded-lg">{evaluateFormula(col.formula || '', task.values)}</div>}
+                            {col.type === 'formula' && <div onClick={() => setEditingFormulaCol(col)} className="h-9 flex items-center justify-center text-[11px] font-black text-black tracking-tight cursor-pointer hover:bg-neutral-50/80 transition-all rounded-md">{evaluateFormula(col.formula || '', task.values)}</div>}
                             {col.type === 'text' && <input type="text" className="w-full h-9 bg-transparent border-none text-[11px] font-bold text-neutral-600 text-center outline-none" value={task.values[col.id] || ''} onChange={(e) => updateTaskValue(task.id, col.id, e.target.value)} />}
                           </td>
                         ))}
@@ -383,25 +444,16 @@ const Tarefas = () => {
 
       {/* Modals & Formula Editor (Re-used for brevity but fully functional) */}
       {isTaskModalOpen && editingTask && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
-          <div className="bg-white border border-neutral-200 rounded-[32px] shadow-2xl w-full max-w-xs md:max-w-2xl overflow-hidden p-4 md:p-10 transform animate-in slide-in-from-bottom-8">
-            <div className="flex justify-between items-start mb-4 md:mb-8 gap-3">
-              <h2 className="text-xl md:text-3xl font-black text-black tracking-tighter">Configurar Tarefa</h2>
-              <button onClick={() => setIsTaskModalOpen(false)} className="p-1 md:p-2 text-neutral-300 hover:text-black transition-colors flex-shrink-0"><X size={20} className="md:w-6 md:h-6" /></button>
-            </div>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              setGroups(prev => prev.map(g => g.id === targetGroupId ? { ...g, tasks: [...g.tasks, editingTask] } : g));
-              setIsTaskModalOpen(false);
-            }} className="space-y-4 md:space-y-8">
-              <div className="space-y-1 md:space-y-2"><label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase">Nome da Tarefa</label><input autoFocus required className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-3 md:px-6 py-2 md:py-4 text-xs md:text-lg font-black" value={editingTask.title} onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })} /></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">{columns.filter(c => c.type !== 'formula').map(c => (
-                <div key={c.id} className="space-y-1 md:space-y-2"><label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase">{c.title}</label><input className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-xl px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-bold" value={editingTask.values[c.id] || ''} onChange={(e) => setEditingTask({ ...editingTask, values: { ...editingTask.values, [c.id]: e.target.value } })} /></div>
-              ))}</div>
-              <button type="submit" className="w-full bg-black text-white py-3 md:py-4 rounded-2xl font-black text-[10px] md:text-[11px] uppercase tracking-widest shadow-xl hover:bg-neutral-800 transition-all">Salvar Tarefa</button>
-            </form>
-          </div>
-        </div>
+        <TaskModal
+          task={editingTask}
+          columns={columns}
+          onSave={(task) => {
+            setGroups(prev => prev.map(g => g.id === targetGroupId ? { ...g, tasks: [...g.tasks, task] } : g));
+            setIsTaskModalOpen(false);
+          }}
+          onClose={() => setIsTaskModalOpen(false)}
+          onChange={setEditingTask}
+        />
       )}
 
       {editingFormulaCol && (
