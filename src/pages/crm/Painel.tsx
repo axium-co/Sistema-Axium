@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity } from 'lucide-react';
+import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
-import { useActivityLogs } from '../../contexts/ActivityContext';
+import { supabase, ACTIVITY_LOGS_TABLE } from '../../lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+interface ActivityLog {
+  id: string;
+  acao: 'lead_criado' | 'lead_movido' | 'tarefa_concluida' | 'lead_atualizado';
+  descricao: string;
+  timestamp: string;
+}
 
 const STAGES = [
   'Novos Leads',
@@ -24,15 +31,50 @@ const ACTION_ICONS = {
 
 const CRMDashboard = () => {
   const { leads, getLeadsByStage } = useCRM();
-  const { activityLogs, fetchActivityLogs } = useActivityLogs();
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [fetchActivityLogsError, setFetchActivityLogsError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!loaded) {
+      const fetchActivityLogs = async () => {
+        setIsLoadingLogs(true);
+        setFetchActivityLogsError(null);
+        
+        const timeoutId = setTimeout(() => {
+          setFetchActivityLogsError('Tempo limite excedido (5s). Verifique sua conexão.');
+          setIsLoadingLogs(false);
+        }, 5000);
+
+        try {
+          const { data, error } = await supabase
+            .from(ACTIVITY_LOGS_TABLE)
+            .select('*')
+            .order('timestamp', { ascending: false })
+            .limit(15);
+          
+          clearTimeout(timeoutId);
+          
+          if (error) {
+            console.error('Erro ao buscar logs de atividade:', error);
+            setFetchActivityLogsError('Erro ao carregar atividades.');
+            return;
+          }
+          setActivityLogs(data || []);
+        } catch (err) {
+          clearTimeout(timeoutId);
+          console.error('Erro ao buscar logs de atividade:', err);
+          setFetchActivityLogsError('Erro ao carregar atividades.');
+        } finally {
+          setIsLoadingLogs(false);
+        }
+      };
+      
       fetchActivityLogs(15);
       setLoaded(true);
     }
-  }, [loaded, fetchActivityLogs]);
+  }, [loaded]);
 
   const chartData = STAGES.map(stage => ({
     name: stage,
@@ -142,7 +184,17 @@ const CRMDashboard = () => {
           <Activity className="w-4 h-4 text-black" />
           <h2 className="text-lg md:text-xl font-bold text-black">Atividades Recentes</h2>
         </div>
-        {activityLogs.length === 0 ? (
+        {isLoadingLogs ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+            <span className="ml-2 text-sm text-neutral-500">Carregando atividades...</span>
+          </div>
+        ) : fetchActivityLogsError ? (
+          <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-100 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <p className="text-sm text-red-600">{fetchActivityLogsError}</p>
+          </div>
+        ) : activityLogs.length === 0 ? (
           <p className="text-slate-400 text-xs">Nenhuma atividade registrada.</p>
         ) : (
           <div className="space-y-3">

@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import './App.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CRMProvider } from './contexts/CRMContext';
+import { ActivityLogsProvider } from './contexts/ActivityContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
@@ -143,16 +145,16 @@ function AppRoutes() {
   );
 }
 
-import { ThemeProvider } from './contexts/ThemeContext';
-
 function App() {
   return (
     <Router>
       <AuthProvider>
         <ThemeProvider>
-          <CRMProvider>
-            <AppRoutes />
-          </CRMProvider>
+          <ActivityLogsProvider>
+            <CRMProvider>
+              <AppRoutes />
+            </CRMProvider>
+          </ActivityLogsProvider>
         </ThemeProvider>
       </AuthProvider>
     </Router>
