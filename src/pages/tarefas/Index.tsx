@@ -1357,7 +1357,7 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
               </div>
 
               {group.isExpanded && Array.isArray(group.tasks) && (
-                <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-x-auto" style={{ overflowX: 'auto' }}>
+                <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-x-auto overflow-y-visible" style={{ overflowX: 'auto', overflowY: 'visible' }}>
                   <table className="w-full border-collapse min-w-[800px]">
                     <thead>
                       <tr className="bg-neutral-50 border-b border-neutral-200 text-[10px] text-neutral-400 font-black uppercase tracking-widest sticky top-0 z-10">
@@ -1396,7 +1396,7 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
                             <Plus size={18} />
                           </button>
                           {columnOpenByGroup[group.id] && (
-                            <div className="fixed z-[200] w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-visible" style={{ right: '20px' }}>
+                            <div className="fixed z-[300] w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-xl overflow-hidden max-h-[72vh]" style={{ overflowY: 'auto' }}>
                               <div className="p-4 border-b border-neutral-100">
                                 <div className="relative">
                                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
