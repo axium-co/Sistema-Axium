@@ -1070,8 +1070,12 @@ const Tarefas = () => {
     setIsColumnCenterOpen(false);
   };
 
-  const handleDeleteColumn = (colId: string) => {
-    if (!confirm('Tem certeza que deseja deletar esta coluna? Todos os dados dessa coluna serão excluídos.')) return;
+  const handleDeleteColumn = (colId: string, colTitle: string) => {
+    if (colTitle.toLowerCase() === 'tarefa') {
+      alert('A coluna TAREFA não pode ser deletada.');
+      return;
+    }
+    if (!confirm(`Tem certeza que deseja deletar a coluna "${colTitle}"? Todos os dados dessa coluna serão excluídos.`)) return;
     const updated = columns.filter(c => c.id !== colId);
     setColumns(updated);
     localStorage.setItem('axium_cols_v5', JSON.stringify(updated));
@@ -1110,7 +1114,7 @@ const Tarefas = () => {
     setActiveDragId(event.active.id);
   };
 
-  const SortableHeaderCell = ({ column }: { column: Column }) => {
+const SortableHeaderCell = ({ column }: { column: Column }) => {
     const {
       attributes,
       listeners,
@@ -1123,6 +1127,8 @@ const Tarefas = () => {
     const style = transform 
       ? { transform: `translateX(${transform.x}px)`, transition } 
       : { transition };
+    
+    const isTaskColumn = column.title.toLowerCase() === 'tarefa';
 
     return (
       <th
@@ -1131,51 +1137,14 @@ const Tarefas = () => {
         className="p-3 border-l border-neutral-200 text-center font-semibold relative group"
       >
         <div className="flex items-center justify-center gap-1">
-          <span
+<span
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-500"
-            onClick={(e) => {
-              if (e.shiftKey) {
-                e.preventDefault();
-                setColumnContextMenu({ colId: column.id, x: e.clientX, y: e.clientY });
-              }
-            }}
-            onDoubleClick={() => {
-              setEditingColumnId(column.id);
-              setEditingColumnName(column.title);
-            }}
+            className="cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-500 text-xs"
+            title="Arraste para reordenar"
           >
             ⋮⋮
           </span>
-          {editingColumnId === column.id ? (
-            <input
-              autoFocus
-              type="text"
-              value={editingColumnName}
-              onChange={(e) => setEditingColumnName(e.target.value)}
-              onBlur={() => handleEditColumnName(column.id, editingColumnName)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleEditColumnName(column.id, editingColumnName);
-                if (e.key === 'Escape') setEditingColumnId(null);
-              }}
-              className="w-20 text-xs font-semibold text-center border border-black rounded px-1"
-            />
-          ) : (
-            <span
-              className="cursor-pointer"
-              onDoubleClick={() => {
-                setEditingColumnId(column.id);
-                setEditingColumnName(column.title);
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setColumnContextMenu({ colId: column.id, x: e.clientX, y: e.clientY });
-              }}
-            >
-              {column.title}
-            </span>
-          )}
         </div>
       </th>
     );
@@ -1486,7 +1455,10 @@ const Tarefas = () => {
                                 ✏️ Editar nome
                               </button>
                               <button 
-                                onClick={() => handleDeleteColumn(columnContextMenu.colId)}
+                                onClick={() => {
+                                  const col = columns.find(c => c.id === columnContextMenu.colId);
+                                  if (col) handleDeleteColumn(columnContextMenu.colId, col.title);
+                                }}
                                 className="w-full px-4 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50"
                               >
                                 🗑️ Deletar coluna
