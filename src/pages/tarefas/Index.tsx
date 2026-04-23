@@ -233,6 +233,96 @@ const UserSelector = ({ currentUser, onSelect, onClose }: { currentUser?: { name
   );
 };
 
+const ResponsibleInput = ({ 
+  value, 
+  onSave, 
+  onError 
+}: { 
+  value?: { name: string }; 
+  onSave: (name: string) => void;
+  onError?: (error: string) => void;
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(value?.name || '');
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (value?.name !== inputValue && !isEditing) {
+      setInputValue(value?.name || '');
+    }
+  }, [value?.name]);
+
+  const handleSave = () => {
+    const trimmedValue = inputValue.trim();
+    
+    if (!trimmedValue) {
+      setError('Nome do responsável é obrigatório');
+      if (onError) onError('Nome do responsável é obrigatório');
+      return;
+    }
+
+    setError(null);
+    try {
+      onSave(trimmedValue);
+      setIsEditing(false);
+    } catch (err) {
+      const errorMsg = 'Erro ao atualizar responsável';
+      setError(errorMsg);
+      if (onError) onError(errorMsg);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setInputValue(value?.name || '');
+      setError(null);
+      setIsEditing(false);
+    }
+  };
+
+  if (!isEditing) {
+    return (
+      <button 
+        onClick={() => {
+          setIsEditing(true);
+          setTimeout(() => inputRef.current?.focus(), 0);
+        }}
+        className="w-full text-left px-1 py-0.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50 rounded transition-colors"
+      >
+        {value?.name || '—'}
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        type="text"
+        value={inputValue}
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          setError(null);
+        }}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        placeholder="Digite o nome do responsável..."
+        className={`w-full px-1 py-0.5 text-xs font-medium rounded border transition-colors outline-none ${
+          error 
+            ? 'border-red-500 bg-red-50 text-red-700 placeholder:text-red-300' 
+            : 'border-neutral-300 text-neutral-700 focus:border-black'
+        }`}
+      />
+      {error && (
+        <p className="absolute top-full left-0 mt-0.5 text-[10px] text-red-600">{error}</p>
+      )}
+    </div>
+  );
+};
+
 const TimelineBar = ({ data }: { data: { start: string; end: string; progress: number } }) => {
   if (!data?.start || !data?.end) {
     return <div className="h-2 bg-neutral-100 rounded-full w-24" />;
@@ -1044,20 +1134,30 @@ const Tarefas = () => {
                                 </span>
                               )}
                               {col.type === 'users' && (
-                                task.values?.[col.id]?.name ? (
-                                  <button 
-                                    onClick={() => setUserSelectorState({ taskId: task.id, colId: col.id })}
-                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:ring-2 hover:ring-black/20 transition-all"
-                                  >
-                                    <Avatar name={task.values?.[col.id]?.name} />
-                                  </button>
+                                col.id === 'col-responsible' ? (
+                                  <ResponsibleInput
+                                    value={task.values[col.id]}
+                                    onSave={(name) => updateTaskValue(task.id, col.id, { name })}
+                                    onError={(msg) => {
+                                      console.error(msg);
+                                    }}
+                                  />
                                 ) : (
-                                  <button 
-                                    onClick={() => setUserSelectorState({ taskId: task.id, colId: col.id })}
-                                    className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 hover:ring-2 hover:ring-black/20 transition-colors"
-                                  >
-                                    <UserIcon size={12} className="text-neutral-400" />
-                                  </button>
+                                  task.values?.[col.id]?.name ? (
+                                    <button 
+                                      onClick={() => setUserSelectorState({ taskId: task.id, colId: col.id })}
+                                      className="w-6 h-6 rounded-full flex items-center justify-center hover:ring-2 hover:ring-black/20 transition-all"
+                                    >
+                                      <Avatar name={task.values?.[col.id]?.name} />
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      onClick={() => setUserSelectorState({ taskId: task.id, colId: col.id })}
+                                      className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 hover:ring-2 hover:ring-black/20 transition-colors"
+                                    >
+                                      <UserIcon size={12} className="text-neutral-400" />
+                                    </button>
+                                  )
                                 )
                               )}
                               {userSelectorState?.taskId === task.id && userSelectorState.colId === col.id && (
