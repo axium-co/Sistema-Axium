@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle } from 'lucide-react';
+import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle, FileText } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
 import { supabase, ACTIVITY_LOGS_TABLE } from '../../lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useFilters } from '../../contexts/FilterContext';
 
 interface ActivityLog {
   id: string;
@@ -76,18 +77,27 @@ const CRMDashboard = () => {
     }
   }, [loaded]);
 
+  const { filters, hasActiveFilters } = useFilters();
+
+  const filteredLeads = leads.filter(lead => {
+    if (filters.status && lead.stage !== filters.status) return false;
+    if (filters.origin && lead.niche !== filters.origin) return false;
+    return true;
+  });
+
   const chartData = STAGES.map(stage => ({
     name: stage,
-    value: getLeadsByStage(stage).length
+    value: filteredLeads.filter(l => l.stage === stage).length
   }));
 
   const stats = [
-    { title: 'Total de Leads', value: leads.length.toString(), icon: Users },
-    { title: 'Reuniões', value: getLeadsByStage('Reunião Agendada').length.toString(), icon: Calendar },
-    { title: 'Contatos Ativos', value: getLeadsByStage('Contato Ativo').length.toString(), icon: MessageSquare },
-    { title: 'Follow-ups', value: getLeadsByStage('Follow Up').length.toString(), icon: Clock },
-    { title: 'Leads Perdidos', value: getLeadsByStage('Perdido').length.toString(), icon: UserX },
-    { title: 'Fechados', value: getLeadsByStage('Contrato Fechado').length.toString(), icon: CheckCircle },
+    { title: 'Total de Leads', value: filteredLeads.length.toString(), icon: Users },
+    { title: 'Reuniões', value: filteredLeads.filter(l => l.stage === 'Reunião Agendada').length.toString(), icon: Calendar },
+    { title: 'Contatos Ativos', value: filteredLeads.filter(l => l.stage === 'Contato Ativo').length.toString(), icon: MessageSquare },
+    { title: 'Follow-ups', value: filteredLeads.filter(l => l.stage === 'Follow Up').length.toString(), icon: Clock },
+    { title: 'Propostas Enviadas', value: filteredLeads.filter(l => l.stage === 'Proposta Enviada').length.toString(), icon: FileText },
+    { title: 'Leads Perdidos', value: filteredLeads.filter(l => l.stage === 'Perdido').length.toString(), icon: UserX },
+    { title: 'Fechados', value: filteredLeads.filter(l => l.stage === 'Contrato Fechado').length.toString(), icon: CheckCircle },
   ];
 
   const formatTime = (iso: string) => {
@@ -103,13 +113,13 @@ const CRMDashboard = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Header section */}
-      <div className="mb-6 md:mb-10">
+      <div className="mb-4 md:mb-6">
         <h1 className="text-2xl md:text-4xl font-black text-black tracking-tight mb-2 whitespace-nowrap">Painel de Vendas</h1>
         <p className="text-neutral-500 text-xs md:text-sm">Monitoramento em tempo real do seu funil de vendas.</p>
       </div>
 
-      {/* 6 Metrics Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4 mb-6 md:mb-10">
+      {/* Metrics Cards Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4 mb-6 md:mb-10">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (

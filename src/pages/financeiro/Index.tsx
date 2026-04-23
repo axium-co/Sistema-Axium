@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
+import { useFilters } from '../../contexts/FilterContext';
 import { Plus, Pencil, Save, X, TrendingUp, TrendingDown, DollarSign, PieChart, CreditCard, User, Calendar, CheckCircle2, Clock, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface Invoice {
@@ -13,39 +14,49 @@ interface Invoice {
 
 const Financeiro = () => {
   const { leads, getTotalValueByStage } = useCRM();
-  
-  // Financial State
-  const [expenses, setExpenses] = useState(42500);
-  const [manualInvoices, setManualInvoices] = useState<Invoice[]>([]);
-  const [asaasInvoices, setAsaasInvoices] = useState<Invoice[]>([]);
+  const { filters } = useFilters();
+
+  const STORAGE_KEY = 'axium_finance_v2';
+
+  const getStoredFinance = () => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+    return { revenue: 0, expenses: 42500, revenueOverride: null };
+  };
+
+  const [financeData, setFinanceData] = useState(getStoredFinance);
+  const [editingCard, setEditingCard] = useState<string | null>(null);
+  const [editInput, setEditInput] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(financeData));
+  }, [financeData]);
+
+  const parseBRL = (val: string) => {
+    if (!val) return 0;
+    const clean = val.replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+    return parseFloat(clean) || 0;
+  };
+
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  };
   
   // Integration State
-  const [isAsaasConnected, setIsAsaasConnected] = useState(false);
+  const [isAsaasConnected] = useState(localStorage.getItem('axium_int_asaas') === 'true');
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [manualInvoices, setManualInvoices] = useState<Invoice[]>(() => {
+    const stored = localStorage.getItem('axium_finance_v1');
+    if (stored) return JSON.parse(stored).manualInvoices ?? [];
+    return [];
+  });
+  const [asaasInvoices, setAsaasInvoices] = useState<Invoice[]>([]);
   
   // UI State
-  const [editingCard, setEditingCard] = useState<{ label: string; value: number } | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [isNewInvoice, setIsNewInvoice] = useState(false);
-
-  // Persistence & Initial Load
-  useEffect(() => {
-    const stored = localStorage.getItem('axium_finance_v1');
-    const asaasConnected = localStorage.getItem('axium_int_asaas') === 'true';
-    setIsAsaasConnected(asaasConnected);
-
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setExpenses(parsed.expenses ?? 42500);
-      setManualInvoices(parsed.manualInvoices ?? []);
-    }
-    
-    if (asaasConnected) {
-      syncAsaasData();
-    }
-  }, []);
 
   const syncAsaasData = useCallback(async () => {
     setIsSyncing(true);
@@ -66,36 +77,10 @@ const Financeiro = () => {
     setIsSyncing(false);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('axium_finance_v1', JSON.stringify({
-      expenses,
-      manualInvoices
-    }));
-  }, [expenses, manualInvoices]);
-
-  // Calculations
-  const parseBRL = (val: string) => {
-    const clean = val.replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
-    return parseFloat(clean) || 0;
-  };
-
-  const asaasRevenue = asaasInvoices
-    .filter(inv => inv.status === 'Pago')
-    .reduce((acc, inv) => acc + parseBRL(inv.amount), 0);
-
-  const asaasPending = asaasInvoices
-    .filter(inv => inv.status === 'Pendente')
-    .reduce((acc, inv) => acc + parseBRL(inv.amount), 0);
-
-  const leadRevenue = getTotalValueByStage('Contrato Fechado');
-  
-  // Final metrics
-  const totalRevenue = isAsaasConnected ? asaasRevenue : leadRevenue;
-  const pendingRevenue = isAsaasConnected ? asaasPending : 18900;
-  const netProfit = totalRevenue - expenses;
-
   // Combine invoices
-  const leadInvoices: Invoice[] = leads
+  const expenses = financeData.expenses;
+
+  const computedLeadInvoices: Invoice[] = leads
     .filter(l => l.stage === 'Contrato Fechado')
     .map(l => ({
       id: `lead-${l.id}`,
@@ -106,18 +91,24 @@ const Financeiro = () => {
       source: 'lead'
     }));
 
-  const allInvoices = [...asaasInvoices, ...manualInvoices, ...leadInvoices].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  const computedAllInvoices = useMemo(() => 
+    [...asaasInvoices, ...manualInvoices, ...computedLeadInvoices].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    ), [asaasInvoices, manualInvoices, leads]);
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  };
+  const computedTotalRevenue = useMemo(() => 
+    computedAllInvoices
+      .filter(inv => inv.status === 'Pago')
+      .reduce((acc, inv) => acc + parseBRL(inv.amount), 0),
+  [computedAllInvoices]);
 
-  const handleSaveCardEdit = (newValue: number) => {
-    if (editingCard?.label === 'Despesas') setExpenses(newValue);
-    setEditingCard(null);
-  };
+  const computedPendingRevenue = useMemo(() => 
+    computedAllInvoices
+      .filter(inv => inv.status !== 'Pago' && inv.status !== 'Cancelado')
+      .reduce((acc, inv) => acc + parseBRL(inv.amount), 0),
+  [computedAllInvoices]);
+
+  const computedNetProfit = computedTotalRevenue - expenses;
 
   const handleOpenInvoiceModal = (invoice?: Invoice) => {
     if (invoice) {
@@ -156,7 +147,7 @@ const Financeiro = () => {
   };
 
   const handleDeleteInvoice = (id: string) => {
-    const inv = allInvoices.find(i => i.id === id);
+    const inv = computedAllInvoices.find(i => i.id === id);
     if (inv?.source !== 'manual') {
       alert('Apenas faturas manuais podem ser excluídas por aqui.');
       return;
@@ -214,42 +205,37 @@ const Financeiro = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4 mb-6 md:mb-10">
+<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4 mb-6 md:mb-10">
           {[
-          { label: 'Receita Total', value: totalRevenue, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', readonly: isAsaasConnected },
-          { label: 'Despesas', value: expenses, icon: TrendingDown, color: 'text-red-500', bg: 'bg-red-50' },
-          { label: 'Lucro Líquido', value: netProfit, icon: PieChart, color: 'text-black', bg: 'bg-neutral-100', readonly: true },
-          { label: 'Faturamento Pendente', value: pendingRevenue, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', readonly: isAsaasConnected },
-        ].map((card, idx) => (
-          <div 
-            key={idx} 
-            onClick={() => !card.readonly && setEditingCard({ label: card.label, value: card.value })}
-            className={`bg-white border border-neutral-200 rounded-2xl p-3 md:p-6 shadow-sm transition-all group ${!card.readonly ? 'cursor-pointer hover:border-black hover:shadow-md' : ''}`}
-          >
-            <div className="flex justify-between items-start gap-2 mb-2 md:mb-4">
-              <div className={`w-8 md:w-10 h-8 md:h-10 ${card.bg} rounded-md flex items-center justify-center ${card.color}`}>
-                <card.icon size={12} className="md:w-4.5 md:h-4.5 md:size-4.5" strokeWidth={2.5} />
-              </div>
-              {!card.readonly && (
-                <Pencil size={10} className="text-neutral-300 group-hover:text-black transition-colors flex-shrink-0" />
-              )}
-              {card.readonly && isAsaasConnected && (card.label.includes('Receita') || card.label.includes('Faturamento')) && (
-                <div className="p-1 bg-emerald-50 text-emerald-500 rounded-md flex-shrink-0" title="Sincronizado com Asaas">
-                  <RefreshCw size={10} strokeWidth={3} />
+            { key: 'revenue', label: 'Receita Total', value: computedTotalRevenue, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', readonly: true },
+            { key: 'expenses', label: 'Despesas', value: expenses, icon: TrendingDown, color: 'text-red-500', bg: 'bg-red-50', readonly: false },
+            { key: 'profit', label: 'Lucro Líquido', value: computedNetProfit, icon: PieChart, color: 'text-black', bg: 'bg-neutral-100', readonly: true },
+            { key: 'pending', label: 'Faturamento Pendente', value: computedPendingRevenue, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', readonly: true },
+          ].map((card) => (
+            <div 
+              key={card.key}
+              className={`bg-white border border-neutral-200 rounded-2xl p-3 md:p-6 shadow-sm transition-all group ${!card.readonly ? 'cursor-pointer hover:border-black hover:shadow-md' : ''}`}
+            >
+              <div className="flex justify-between items-start gap-2 mb-2 md:mb-4">
+                <div className={`w-8 md:w-10 h-8 md:h-10 ${card.bg} rounded-md flex items-center justify-center ${card.color}`}>
+                  <card.icon size={12} className="md:w-4.5 md:h-4.5 md:size-4.5" strokeWidth={2.5} />
                 </div>
-              )}
-            </div>
-            <p className="text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-widest mb-1">{card.label}</p>
-            <p className="text-xl md:text-2xl font-black text-black tracking-tight">{formatCurrency(card.value)}</p>
-            {card.label === 'Receita Total' && isAsaasConnected && (
-              <p className="text-[8px] md:text-[9px] text-emerald-600 font-black uppercase tracking-widest mt-1 md:mt-2 flex items-center gap-1">
-                <CheckCircle2 size={8} />
-                <span className="hidden sm:inline">Confirmado</span>
+                {!card.readonly && (
+                  <Pencil size={10} className="text-neutral-300 group-hover:text-black transition-colors flex-shrink-0" />
+                )}
+                {card.readonly && (
+                  <span className="text-[8px] text-neutral-400 font-bold" title="Cálculo automático">(auto)</span>
+                )}
+              </div>
+              <p className="text-[9px] md:text-[10px] text-neutral-400 font-black uppercase tracking-widest mb-1">{card.label}</p>
+              <p 
+                className={`text-xl md:text-2xl font-black tracking-tight ${card.value < 0 ? 'text-red-600' : 'text-black'}`}
+              >
+                {formatCurrency(card.value)}
               </p>
-            )}
-          </div>
-        ))}
-      </div>
+            </div>
+          ))}
+        </div>
 
       <div className="bg-white border border-neutral-200 rounded-2xl overflow-x-auto shadow-sm">
         <div className="px-3 md:px-8 py-3 md:py-5 border-b border-neutral-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-neutral-50/30">
@@ -280,7 +266,7 @@ const Financeiro = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-50">
-            {allInvoices.map((invoice) => (
+            {computedAllInvoices.map((invoice) => (
               <tr 
                 key={invoice.id} 
                 onClick={() => handleOpenInvoiceModal(invoice)}
@@ -319,7 +305,7 @@ const Financeiro = () => {
                 </td>
               </tr>
             ))}
-            {allInvoices.length === 0 && (
+            {computedAllInvoices.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-3 md:px-8 py-8 md:py-12 text-center text-neutral-400 font-bold uppercase tracking-widest italic opacity-50 text-xs md:text-sm">
                   Nenhuma fatura registrada
@@ -329,41 +315,6 @@ const Financeiro = () => {
           </tbody>
         </table>
       </div>
-
-      {/* Metric Edit Modal */}
-      {editingCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-neutral-200 rounded-3xl shadow-2xl w-full max-w-xs md:max-w-sm overflow-hidden transform animate-in slide-in-from-bottom-4 duration-300">
-            <div className="px-4 md:px-8 py-4 md:py-6 border-b border-neutral-100 flex justify-between items-start md:items-center gap-3">
-              <h3 className="text-base md:text-lg font-black text-black tracking-tight">Editar {editingCard.label}</h3>
-              <button onClick={() => setEditingCard(null)} className="text-neutral-400 hover:text-black transition-colors flex-shrink-0"><X size={20} className="w-5 h-5 md:w-5 md:h-5" /></button>
-            </div>
-            <div className="p-4 md:p-8">
-              <label className="block text-[9px] md:text-[10px] font-black text-neutral-400 uppercase tracking-[2px] mb-2 md:mb-3">Novo Valor (BRL)</label>
-              <div className="relative flex items-center">
-                <DollarSign className="absolute left-3 md:left-4 text-neutral-400" size={14} />
-                <input
-                  type="number"
-                  autoFocus
-                  value={editingCard.value}
-                  onChange={(e) => setEditingCard({ ...editingCard, value: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl pl-9 md:pl-10 pr-3 md:pr-4 py-2 md:py-4 text-lg md:text-xl font-black text-black focus:ring-1 focus:ring-black outline-none transition-all text-sm md:text-base"
-                />
-              </div>
-              <p className="text-[10px] text-neutral-400 font-bold mt-4 italic">Isso irá sobrescrever os valores automáticos do sistema.</p>
-            </div>
-            <div className="px-8 py-6 bg-neutral-50 flex gap-3">
-              <button onClick={() => setEditingCard(null)} className="flex-1 py-3.5 rounded-md font-black text-[10px] uppercase tracking-widest text-neutral-400">Cancelar</button>
-              <button 
-                onClick={() => handleSaveCardEdit(editingCard.value)}
-                className="flex-[2] bg-black text-white py-3.5 rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all"
-              >
-                Salvar Alteração
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Invoice Modal */}
       {isInvoiceModalOpen && editingInvoice && (

@@ -204,7 +204,7 @@ const CRMPipeline = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-8">
+      <div className="mb-4">
         <h1 className="text-3xl font-black text-black tracking-tight mb-1">Pipeline</h1>
         <p className="text-neutral-500 text-sm">Visualize o progresso das suas oportunidades. Arraste e solte para mover entre etapas.</p>
       </div>

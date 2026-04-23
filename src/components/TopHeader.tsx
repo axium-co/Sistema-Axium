@@ -82,26 +82,6 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
       </div>
 
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Search */}
-        <div className="relative hidden md:flex items-center">
-          <Search className="absolute left-3 w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar leads, atividades..."
-            className="pl-9 pr-4 py-2 text-sm border border-neutral-200 rounded-md bg-white/80 text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 transition-colors w-48 focus:w-64 transition-all duration-300"
-          />
-          {searchTerm && (
-            <button 
-              onClick={() => setSearchTerm('')}
-              className="absolute right-2 p-1 text-neutral-300 hover:text-black transition-colors"
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-
         {/* Notification bell */}
         <div className="relative" ref={notificationRef}>
           <button 

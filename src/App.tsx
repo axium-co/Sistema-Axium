@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CRMProvider } from './contexts/CRMContext';
 import { ActivityLogsProvider } from './contexts/ActivityContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { FilterProvider } from './contexts/FilterContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
@@ -152,7 +153,9 @@ function App() {
         <ThemeProvider>
           <ActivityLogsProvider>
             <CRMProvider>
-              <AppRoutes />
+              <FilterProvider>
+                <AppRoutes />
+              </FilterProvider>
             </CRMProvider>
           </ActivityLogsProvider>
         </ThemeProvider>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, createPortal } from 'react';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -29,7 +29,10 @@ import {
   TrendingUp,
   Clock,
   Target,
-  CheckSquare
+  CheckSquare,
+  MoreHorizontal,
+  Copy,
+  Palette
 } from 'lucide-react';
 import {
   PieChart,
@@ -186,6 +189,46 @@ const Avatar = ({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) => 
     <div className={`${bgColor} w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold`}>
       {initials}
     </div>
+  );
+};
+
+const AVAILABLE_USERS = [
+  { id: '1', name: 'João Silva' },
+  { id: '2', name: 'Maria Santos' },
+  { id: '3', name: 'Carlos Souza' },
+  { id: '4', name: 'Ana Oliveira' },
+  { id: '5', name: 'Pedro Lima' },
+  { id: '6', name: 'Julia Costa' },
+];
+
+const UserSelector = ({ currentUser, onSelect, onClose }: { currentUser?: { name: string }; onSelect: (user: { id: string; name: string }) => void; onClose: () => void }) => {
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[999]"
+      onClick={onClose}
+    >
+      <div 
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-3 border-b border-neutral-100">
+          <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">Selecionar Pessoa</p>
+        </div>
+        <div className="p-2 max-h-[240px] overflow-y-auto">
+          {AVAILABLE_USERS.map(user => (
+            <button
+              key={user.id}
+              onClick={() => onSelect(user)}
+              className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-neutral-50 transition-colors"
+            >
+              <Avatar name={user.name} />
+              <span className="text-sm font-medium text-neutral-700">{user.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 };
 
@@ -599,6 +642,9 @@ const Tarefas = () => {
   const [searchTool, setSearchTool] = useState('');
   const [activeCellMenu, setActiveCellMenu] = useState<{ taskId: string; colId: string } | null>(null);
   const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTaskTitle, setEditingTaskTitle] = useState('');
+  const [userSelectorState, setUserSelectorState] = useState<{ taskId: string; colId: string } | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [targetGroupId, setTargetGroupId] = useState<string>('g1');
@@ -635,6 +681,20 @@ const Tarefas = () => {
       tasks: g.tasks.map(t => t.id === taskId ? { ...t, values: { ...t.values, [colId]: value } } : t)
     })));
     setActiveCellMenu(null);
+  };
+
+  const updateTaskTitle = (taskId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    setGroups(prev => prev.map(g => ({
+      ...g,
+      tasks: g.tasks.map(t => t.id === taskId ? { ...t, title: newTitle.trim() } : t)
+    })));
+    setEditingTaskId(null);
+  };
+
+  const startEditingTask = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditingTaskTitle(task.title);
   };
 
   const handleQuickAdd = (groupId: string, e: React.KeyboardEvent) => {
@@ -807,8 +867,8 @@ const Tarefas = () => {
               </div>
 
               {group.isExpanded && (
-                <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-hidden">
-                  <table className="w-full border-collapse">
+                <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-visible">
+                  <table className="w-full border-collapse overflow-visible">
                     <thead>
                       <tr className="bg-neutral-50 border-b border-neutral-200 text-[10px] text-neutral-400 font-black uppercase tracking-widest">
                         <th className="w-10 p-3 border-r border-neutral-200">
@@ -904,7 +964,27 @@ const Tarefas = () => {
                             </button>
                           </td>
                           <td className="p-3">
-                            <span className="font-semibold text-sm text-neutral-700">{task.title}</span>
+                            {editingTaskId === task.id ? (
+                              <input
+                                type="text"
+                                value={editingTaskTitle}
+                                onChange={(e) => setEditingTaskTitle(e.target.value)}
+                                onBlur={() => updateTaskTitle(task.id, editingTaskTitle)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') updateTaskTitle(task.id, editingTaskTitle);
+                                  if (e.key === 'Escape') setEditingTaskId(null);
+                                }}
+                                autoFocus
+                                className="w-full font-semibold text-sm text-neutral-700 bg-transparent border-none outline-none focus:ring-0 p-0 m-0"
+                              />
+                            ) : (
+                              <span 
+                                onClick={() => startEditingTask(task)}
+                                className="font-semibold text-sm text-neutral-700 cursor-pointer hover:text-black"
+                              >
+                                {task.title}
+                              </span>
+                            )}
                           </td>
                           {columns.map(col => (
                             <td key={col.id} className="p-2 border-l border-neutral-100 text-center">
@@ -964,12 +1044,30 @@ const Tarefas = () => {
                               )}
                               {col.type === 'users' && (
                                 task.values[col.id]?.name ? (
-                                  <Avatar name={task.values[col.id].name} />
+                                  <button 
+                                    onClick={() => setUserSelectorState({ taskId: task.id, colId: col.id })}
+                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:ring-2 hover:ring-black/20 transition-all"
+                                  >
+                                    <Avatar name={task.values[col.id].name} />
+                                  </button>
                                 ) : (
-                                  <button className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors">
+                                  <button 
+                                    onClick={() => setUserSelectorState({ taskId: task.id, colId: col.id })}
+                                    className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 hover:ring-2 hover:ring-black/20 transition-colors"
+                                  >
                                     <UserIcon size={12} className="text-neutral-400" />
                                   </button>
                                 )
+                              )}
+                              {userSelectorState?.taskId === task.id && userSelectorState.colId === col.id && (
+                                <UserSelector
+                                  currentUser={task.values[col.id]}
+                                  onSelect={(user) => {
+                                    updateTaskValue(task.id, col.id, user);
+                                    setUserSelectorState(null);
+                                  }}
+                                  onClose={() => setUserSelectorState(null)}
+                                />
                               )}
                               {col.type === 'file' && (
                                 <FileUploadCell 

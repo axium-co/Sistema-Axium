@@ -91,7 +91,7 @@ const CRMLeads = () => {
   return (
     <div>
       {/* ── Page header ── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-start gap-4 mb-6 md:mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-start gap-4 mb-2 md:mb-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Leads</h1>
           <p className="text-neutral-500 text-xs md:text-sm">Gerenciamento de contatos e funil de vendas.</p>
