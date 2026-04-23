@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Mail, Lock, Bell, Palette, User, 
   AlertTriangle, X, ShieldAlert, Trash2, 
@@ -28,6 +28,7 @@ const Configuracoes = () => {
   const { user, logout } = useAuth();
   const { theme, accentColor, setTheme, setAccentColor } = useTheme();
   const navigate = useNavigate();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [confirmationText, setConfirmationText] = useState('');
@@ -62,7 +63,9 @@ const Configuracoes = () => {
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
 
-  const [profileData, setProfileData] = useState({ name: '', email: '', phone: '' });
+  const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', avatar: '' });
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [passwordData, setPasswordData] = useState({ current: '', newPassword: '', confirm: '' });
   const [notifications, setNotifications] = useState<NotificationSettings>({ email: true, push: true, sms: false });
   const [smtpData, setSmtpData] = useState(() => {
@@ -80,7 +83,7 @@ const Configuracoes = () => {
       try {
         const { data, error } = await supabase
           .from(PROFILES_TABLE)
-          .select('nome, telefone')
+          .select('nome, telefone, avatar')
           .eq('user_id', user.id)
           .single();
         
@@ -88,8 +91,12 @@ const Configuracoes = () => {
           setProfileData({
             name: data.nome || '',
             email: user.email || '',
-            phone: data.telefone || '(11) 99999-9999'
+            phone: data.telefone || '(11) 99999-9999',
+            avatar: data.avatar || ''
           });
+          if (data.avatar) {
+            setAvatarPreview(data.avatar);
+          }
         }
       } catch (err) {
         console.error('[CONFIG] Erro ao carregar perfil:', err);
@@ -137,26 +144,84 @@ const Configuracoes = () => {
       setProfileError('Usuário não autenticado');
       return;
     }
+    if (!profileData.name.trim()) {
+      setProfileError('Nome não pode ser vazio');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (profileData.email && profileData.email.trim() && !emailRegex.test(profileData.email.trim())) {
+      setProfileError('Email profissional inválido');
+      return;
+    }
     setIsSavingProfile(true);
     setProfileError('');
     setProfileSuccess('');
     try {
+      const updateData: Record<string, unknown> = { 
+        nome: profileData.name.trim(),
+        telefone: profileData.phone.trim()
+      };
+      
+      if (avatarPreview && avatarPreview !== profileData.avatar) {
+        updateData.avatar = avatarPreview;
+      }
+      
       const { error } = await supabase
         .from(PROFILES_TABLE)
-        .update({ 
-          nome: profileData.name.trim(),
-          telefone: profileData.phone.trim()
-        })
+        .update(updateData)
         .eq('user_id', user.id);
       
       if (error) throw error;
+      
       setProfileSuccess('Perfil atualizado com sucesso!');
-      setTimeout(() => setProfileSuccess(''), 3000);
+      setProfileData(prev => ({ ...prev, avatar: avatarPreview || prev.avatar, email: profileData.email.trim() || prev.email }));
+      setTimeout(() => {
+        setProfileSuccess('');
+        setActiveModal(null);
+      }, 1500);
     } catch (err: any) {
       console.error('[CONFIG] Erro ao salvar perfil:', err);
       setProfileError(err.message || 'Erro ao salvar perfil. Tente novamente.');
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      setProfileError('Apenas PNG ou JPG são aceitos');
+      return;
+    }
+    
+    setIsUploadingAvatar(true);
+    setProfileError('');
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}/avatar-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+      
+      setAvatarPreview(publicUrl);
+      setProfileSuccess('Avatar atualizado! Clique em Salvar para confirmar.');
+      setTimeout(() => setProfileSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('[CONFIG] Erro ao fazer upload:', err);
+      setProfileError('Erro ao fazer upload. Tente novamente.');
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -407,9 +472,16 @@ const Configuracoes = () => {
                   )}
                   <div className="space-y-8">
                     <div className="flex items-center gap-8 mb-4">
-                      <div className="w-24 h-24 bg-black rounded-3xl flex items-center justify-center relative group/avatar cursor-pointer">
-                        <UserCircle size={48} className="text-white" />
-                        <div className="absolute inset-0 bg-black/60 rounded-3xl opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-black uppercase tracking-widest text-center px-2">Alterar Foto</div>
+                      <div className="w-24 h-24 bg-black rounded-3xl flex items-center justify-center relative group/avatar cursor-pointer overflow-hidden" onClick={() => avatarInputRef.current?.click()}>
+                        {avatarPreview ? (
+                          <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <UserCircle size={48} className="text-white" />
+                        )}
+                        <div className="absolute inset-0 bg-black/60 rounded-3xl opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-black uppercase tracking-widest text-center px-2">
+                          {isUploadingAvatar ? 'Enviando...' : 'Alterar Foto'}
+                        </div>
+                        <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/jpg" onChange={handleAvatarUpload} className="hidden" />
                       </div>
                       <div className="space-y-2">
                         <h4 className="font-black text-black text-lg">Avatar do Administrador</h4>
@@ -419,11 +491,11 @@ const Configuracoes = () => {
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-3">
                         <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Nome Completo</label>
-                        <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
+                        <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" placeholder="Seu nome completo" />
                       </div>
                       <div className="space-y-3">
                         <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Email Profissional</label>
-                        <input type="email" value={profileData.email} disabled className="w-full bg-neutral-100 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-neutral-400 cursor-not-allowed" />
+                        <input type="email" value={profileData.email} onChange={(e) => setProfileData({...profileData, email: e.target.value})} className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" placeholder="seu@email.com" />
                       </div>
                     </div>
                   </div>
