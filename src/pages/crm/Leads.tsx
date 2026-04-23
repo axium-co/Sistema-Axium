@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
+import { useFilters } from '../../contexts/FilterContext';
 import type { Lead } from '../../contexts/CRMContext';
 
 const formatBRL = (val: string) => {
@@ -106,18 +107,12 @@ const inputCls =
 
 const CRMLeads = () => {
   const { leads, addLead, updateLead, deleteLead, searchTerm } = useCRM();
+  const { filters, setFilter, setStagesFilter, setNichesFilter, setDateFilter, clearFilters, hasActiveFilters } = useFilters();
 
   const [isOpen, setIsOpen] = useState(false);
   const [current, setCurrent] = useState<Partial<Lead>>(EMPTY_LEAD);
   const [mode, setMode] = useState<'add' | 'edit'>('add');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const [filters, setFilters] = useState({
-    stages: [] as string[],
-    origins: [] as string[],
-    niches: [] as string[],
-   DateFilter: '' as '' | 'today' | 'week' | 'month',
-  });
 
   const stageCheckboxes = useRef(new Set<string>());
   const originCheckboxes = useRef(new Set<string>());
@@ -186,15 +181,6 @@ const CRMLeads = () => {
     return result;
   }, [leads, searchTerm, filters]);
 
-  const hasActiveFilters = filters.stages.length > 0 || filters.origins.length > 0 || filters.niches.length > 0 || filters.DateFilter !== '';
-
-  const clearFilters = () => {
-    setFilters({ stages: [], origins: [], niches: [], dateFilter: '' });
-    stageCheckboxes.current.clear();
-    originCheckboxes.current.clear();
-    nicheCheckboxes.current.clear();
-  };
-
   const openAdd = () => { setMode('add'); setCurrent(EMPTY_LEAD); setIsOpen(true); };
   const openEdit = (lead: Lead) => { setMode('edit'); setCurrent({ ...lead }); setIsOpen(true); };
 
@@ -215,31 +201,26 @@ const CRMLeads = () => {
   const set = (field: keyof Lead, val: string) =>
     setCurrent(prev => ({ ...prev, [field]: val }));
 
-  const toggleStageFilter = (stage: string) => {
-    setFilters(prev => {
-      const stages = prev.stages.includes(stage)
-        ? prev.stages.filter(s => s !== stage)
-        : [...prev.stages, stage];
-      return { ...prev, stages };
-    });
+const toggleStageFilter = (stage: string) => {
+    const newStages = filters.stages.includes(stage)
+      ? filters.stages.filter(s => s !== stage)
+      : [...filters.stages, stage];
+    setStagesFilter(newStages);
   };
 
   const toggleOriginFilter = (origin: string) => {
-    setFilters(prev => {
-      const origins = prev.origins.includes(origin)
-        ? prev.origins.filter(o => o !== origin)
-        : [...prev.origins, origin];
-      return { ...prev, origins };
-    });
+    const currentOrigins = (filters as any).origins || [];
+    const newOrigins = currentOrigins.includes(origin)
+      ? currentOrigins.filter((o: string) => o !== origin)
+      : [...currentOrigins, origin];
+    setFilter('origin' as any, newOrigins);
   };
 
   const toggleNicheFilter = (niche: string) => {
-    setFilters(prev => {
-      const niches = prev.niches.includes(niche)
-        ? prev.niches.filter(n => n !== niche)
-        : [...prev.niches, niche];
-      return { ...prev, niches };
-    });
+    const newNiches = filters.niches.includes(niche)
+      ? filters.niches.filter(n => n !== niche)
+      : [...filters.niches, niche];
+    setNichesFilter(newNiches);
   };
 
   return (

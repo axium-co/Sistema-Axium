@@ -11,7 +11,9 @@ import {
 import type { DragEndEvent } from '@dnd-kit/core';
 import { useState } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
+import { useFilters } from '../../contexts/FilterContext';
 import type { Lead } from '../../contexts/CRMContext';
+import { Filter, XCircle } from 'lucide-react';
 
 const STAGES = [
   'Novos Leads',
@@ -147,43 +149,43 @@ const DroppableColumn = ({ stage, children, count, totalValue, formatCurrency }:
 };
 
 const CRMPipeline = () => {
-  const { leads, updateLead, searchTerm } = useCRM();
-  const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const { leads, getTotalValueByStage, updateLead } = useCRM();
+  const { filters, hasActiveFilters } = useFilters();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    })
-  );
-
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  };
-
-  const handleDragStart = (event: any) => {
-    setActiveLead(event.active.data.current.lead);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveLead(null);
-
-    if (over && active.id !== over.id) {
-      const leadId = active.id as string;
-      const newStage = over.id as string;
-      
-      // Update stage if the lead was dropped over a column
-      if (STAGES.includes(newStage)) {
-        updateLead(leadId, { stage: newStage });
-      }
-    }
-  };
+  const filteredLeadsBase = filters.stages.length > 0 || filters.niches.length > 0 || filters.dateFilter !== ''
+    ? leads.filter(lead => {
+        if (filters.stages.length > 0 && !filters.stages.includes(lead.stage)) return false;
+        if (filters.niches.length > 0 && !filters.niches.includes(lead.niche)) return false;
+        if (filters.dateFilter) {
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          if (filters.dateFilter === 'today') {
+            if (!lead.firstContact) return false;
+            const leadDate = new Date(lead.firstContact);
+            return leadDate.toDateString() === today.toDateString();
+          } else if (filters.dateFilter === 'week') {
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            if (!lead.firstContact) return false;
+            const leadDate = new Date(lead.firstContact);
+            return leadDate >= weekAgo;
+          } else if (filters.dateFilter === 'month') {
+            const monthAgo = new Date(today);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            if (!lead.firstContact) return false;
+            const leadDate = new Date(lead.firstContact);
+            return leadDate >= monthAgo;
+          }
+        }
+        return true;
+      })
+    : leads;
 
   // Helper to filter leads by search term
   const getFilteredLeads = (stage: string) => {
-    return leads.filter(l => 
+    return filteredLeadsBase.filter(l => 
       l.stage === stage && (
         l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         l.niche.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -203,10 +205,37 @@ const CRMPipeline = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="mb-4">
-        <h1 className="text-3xl font-black text-black tracking-tight mb-1">Pipeline</h1>
-        <p className="text-neutral-500 text-sm">Visualize o progresso das suas oportunidades. Arraste e solte para mover entre etapas.</p>
+    <div className="relative flex flex-col h-full">
+      {isSidebarOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setIsSidebarOpen(false)} />
+          <div className="fixed left-0 top-0 w-72 h-full bg-white border-r border-neutral-200 overflow-y-auto z-50">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-black text-black uppercase tracking-widest">Filtros</span>
+                <button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-neutral-100 rounded-md">
+                  <XCircle size={16} className="text-neutral-400" />
+                </button>
+              </div>
+              <p className="text-xs text-neutral-400">Use os filtros na aba Leads para filtrar dados aqui.</p>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="mb-4 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-black text-black tracking-tight mb-1">Pipeline</h1>
+          <p className="text-neutral-500 text-sm">Visualize o progresso das suas oportunidades. Arraste e solte para mover entre etapas.</p>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all relative ${hasActiveFilters ? 'bg-black text-white border-black' : 'bg-white border-neutral-200 text-neutral-700 hover:border-black'}`}
+        >
+          <Filter size={14} />
+          <span className="text-xs font-bold uppercase tracking-widest">Filtros</span>
+          {hasActiveFilters && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />}
+        </button>
       </div>
 
       <DndContext 

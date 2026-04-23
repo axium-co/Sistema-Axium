@@ -7,11 +7,17 @@ interface FilterState {
   priority: string | null;
   dateFrom: string | null;
   dateTo: string | null;
+  stages: string[];
+  niches: string[];
+  dateFilter: string;
 }
 
 interface FilterContextType {
   filters: FilterState;
   setFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
+  setStagesFilter: (stages: string[]) => void;
+  setNichesFilter: (niches: string[]) => void;
+  setDateFilter: (dateFilter: string) => void;
   clearFilters: () => void;
   hasActiveFilters: boolean;
 }
@@ -25,6 +31,9 @@ const defaultFilters: FilterState = {
   priority: null,
   dateFrom: null,
   dateTo: null,
+  stages: [],
+  niches: [],
+  dateFilter: '',
 };
 
 const RESPONSIBLES = ['João Silva', 'Maria Santos', 'Carlos Souza', 'Ana Oliveira', 'Pedro Lima', 'Julia Costa'];
@@ -36,7 +45,7 @@ function FilterProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<FilterState>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('crm_filters');
-      if (stored) return JSON.parse(stored);
+      if (stored) return { ...defaultFilters, ...JSON.parse(stored) };
     }
     return defaultFilters;
   });
@@ -49,14 +58,30 @@ function FilterProvider({ children }: { children: ReactNode }) {
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const setStagesFilter = useCallback((stages: string[]) => {
+    setFilters(prev => ({ ...prev, stages }));
+  }, []);
+
+  const setNichesFilter = useCallback((niches: string[]) => {
+    setFilters(prev => ({ ...prev, niches }));
+  }, []);
+
+  const setDateFilter = useCallback((dateFilter: string) => {
+    setFilters(prev => ({ ...prev, dateFilter }));
+  }, []);
+
   const clearFilters = useCallback(() => {
     setFilters(defaultFilters);
   }, []);
 
-  const hasActiveFilters = Object.values(filters).some(v => v !== null);
+  const hasActiveFilters = 
+    filters.stages.length > 0 || 
+    filters.niches.length > 0 || 
+    filters.dateFilter !== '' ||
+    Object.values(filters).some(v => v !== null && (Array.isArray(v) ? v.length > 0 : true));
 
   return (
-    <FilterContext.Provider value={{ filters, setFilter, clearFilters, hasActiveFilters }}>
+    <FilterContext.Provider value={{ filters, setFilter, setStagesFilter, setNichesFilter, setDateFilter, clearFilters, hasActiveFilters }}>
       {children}
     </FilterContext.Provider>
   );
@@ -65,7 +90,15 @@ function FilterProvider({ children }: { children: ReactNode }) {
 function useFilters() {
   const context = useContext(FilterContext);
   if (!context) {
-    return { ...defaultFilters, setFilter: () => {}, clearFilters: () => {}, hasActiveFilters: false };
+    return { 
+      filters: defaultFilters, 
+      setFilter: () => {}, 
+      setStagesFilter: () => {},
+      setNichesFilter: () => {},
+      setDateFilter: () => {},
+      clearFilters: () => {}, 
+      hasActiveFilters: false 
+    };
   }
   return context;
 }

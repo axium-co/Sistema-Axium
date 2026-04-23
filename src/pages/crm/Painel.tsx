@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle, FileText } from 'lucide-react';
+import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle, FileText, Filter, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
 import { supabase, ACTIVITY_LOGS_TABLE } from '../../lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -32,10 +32,41 @@ const ACTION_ICONS = {
 
 const CRMDashboard = () => {
   const { leads, getLeadsByStage } = useCRM();
+  const { filters, hasActiveFilters } = useFilters();
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [fetchActivityLogsError, setFetchActivityLogsError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const filteredLeads = filters.stages.length > 0 || filters.niches.length > 0 || filters.dateFilter !== ''
+    ? leads.filter(lead => {
+        if (filters.stages.length > 0 && !filters.stages.includes(lead.stage)) return false;
+        if (filters.niches.length > 0 && !filters.niches.includes(lead.niche)) return false;
+        if (filters.dateFilter) {
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          if (filters.dateFilter === 'today') {
+            if (!lead.firstContact) return false;
+            const leadDate = new Date(lead.firstContact);
+            return leadDate.toDateString() === today.toDateString();
+          } else if (filters.dateFilter === 'week') {
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            if (!lead.firstContact) return false;
+            const leadDate = new Date(lead.firstContact);
+            return leadDate >= weekAgo;
+          } else if (filters.dateFilter === 'month') {
+            const monthAgo = new Date(today);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            if (!lead.firstContact) return false;
+            const leadDate = new Date(lead.firstContact);
+            return leadDate >= monthAgo;
+          }
+        }
+        return true;
+      })
+    : leads;
 
   useEffect(() => {
     if (!loaded) {
@@ -77,14 +108,6 @@ const CRMDashboard = () => {
     }
   }, [loaded]);
 
-  const { filters, hasActiveFilters } = useFilters();
-
-  const filteredLeads = leads.filter(lead => {
-    if (filters.status && lead.stage !== filters.status) return false;
-    if (filters.origin && lead.niche !== filters.origin) return false;
-    return true;
-  });
-
   const chartData = STAGES.map(stage => ({
     name: stage,
     value: filteredLeads.filter(l => l.stage === stage).length
@@ -111,11 +134,38 @@ const CRMDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="relative min-h-screen bg-white">
+      {isSidebarOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setIsSidebarOpen(false)} />
+          <div className="fixed left-0 top-0 w-72 h-full bg-white border-r border-neutral-200 overflow-y-auto z-50">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-black text-black uppercase tracking-widest">Filtros</span>
+                <button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-neutral-100 rounded-md">
+                  <XCircle size={16} className="text-neutral-400" />
+                </button>
+              </div>
+              <p className="text-xs text-neutral-400">Use os filtros na aba Leads para filtrar dados aqui.</p>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Header section */}
-      <div className="mb-4 md:mb-6">
-        <h1 className="text-2xl md:text-4xl font-black text-black tracking-tight mb-2 whitespace-nowrap">Painel de Vendas</h1>
-        <p className="text-neutral-500 text-xs md:text-sm">Monitoramento em tempo real do seu funil de vendas.</p>
+      <div className="mb-4 md:mb-6 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl md:text-4xl font-black text-black tracking-tight mb-2 whitespace-nowrap">Painel de Vendas</h1>
+          <p className="text-neutral-500 text-xs md:text-sm">Monitoramento em tempo real do seu funil de vendas.</p>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all relative ${hasActiveFilters ? 'bg-black text-white border-black' : 'bg-white border-neutral-200 text-neutral-700 hover:border-black'}`}
+        >
+          <Filter size={14} />
+          <span className="text-xs font-bold uppercase tracking-widest">Filtros</span>
+          {hasActiveFilters && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />}
+        </button>
       </div>
 
       {/* Metrics Cards Grid */}
