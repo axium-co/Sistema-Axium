@@ -1056,6 +1056,11 @@ const Tarefas = () => {
   };
 
   const addColumn = (tool: any) => {
+    const existingColumn = columns.find(c => c.type === tool.type);
+    if (existingColumn) {
+      alert(`Uma coluna "${tool.label}" já existe.删除ione outra Primeiramente.`);
+      return;
+    }
     const newId = `col-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
     const newColumn: Column = {
       id: newId,
@@ -1336,67 +1341,6 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
               </button>
             )}
 </div>
-
-          <div className="flex items-center gap-4 mt-6 mb-4">
-            <button 
-              onClick={() => setIsColumnCenterOpen(!isColumnCenterOpen)} 
-              className="flex items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-all text-sm font-semibold text-neutral-600 hover:text-black"
-            >
-              <Plus size={16} />
-              Adicionar Coluna
-            </button>
-            {isColumnCenterOpen && (
-              <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[100] w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden" style={{ position: 'fixed' }}>
-                <div className="p-4 border-b border-neutral-100">
-                  <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                    <input 
-                      autoFocus 
-                      type="text" 
-                      placeholder="Pesquise ou descreva sua coluna" 
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium placeholder:text-neutral-400 outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all"
-                      value={searchTool}
-                      onChange={(e) => setSearchTool(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="p-3 max-h-[320px] overflow-y-auto">
-                  {filteredTools.map(cat => (
-                    <div key={cat.category} className="mb-4 last:mb-0">
-                      <div className="flex items-center gap-2 mb-2 px-1">
-                        {cat.category === 'Essenciais' && (
-                          <>
-                            <CheckCircle2 size={14} className="text-emerald-500" />
-                            <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Essenciais</p>
-                          </>
-                        )}
-                        {cat.category === 'Super úteis' && (
-                          <>
-                            <Zap size={14} className="text-amber-500" />
-                            <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Super úteis</p>
-                          </>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {cat.items.map(tool => (
-                          <button 
-                            key={tool.id} 
-                            onClick={() => addColumn(tool)} 
-                            className="flex items-center gap-3 p-3 bg-neutral-50 hover:bg-neutral-100 border border-neutral-100 hover:border-neutral-300 rounded-xl transition-all text-left group"
-                          >
-                            <div className={`p-2 rounded-lg bg-white shadow-sm`}>
-                              <tool.icon size={18} className={tool.color} />
-                            </div>
-                            <span className="text-sm font-semibold text-neutral-700 group-hover:text-black">{tool.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
 
           {groups && Array.isArray(groups) && groups.map(group => (
             <div key={group.id}>
