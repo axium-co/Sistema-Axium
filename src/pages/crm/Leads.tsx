@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, Component, ReactNode } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
@@ -52,6 +52,44 @@ const STAGE_ORIGINS = [
   'Evento',
   'Outros'
 ];
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('CRMLeads Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-red-200 rounded-2xl p-8 max-w-md text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <XCircle size={32} className="text-red-500" />
+            </div>
+            <h2 className="text-xl font-black text-black mb-2">Algo deu errado</h2>
+            <p className="text-neutral-500 text-sm mb-4">Recarregue a página ou tente novamente.</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-black text-white rounded-lg font-bold text-sm"
+            >
+              Recarregar Página
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const stageStyle: Record<string, string> = {
   'Novos Leads':      'bg-neutral-100 text-neutral-600',
@@ -120,8 +158,12 @@ const CRMLeads = () => {
 
   const uniqueNiches = useMemo(() => {
     if (!leads || !Array.isArray(leads)) return [];
-    const niches = new Set(leads.map(l => l.niche).filter(Boolean));
-    return Array.from(niches).sort();
+    try {
+      const niches = new Set(leads.map(l => l.niche).filter(Boolean));
+      return Array.from(niches).sort();
+    } catch {
+      return [];
+    }
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
@@ -130,38 +172,31 @@ const CRMLeads = () => {
 
     if (searchTerm) {
       result = result.filter(lead => 
-        lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.niche.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.email.toLowerCase().includes(searchTerm.toLowerCase())
+        lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.niche?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    if (filters.stages.length > 0) {
+    if (filters.stages && filters.stages.length > 0) {
       result = result.filter(lead => filters.stages.includes(lead.stage));
     }
 
-    if (filters.origins.length > 0) {
-      result = result.filter(lead => {
-        const leadOrigin = (lead as any).source || 'Outros';
-        return filters.origins.includes(leadOrigin);
-      });
-    }
-
-    if (filters.niches.length > 0) {
+    if (filters.niches && filters.niches.length > 0) {
       result = result.filter(lead => filters.niches.includes(lead.niche));
     }
 
-    if (filters.DateFilter) {
+    if (filters.dateFilter) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
-      if (filters.DateFilter === 'today') {
+      if (filters.dateFilter === 'today') {
         result = result.filter(lead => {
           if (!lead.firstContact) return false;
           const leadDate = new Date(lead.firstContact);
           return leadDate.toDateString() === today.toDateString();
         });
-      } else if (filters.DateFilter === 'week') {
+      } else if (filters.dateFilter === 'week') {
         const weekAgo = new Date(today);
         weekAgo.setDate(weekAgo.getDate() - 7);
         result = result.filter(lead => {
@@ -169,7 +204,7 @@ const CRMLeads = () => {
           const leadDate = new Date(lead.firstContact);
           return leadDate >= weekAgo;
         });
-      } else if (filters.DateFilter === 'month') {
+      } else if (filters.dateFilter === 'month') {
         const monthAgo = new Date(today);
         monthAgo.setMonth(monthAgo.getMonth() - 1);
         result = result.filter(lead => {
@@ -528,4 +563,10 @@ const toggleStageFilter = (stage: string) => {
   );
 };
 
-export default CRMLeads;
+export default function LeadsPage() {
+  return (
+    <ErrorBoundary>
+      <CRMLeads />
+    </ErrorBoundary>
+  );
+}

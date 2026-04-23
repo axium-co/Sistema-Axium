@@ -10,7 +10,7 @@ import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 import MainLayout from './layouts/MainLayout';
 import CRMPainel from './pages/crm/Painel';
-import CRMLeads from './pages/crm/Leads';
+import CRMLeads, { LeadsPage } from './pages/crm/Leads';
 import CRMPipeline from './pages/crm/Pipeline';
 import CRMCalendario from './pages/crm/Calendario';
 import CRMImportar from './pages/crm/Importar';
@@ -52,7 +52,7 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <CRMLeads />
+              <LeadsPage />
             </MainLayout>
           </ProtectedRoute>
         }
