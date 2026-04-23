@@ -154,6 +154,14 @@ const CRMPipeline = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
   const filteredLeadsBase = filters.stages.length > 0 || filters.niches.length > 0 || filters.dateFilter !== ''
     ? leads.filter(lead => {
         if (filters.stages.length > 0 && !filters.stages.includes(lead.stage)) return false;
