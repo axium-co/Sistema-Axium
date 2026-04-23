@@ -9,6 +9,7 @@ interface FilterState {
   dateTo: string | null;
   stages: string[];
   niches: string[];
+  origins: string[];
   dateFilter: string;
 }
 
@@ -17,6 +18,7 @@ interface FilterContextType {
   setFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
   setStagesFilter: (stages: string[]) => void;
   setNichesFilter: (niches: string[]) => void;
+  setOriginsFilter: (origins: string[]) => void;
   setDateFilter: (dateFilter: string) => void;
   clearFilters: () => void;
   hasActiveFilters: boolean;
@@ -33,6 +35,7 @@ const defaultFilters: FilterState = {
   dateTo: null,
   stages: [],
   niches: [],
+  origins: [],
   dateFilter: '',
 };
 
@@ -66,6 +69,10 @@ function FilterProvider({ children }: { children: ReactNode }) {
     setFilters(prev => ({ ...prev, niches }));
   }, []);
 
+  const setOriginsFilter = useCallback((origins: string[]) => {
+    setFilters(prev => ({ ...prev, origins }));
+  }, []);
+
   const setDateFilter = useCallback((dateFilter: string) => {
     setFilters(prev => ({ ...prev, dateFilter }));
   }, []);
@@ -76,12 +83,13 @@ function FilterProvider({ children }: { children: ReactNode }) {
 
   const hasActiveFilters = 
     (filters.stages?.length ?? 0) > 0 || 
-    (filters.niches?.length ?? 0) > 0 || 
+    (filters.niches?.length ?? 0) > 0 ||
+    (filters.origins?.length ?? 0) > 0 || 
     filters.dateFilter !== '' ||
     Object.values(filters).some(v => v !== null && (Array.isArray(v) ? v.length > 0 : true));
 
   return (
-    <FilterContext.Provider value={{ filters, setFilter, setStagesFilter, setNichesFilter, setDateFilter, clearFilters, hasActiveFilters }}>
+    <FilterContext.Provider value={{ filters, setFilter, setStagesFilter, setNichesFilter, setOriginsFilter, setDateFilter, clearFilters, hasActiveFilters }}>
       {children}
     </FilterContext.Provider>
   );
@@ -90,15 +98,16 @@ function FilterProvider({ children }: { children: ReactNode }) {
 function useFilters() {
   const context = useContext(FilterContext);
   if (!context) {
-    return { 
-      filters: defaultFilters, 
-      setFilter: () => {}, 
-      setStagesFilter: () => {},
-      setNichesFilter: () => {},
-      setDateFilter: () => {},
-      clearFilters: () => {}, 
-      hasActiveFilters: false 
-    };
+return {
+    filters,
+    setFilter,
+    setStagesFilter,
+    setNichesFilter,
+    setOriginsFilter: (origins: string[]) => setFilters(prev => ({ ...prev, origins })),
+    setDateFilter,
+    clearFilters,
+    hasActiveFilters,
+  };
   }
   return context;
 }

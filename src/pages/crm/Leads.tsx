@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, Component, ReactNode } from 'react';
+import { useState, useMemo, useRef, useEffect, Component, ReactNode } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
@@ -127,6 +127,9 @@ const CheckboxFilter = ({ label, checked, onChange }: { label: string; checked: 
       </svg>}
     </div>
     <input type="checkbox" className="hidden" checked={checked} onChange={e => onChange(e.target.checked)} />
+    <span className="text-xs font-medium text-neutral-600 group-hover:text-black">{label}</span>
+  </label>
+);
     <span className={`text-xs font-medium ${checked ? 'text-black' : 'text-neutral-500'}`}>{label}</span>
   </label>
 );
@@ -145,12 +148,42 @@ const inputCls =
 
 const CRMLeads = () => {
   const { leads, addLead, updateLead, deleteLead, searchTerm } = useCRM();
-  const { filters, setFilter, setStagesFilter, setNichesFilter, setDateFilter, clearFilters, hasActiveFilters } = useFilters();
+  const { filters, setFilter, setStagesFilter, setNichesFilter, setOriginsFilter, setDateFilter, clearFilters, hasActiveFilters } = useFilters();
 
   const [isOpen, setIsOpen] = useState(false);
   const [current, setCurrent] = useState<Partial<Lead>>(EMPTY_LEAD);
   const [mode, setMode] = useState<'add' | 'edit'>('add');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [nicheSearch, setNicheSearch] = useState('');
+  const [nicheSuggestions, setNicheSuggestions] = useState<string[]>([]);
+  const [showNicheSuggestions, setShowNicheSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (!nicheSearch.trim()) {
+      setNicheSuggestions([]);
+      return;
+    }
+    const search = nicheSearch.toLowerCase();
+    const suggestions = uniqueNiches
+      .filter(n => n.toLowerCase().includes(search))
+      .slice(0, 8);
+    setNicheSuggestions(suggestions);
+  }, [nicheSearch, uniqueNiches]);
+
+  const handleNicheSelect = (niche: string) => {
+    const currentNiches = filters?.niches || [];
+    if (!currentNiches.includes(niche)) {
+      setNichesFilter([...currentNiches, niche]);
+    }
+    setNicheSearch('');
+    setShowNicheSuggestions(false);
+  };
+
+  const handleAddNiche = () => {
+    if (nicheSearch.trim()) {
+      handleNicheSelect(nicheSearch.trim());
+    }
+  };
 
   const stageCheckboxes = useRef(new Set<string>());
   const originCheckboxes = useRef(new Set<string>());
@@ -180,6 +213,10 @@ const CRMLeads = () => {
 
     if (filters.stages && filters.stages.length > 0) {
       result = result.filter(lead => filters.stages.includes(lead.stage));
+    }
+
+    if (filters.origins && filters.origins.length > 0) {
+      result = result.filter(lead => filters.origins.includes(lead.origin));
     }
 
     if (filters.niches && filters.niches.length > 0) {
@@ -256,7 +293,7 @@ const toggleStageFilter = (stage: string) => {
       const newOrigins = currentOrigins.includes(origin)
         ? currentOrigins.filter((o: string) => o !== origin)
         : [...currentOrigins, origin];
-      setFilter('origin' as any, newOrigins);
+      setOriginsFilter(newOrigins);
     } catch (err) {
       console.error('Erro ao filtrar por origem:', err);
     }
@@ -325,14 +362,51 @@ const toggleStageFilter = (stage: string) => {
             </FilterSection>
 
             <FilterSection title="Nicho do Cliente">
-              {(uniqueNiches || []).slice(0, 10).map(niche => (
-                <CheckboxFilter
-                  key={niche}
-                  label={niche}
-                  checked={(filters?.niches || []).includes(niche)}
-                  onChange={() => toggleNicheFilter(niche)}
-                />
-              ))}
+              <div className="space-y-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={nicheSearch}
+                    onChange={(e) => { setNicheSearch(e.target.value); setShowNicheSuggestions(true); }}
+                    onFocus={() => setShowNicheSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowNicheSuggestions(false), 200)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddNiche()}
+                    placeholder="Buscar ou adicionar nicho..."
+                    className="w-full bg-white border border-slate-200 rounded-md py-2 px-3 text-xs font-medium text-black focus:outline-none focus:border-black"
+                  />
+                  {showNicheSuggestions && nicheSuggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                      {nicheSuggestions.map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => handleNicheSelect(s)}
+                          className="w-full text-left px-3 py-2 text-xs font-medium text-black hover:bg-slate-100"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddNiche}
+                  className="w-full py-2 text-xs font-bold text-neutral-500 hover:text-black text-center border border-dashed border-neutral-300 rounded-md"
+                >
+                  + Adicionar "{nicheSearch || '...'}"
+                </button>
+                {(filters?.niches || []).length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {filters.niches.map(n => (
+                      <span key={n} className="px-2 py-1 bg-black text-white text-[10px] font-bold rounded-md flex items-center gap-1">
+                        {n}
+                        <button type="button" onClick={() => toggleNicheFilter(n)} className="hover:text-red-400">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </FilterSection>
 
             <FilterSection title="Data de Entrada">
