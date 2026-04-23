@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
-import { Plus, Pencil, Save, X, TrendingUp, TrendingDown, DollarSign, PieChart, CreditCard, User, Calendar, CheckCircle2, Clock, AlertTriangle, RefreshCw, ExternalLink, Receipt, Wallet, Filter, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Save, X, TrendingUp, TrendingDown, DollarSign, PieChart, CreditCard, User, Calendar, CheckCircle2, Clock, AlertTriangle, RefreshCw, ExternalLink, Receipt, Wallet, Filter, XCircle, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 
 interface Invoice {
   id: string;
@@ -98,7 +98,7 @@ const Financeiro = () => {
 
   const [financeData, setFinanceData] = useState(getStoredFinance);
   const [activeTab, setActiveTab] = useState<'receitas' | 'fluxo'>('receitas');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(financeData));
@@ -446,19 +446,28 @@ const Financeiro = () => {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="relative min-h-screen">
       {isSidebarOpen && (
-        <aside className="w-64 md:w-72 flex-shrink-0 bg-white border-r border-neutral-200 overflow-y-auto" style={{ height: 'calc(100vh - 120px)' }}>
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Filter size={14} className="text-black" />
-                <span className="text-xs font-black text-black uppercase tracking-widest">Filtros</span>
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setIsSidebarOpen(false)} />
+          <div className="fixed left-0 top-0 w-72 h-full bg-white border-r border-neutral-200 overflow-y-auto z-50">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter size={14} className="text-black" />
+                  <span className="text-xs font-black text-black uppercase tracking-widest">Filtros</span>
+                </div>
+                <button 
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="p-1 hover:bg-neutral-100 rounded-md transition-colors"
+                >
+                  <X size={16} className="text-neutral-400" />
+                </button>
               </div>
               {hasActiveFilters && (
                 <button 
                   onClick={clearFilters}
-                  className="text-[10px] font-bold text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1"
+                  className="text-[10px] font-bold text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1 mb-4"
                 >
                   <XCircle size={12} />
                   Limpar
@@ -559,7 +568,7 @@ const Financeiro = () => {
               </div>
             </FilterSection>
           </div>
-        </aside>
+        </>
       )}
 
       <main className="flex-1 overflow-hidden p-4 md:p-6">
@@ -567,9 +576,12 @@ const Financeiro = () => {
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className={`p-2 rounded-md border transition-all ${isSidebarOpen ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:border-black'}`}
+              className={`p-2 rounded-md border transition-all relative ${hasActiveFilters ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:border-black'}`}
             >
-              <Filter size={14} />
+              <SlidersHorizontal size={14} />
+              {hasActiveFilters && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+              )}
             </button>
             <div>
               <div className="flex items-center gap-2 md:gap-3 mb-1">
