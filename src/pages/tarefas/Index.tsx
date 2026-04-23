@@ -1148,7 +1148,7 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
           {!isTaskColumn && onDelete && (
             <button
               onClick={() => onDelete(column.id)}
-              className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-500 text-xs ml-1"
+              className="text-neutral-300 hover:text-red-500 text-xs ml-1 opacity-60 hover:opacity-100 transition-opacity"
               title="Excluir coluna"
             >
               ×
@@ -1387,7 +1387,66 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
                             ))}
                           </SortableContext>
                         </DndContext>
-<th className="w-12 p-3 border-l border-neutral-200 bg-neutral-50/50 text-center" />
+                        <th className="w-12 p-3 border-l border-neutral-200 bg-neutral-50/50 text-center relative">
+                          <button 
+                            onClick={() => setIsColumnCenterOpen(!isColumnCenterOpen)} 
+                            className="w-7 h-7 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-all text-neutral-400 hover:text-black"
+                            title="Adicionar coluna"
+                          >
+                            <Plus size={18} />
+                          </button>
+                          {isColumnCenterOpen && (
+                            <div className="absolute top-12 right-0 z-[100] w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden">
+                              <div className="p-4 border-b border-neutral-100">
+                                <div className="relative">
+                                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                  <input 
+                                    autoFocus 
+                                    type="text" 
+                                    placeholder="Pesquise ou descreva sua coluna" 
+                                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium placeholder:text-neutral-400 outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all"
+                                    value={searchTool}
+                                    onChange={(e) => setSearchTool(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <div className="p-3 max-h-[320px] overflow-y-auto">
+                                {filteredTools.map(cat => (
+                                  <div key={cat.category} className="mb-4 last:mb-0">
+                                    <div className="flex items-center gap-2 mb-2 px-1">
+                                      {cat.category === 'Essenciais' && (
+                                        <>
+                                          <CheckCircle2 size={14} className="text-emerald-500" />
+                                          <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Essenciais</p>
+                                        </>
+                                      )}
+                                      {cat.category === 'Super úteis' && (
+                                        <>
+                                          <Zap size={14} className="text-amber-500" />
+                                          <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Super úteis</p>
+                                        </>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {cat.items.map(tool => (
+                                        <button 
+                                          key={tool.id} 
+                                          onClick={() => addColumn(tool)} 
+                                          className="flex items-center gap-3 p-3 bg-neutral-50 hover:bg-neutral-100 border border-neutral-100 hover:border-neutral-300 rounded-xl transition-all text-left group"
+                                        >
+                                          <div className="p-2 rounded-lg bg-white shadow-sm">
+                                            <tool.icon size={18} className={tool.color} />
+                                          </div>
+                                          <span className="text-sm font-semibold text-neutral-700 group-hover:text-black">{tool.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
