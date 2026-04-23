@@ -1396,21 +1396,21 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
                             <Plus size={18} />
                           </button>
                           {columnOpenByGroup[group.id] && (
-                            <div className="fixed z-[500] w-[340px] bg-white dark:bg-gray-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-xl overflow-hidden max-h-[72vh]" style={{ overflowY: 'auto', right: '80px' }}>
-                              <div className="p-4 border-b border-neutral-100">
+                            <div className="fixed z-[9999] w-[340px] bg-white dark:bg-gray-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl" style={{ right: '80px' }}>
+                              <div className="p-4 border-b border-neutral-100 dark:border-neutral-700">
                                 <div className="relative">
                                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
                                   <input 
                                     autoFocus 
                                     type="text" 
                                     placeholder="Pesquise ou descreva sua coluna" 
-                                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium placeholder:text-neutral-400 outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all"
+                                    className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium placeholder:text-neutral-400 outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all"
                                     value={searchTool}
                                     onChange={(e) => setSearchTool(e.target.value)}
                                   />
                                 </div>
                               </div>
-                              <div className="p-3 max-h-[320px] overflow-y-auto">
+                              <div className="max-h-[400px] overflow-y-scroll">
                                 {filteredTools.map(cat => (
                                   <div key={cat.category} className="mb-4 last:mb-0">
                                     <div className="flex items-center gap-2 mb-2 px-1">
