@@ -48,6 +48,8 @@ const Configuracoes = () => {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [notificationsError, setNotificationsError] = useState('');
   const [notificationsSuccess, setNotificationsSuccess] = useState('');
+  const [themeError, setThemeError] = useState('');
+  const [themeSuccess, setThemeSuccess] = useState('');
   const [emailError, setEmailError] = useState('');
   const [emailSuccess, setEmailSuccess] = useState('');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -247,6 +249,38 @@ const Configuracoes = () => {
       setEmailError('Erro ao salvar configurações');
     } finally {
       setIsSavingEmail(false);
+    }
+  };
+
+  const handleSaveTheme = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setThemeError('');
+    setThemeSuccess('');
+    try {
+      localStorage.setItem('axium_theme_mode', theme);
+      localStorage.setItem('axium_accent_color', accentColor);
+      if (user?.id) {
+        const { error } = await supabase
+          .from('user_preferences')
+          .upsert({
+            user_id: user.id,
+            theme_mode: theme,
+            accent_color: accentColor,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+        
+        if (error) {
+          console.warn('[CONFIG] Erro ao salvar no banco, usando localStorage:', error.message);
+        }
+      }
+      setThemeSuccess('Tema aplicado com sucesso!');
+      setTimeout(() => {
+        setThemeSuccess('');
+        setActiveModal(null);
+      }, 1500);
+    } catch (err: any) {
+      console.error('[CONFIG] Erro ao salvar tema:', err);
+      setThemeError('Erro ao salvar tema. Tente novamente.');
     }
   };
 
@@ -535,17 +569,29 @@ const Configuracoes = () => {
                 </div>
               </form>
             ) : activeModal === 'tema' ? (
-              <form onSubmit={(e) => { e.preventDefault(); setActiveModal(null); }}>
+              <form onSubmit={handleSaveTheme}>
                 <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
                   <div>
                     <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
                     <h2 className="text-4xl font-black text-black tracking-tighter">Personalizar Tema</h2>
                   </div>
-                  <button type="button" onClick={() => setActiveModal(null)} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
+                  <button type="button" onClick={() => { setActiveModal(null); setThemeError(''); setThemeSuccess(''); }} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
                     <X size={24} />
                   </button>
                 </div>
                 <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  {themeError && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
+                      <AlertCircle size={20} />
+                      {themeError}
+                    </div>
+                  )}
+                  {themeSuccess && (
+                    <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3 text-green-600 text-sm font-medium">
+                      <CheckCircle2 size={20} />
+                      {themeSuccess}
+                    </div>
+                  )}
                   <div className="space-y-6">
                     <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1 block">Modo de Visualização</label>
                     <div className="grid grid-cols-3 gap-6">

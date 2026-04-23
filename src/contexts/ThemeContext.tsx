@@ -61,6 +61,20 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     
   }, [theme, accentColor]);
 
+  // Listen for system theme changes
+  useEffect(() => {
+    if (theme !== 'system') return;
+    
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      // Force re-render by updating state
+      setTheme('system');
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [theme]);
+
   return (
     <ThemeContext.Provider value={{ theme, accentColor, setTheme, setAccentColor }}>
       {children}
