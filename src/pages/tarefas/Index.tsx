@@ -323,6 +323,182 @@ const ResponsibleInput = ({
   );
 };
 
+const DatePickerCell = ({ 
+  value, 
+  onSave 
+}: { 
+  value?: string; 
+  onSave: (date: string) => void;
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(value || '');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing && value !== inputValue) {
+      setInputValue(value || '');
+    }
+  }, [value]);
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+    }
+  }, [isEditing]);
+
+  const handleSave = () => {
+    if (inputValue) {
+      const date = new Date(inputValue);
+      if (isNaN(date.getTime())) {
+        alert('Data inválida');
+        return;
+      }
+      onSave(inputValue);
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setInputValue(value || '');
+      setIsEditing(false);
+    }
+  };
+
+  const formatDisplay = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '—';
+      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    } catch {
+      return '—';
+    }
+  };
+
+  if (!isEditing) {
+    return (
+      <button 
+        onClick={() => setIsEditing(true)}
+        className="w-full text-center px-1 py-0.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50 rounded transition-colors cursor-pointer"
+      >
+        {formatDisplay(value)}
+      </button>
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type="date"
+      value={inputValue}
+      onChange={(e) => setInputValue(e.target.value)}
+      onBlur={handleSave}
+      onKeyDown={handleKeyDown}
+      className="w-full px-1 py-0.5 text-xs font-medium rounded border border-neutral-300 outline-none focus:border-black"
+    />
+  );
+};
+
+const NumberInputCell = ({ 
+  value, 
+  onSave 
+}: { 
+  value?: number; 
+  onSave: (value: number) => void;
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setInputValue(value ? String(value) : '');
+      setError(null);
+    }
+  }, [value, isEditing]);
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+    }
+  }, [isEditing]);
+
+  const handleSave = () => {
+    const cleaned = inputValue.replace(/[R$\s.]/g, '').replace(',', '.');
+    const num = parseFloat(cleaned);
+    
+    if (inputValue && isNaN(num)) {
+      setError('Valor inválido');
+      return;
+    }
+    
+    setError(null);
+    if (!isNaN(num)) {
+      onSave(num);
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setInputValue(value ? String(value) : '');
+      setError(null);
+      setIsEditing(false);
+    }
+  };
+
+  const formatDisplay = (num?: number) => {
+    if (!num && num !== 0) return '—';
+    try {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
+    } catch {
+      return '—';
+    }
+  };
+
+  if (!isEditing) {
+    return (
+      <button 
+        onClick={() => setIsEditing(true)}
+        className="w-full text-right px-1 py-0.5 text-xs font-bold text-neutral-700 hover:bg-neutral-50 rounded transition-colors cursor-pointer"
+      >
+        {formatDisplay(value)}
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        type="text"
+        value={inputValue}
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          setError(null);
+        }}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        placeholder="R$ 0,00"
+        className={`w-full px-1 py-0.5 text-xs font-bold rounded border outline-none text-right ${
+          error 
+            ? 'border-red-500 bg-red-50 text-red-700' 
+            : 'border-neutral-300 text-neutral-700 focus:border-black'
+        }`}
+      />
+      {error && (
+        <p className="absolute top-full right-0 mt-0.5 text-[10px] text-red-600">{error}</p>
+      )}
+    </div>
+  );
+};
+
 const TimelineBar = ({ data }: { data: { start: string; end: string; progress: number } }) => {
   if (!data?.start || !data?.end) {
     return <div className="h-2 bg-neutral-100 rounded-full w-24" />;
@@ -1217,14 +1393,16 @@ const Tarefas = () => {
                                 </div>
                               )}
                               {col.type === 'date' && (
-                                <span className="text-xs font-medium text-neutral-600">
-                                  {task.values[col.id] ? new Date(task.values[col.id]).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'}
-                                </span>
+                                <DatePickerCell 
+                                  value={task.values[col.id]}
+                                  onSave={(date) => updateTaskValue(task.id, col.id, date)}
+                                />
                               )}
                               {col.type === 'number' && (
-                                <span className="text-xs font-bold text-neutral-700">
-                                  {task.values[col.id] ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(task.values[col.id]) : '—'}
-                                </span>
+                                <NumberInputCell 
+                                  value={task.values[col.id]}
+                                  onSave={(value) => updateTaskValue(task.id, col.id, value)}
+                                />
                               )}
                               {col.type === 'users' && (
                                 col.id === 'col-responsible' ? (
