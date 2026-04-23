@@ -1396,7 +1396,7 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
                             <Plus size={18} />
                           </button>
                           {columnOpenByGroup[group.id] && (
-                            <div className="fixed z-[300] w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-xl overflow-hidden max-h-[72vh]" style={{ overflowY: 'auto', right: '80px' }}>
+                            <div className="fixed z-[500] w-[340px] bg-white dark:bg-gray-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-xl overflow-hidden max-h-[72vh]" style={{ overflowY: 'auto', right: '80px' }}>
                               <div className="p-4 border-b border-neutral-100">
                                 <div className="relative">
                                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
