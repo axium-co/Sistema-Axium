@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
 import type { Lead } from '../../contexts/CRMContext';
 
@@ -341,9 +341,10 @@ const CRMLeads = () => {
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className={`p-2 rounded-md border transition-all relative ${hasActiveFilters ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:border-black'}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all relative ${hasActiveFilters ? 'bg-black text-white border-black' : 'bg-white border-neutral-200 text-neutral-700 hover:border-black'}`}
               >
-                <SlidersHorizontal size={14} />
+                <Filter size={14} />
+                <span className="text-xs font-bold uppercase tracking-widest">Filtros</span>
                 {hasActiveFilters && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
                 )}
