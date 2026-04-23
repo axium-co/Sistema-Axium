@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import type { CalendarEvent } from '../../contexts/CRMContext';
-import { X, ExternalLink, Clock, User, MessageSquare, Plus, Trash2, Calendar as CalendarIcon, Link as LinkIcon, FileText } from 'lucide-react';
+import { X, ExternalLink, Clock, User, MessageSquare, Plus, Trash2, Calendar as CalendarIcon, Link as LinkIcon, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const CRMCalendario = () => {
   const { events, addEvent, updateEvent, deleteEvent } = useCRM();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
   
   // Form State
   const [formData, setFormData] = useState<Omit<CalendarEvent, 'id'>>({
@@ -21,6 +25,29 @@ const CRMCalendario = () => {
 
   const days = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
   const safeEvents = Array.isArray(events) ? events : [];
+
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
 
   const formatTime = (dateStr?: string) => {
     if (!dateStr) return '--:--';
@@ -49,17 +76,18 @@ const CRMCalendario = () => {
       if (!e?.dateTime) return false;
       const d = new Date(e.dateTime);
       if (isNaN(d.getTime())) return false;
-      // Hardcoded April 2026 for demo consistency with today = 21
-      return d.getDate() === day && d.getMonth() === 3 && d.getFullYear() === 2026;
+      return d.getDate() === day && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
   };
 
   const handleOpenCreate = () => {
+    const defaultDate = new Date(currentYear, currentMonth, today.getDate(), 10, 0);
+    const dateStr = defaultDate.toISOString().slice(0, 16);
     setModalMode('create');
     setFormData({
       title: '',
       activityType: 'Reunião',
-      dateTime: '2026-04-21T10:00', // Default to current demo day
+      dateTime: dateStr,
       createdBy: '',
       description: '',
       meetingLink: ''
@@ -102,9 +130,28 @@ const CRMCalendario = () => {
   return (
     <div className="min-h-screen p-2 md:p-8">
       <div className="mb-4 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-0">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Calendário</h1>
-          <p className="text-neutral-500 text-xs md:text-sm">Visualize e acompanhe seus compromissos agendados.</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Calendário</h1>
+            <p className="text-neutral-500 text-xs md:text-sm">Visualize e acompanhe seus compromissos agendados.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handlePrevMonth}
+            className="p-2 hover:bg-neutral-100 rounded-md transition-colors"
+          >
+            <ChevronLeft size={20} className="text-neutral-600" />
+          </button>
+          <span className="text-sm font-black text-black min-w-[100px] text-center">
+            {monthNames[currentMonth]} {currentYear}
+          </span>
+          <button 
+            onClick={handleNextMonth}
+            className="p-2 hover:bg-neutral-100 rounded-md transition-colors"
+          >
+            <ChevronRight size={20} className="text-neutral-600" />
+          </button>
         </div>
         <button 
           onClick={handleOpenCreate}
@@ -127,48 +174,55 @@ const CRMCalendario = () => {
 
           {/* Calendar Grid Body */}
           <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: 35 }).map((_, idx) => {
-              const dayNum = idx - 6;
-              const isCurrentMonth = dayNum > 0 && dayNum <= 30;
-              const isToday = dayNum === 21;
-              const dayEvents = isCurrentMonth ? getEventsForDay(dayNum) : [];
+            {(() => {
+              const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+              const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+              const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+              const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+              
+              return Array.from({ length: totalCells }).map((_, idx) => {
+                const dayNum = idx - startOffset + 1;
+                const isCurrentMonth = dayNum > 0 && dayNum <= daysInMonth;
+                const isToday = isCurrentMonth && dayNum === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+                const dayEvents = isCurrentMonth ? getEventsForDay(dayNum) : [];
 
-              return (
-                <div 
-                  key={idx} 
-                  className={`min-h-[120px] p-2 border border-neutral-100 rounded-md flex flex-col gap-1 transition-all ${
-                    isCurrentMonth ? 'bg-white hover:border-neutral-300' : 'bg-neutral-50/10'
-                  } ${isToday ? 'ring-1 ring-black ring-inset' : ''}`}
-                >
-                  <div className="flex justify-between items-center mb-1">
-                    <span className={`text-[10px] font-black ${
-                      isToday ? 'bg-black text-white w-5 h-5 flex items-center justify-center rounded-full' : 
-                      isCurrentMonth ? 'text-black' : 'text-neutral-200'
-                    }`}>
-                      {isCurrentMonth && dayNum}
-                    </span>
-                  </div>
+                return (
+                  <div 
+                    key={idx} 
+                    className={`min-h-[120px] p-2 border border-neutral-100 rounded-md flex flex-col gap-1 transition-all ${
+                      isCurrentMonth ? 'bg-white hover:border-neutral-300' : 'bg-neutral-50/10'
+                    } ${isToday ? 'ring-1 ring-black ring-inset' : ''}`}
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={`text-[10px] font-black ${
+                        isToday ? 'bg-black text-white w-5 h-5 flex items-center justify-center rounded-full' : 
+                        isCurrentMonth ? 'text-black' : 'text-neutral-200'
+                      }`}>
+                        {isCurrentMonth && dayNum}
+                      </span>
+                    </div>
 
-                  {/* Day Events Tags */}
-                  <div className="space-y-1">
-                    {dayEvents.map(event => (
-                      <button
-                        key={event?.id || Math.random().toString()}
-                        onClick={() => handleOpenEdit(event)}
-                        className="w-full text-left p-1.5 rounded-md bg-neutral-50 border border-neutral-100 hover:border-black transition-all group overflow-hidden"
-                      >
-                        <div className="text-[9px] font-black text-black leading-none mb-1">
-                          {formatTime(event?.dateTime)}
-                        </div>
-                        <div className="text-[9px] font-bold text-neutral-500 truncate leading-none">
-                          {event?.activityType || 'Atividade'}
-                        </div>
-                      </button>
-                    ))}
+                    {/* Day Events Tags */}
+                    <div className="space-y-1">
+                      {dayEvents.map(event => (
+                        <button
+                          key={event?.id || Math.random().toString()}
+                          onClick={() => handleOpenEdit(event)}
+                          className="w-full text-left p-1.5 rounded-md bg-neutral-50 border border-neutral-100 hover:border-black transition-all group overflow-hidden"
+                        >
+                          <div className="text-[9px] font-black text-black leading-none mb-1">
+                            {formatTime(event?.dateTime)}
+                          </div>
+                          <div className="text-[9px] font-bold text-neutral-500 truncate leading-none">
+                            {event?.activityType || 'Atividade'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
 
