@@ -1,16 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle, FileText, Filter, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
-import { supabase, ACTIVITY_LOGS_TABLE } from '../../lib/supabase';
+import { useActivityLogs } from '../../contexts/ActivityContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFilters } from '../../contexts/FilterContext';
-
-interface ActivityLog {
-  id: string;
-  acao: 'lead_criado' | 'lead_movido' | 'tarefa_concluida' | 'lead_atualizado';
-  descricao: string;
-  timestamp: string;
-}
 
 const STAGES = [
   'Novos Leads',
@@ -33,11 +26,12 @@ const ACTION_ICONS = {
 const CRMDashboard = () => {
   const { leads, getLeadsByStage } = useCRM();
   const { filters, hasActiveFilters } = useFilters();
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
-  const [fetchActivityLogsError, setFetchActivityLogsError] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const { activityLogs, isLoadingLogs, fetchActivityLogsError, fetchActivityLogs } = useActivityLogs();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    fetchActivityLogs(15);
+  }, [fetchActivityLogs]);
 
   const filteredLeads = (filters.stages?.length > 0 || filters.niches?.length > 0 || filters.dateFilter !== '')
     ? (leads || []).filter(lead => {
@@ -67,46 +61,6 @@ const CRMDashboard = () => {
         return true;
       })
     : (leads || []);
-
-  useEffect(() => {
-    if (!loaded) {
-      const fetchActivityLogs = async () => {
-        setIsLoadingLogs(true);
-        setFetchActivityLogsError(null);
-        
-        const timeoutId = setTimeout(() => {
-          setFetchActivityLogsError('Tempo limite excedido (5s). Verifique sua conexão.');
-          setIsLoadingLogs(false);
-        }, 5000);
-
-        try {
-          const { data, error } = await supabase
-            .from(ACTIVITY_LOGS_TABLE)
-            .select('*')
-            .order('timestamp', { ascending: false })
-            .limit(15);
-          
-          clearTimeout(timeoutId);
-          
-          if (error) {
-            console.error('Erro ao buscar logs de atividade:', error);
-            setFetchActivityLogsError('Erro ao carregar atividades.');
-            return;
-          }
-          setActivityLogs(data || []);
-        } catch (err) {
-          clearTimeout(timeoutId);
-          console.error('Erro ao buscar logs de atividade:', err);
-          setFetchActivityLogsError('Erro ao carregar atividades.');
-        } finally {
-          setIsLoadingLogs(false);
-        }
-      };
-      
-      fetchActivityLogs(15);
-      setLoaded(true);
-    }
-  }, [loaded]);
 
   const chartData = STAGES.map(stage => ({
     name: stage,
@@ -192,47 +146,53 @@ const CRMDashboard = () => {
         </div>
         
         <div className="h-[280px] md:h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis 
-                dataKey="name" 
-                stroke="#000" 
-                fontSize={10} 
-                fontWeight={600}
-                tickLine={false}
-                axisLine={false}
-                interval={0}
-                angle={-30}
-                textAnchor="end"
-                dy={8}
-                dx={5}
-              />
-              <YAxis 
-                stroke="#64748b" 
-                fontSize={11} 
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip 
-                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '12px',
-                  color: '#000',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              />
-              <Bar 
-                dataKey="value" 
-                fill="#000" 
-                radius={[4, 4, 0, 0]}
-                barSize={40}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          {chartData && chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#000" 
+                  fontSize={10} 
+                  fontWeight={600}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={0}
+                  angle={-30}
+                  textAnchor="end"
+                  dy={8}
+                  dx={5}
+                />
+                <YAxis 
+                  stroke="#64748b" 
+                  fontSize={11} 
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip 
+                  cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                  contentStyle={{ 
+                    backgroundColor: '#fff', 
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    color: '#000',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}
+                />
+                <Bar 
+                  dataKey="value" 
+                  fill="#000" 
+                  radius={[4, 4, 0, 0]}
+                  barSize={40}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+              Nenhum dado disponível
+            </div>
+          )}
         </div>
       </div>
 
@@ -257,7 +217,8 @@ const CRMDashboard = () => {
         ) : (
           <div className="space-y-3">
             {activityLogs.slice(0, 10).map((log) => {
-              const Icon = ACTION_ICONS[log.acao] || Activity;
+              if (!log?.id || !log?.acao) return null;
+              const Icon = ACTION_ICONS[log.acao as keyof typeof ACTION_ICONS] || Activity;
               return (
                 <div key={log.id} className="flex items-start gap-3">
                   <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">

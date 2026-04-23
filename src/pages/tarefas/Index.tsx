@@ -749,20 +749,20 @@ const Tarefas = () => {
     });
   };
 
-  const allTasks = groups.flatMap(g => g.tasks);
+  const allTasks = groups?.flatMap(g => g.tasks) || [];
   const totalTasksCount = allTasks.length;
-  const doneTasksCount = allTasks.filter(t => t.values['col-status'] === 'Feito').length;
+  const doneTasksCount = allTasks.filter(t => t?.values?.['col-status'] === 'Feito').length;
 
   const reportData = useMemo(() => {
-    const inProgressCount = allTasks.filter(t => t.values['col-status'] === 'Em andamento').length;
-    const pendingCount = allTasks.filter(t => t.values['col-status'] === 'Não iniciado').length;
-    const blockedCount = allTasks.filter(t => t.values['col-status'] === 'Parado').length;
-    const doneCount = allTasks.filter(t => t.values['col-status'] === 'Feito').length;
+    const inProgressCount = allTasks.filter(t => t?.values?.['col-status'] === 'Em andamento').length;
+    const pendingCount = allTasks.filter(t => t?.values?.['col-status'] === 'Não iniciado').length;
+    const blockedCount = allTasks.filter(t => t?.values?.['col-status'] === 'Parado').length;
+    const doneCount = allTasks.filter(t => t?.values?.['col-status'] === 'Feito').length;
     const total = allTasks.length;
 
     const responsibleMap: Record<string, number> = {};
     allTasks.forEach(task => {
-      const name = task.values['col-responsible']?.name || 'Sem responsável';
+      const name = task?.values?.['col-responsible']?.name || 'Sem responsável';
       responsibleMap[name] = (responsibleMap[name] || 0) + 1;
     });
     const responsibleData = Object.entries(responsibleMap).map(([name, tarefas]) => ({ name, tarefas }));
@@ -771,14 +771,14 @@ const Tarefas = () => {
     today.setHours(0, 0, 0, 0);
     
     const overdueTasks = allTasks.filter(t => {
-      const deadline = t.values['col-deadline'];
+      const deadline = t?.values?.['col-deadline'];
       if (!deadline) return false;
-      return new Date(deadline) < today && t.values['col-status'] !== 'Feito';
+      return new Date(deadline) < today && t?.values?.['col-status'] !== 'Feito';
     }).length;
 
     const deadlineMap: Record<string, number> = {};
     allTasks.forEach(task => {
-      const deadline = task.values['col-deadline'];
+      const deadline = task?.values?.['col-deadline'];
       if (!deadline) return;
       const date = new Date(deadline);
       const key = date.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' });
@@ -1085,7 +1085,7 @@ const Tarefas = () => {
                                 />
                               )}
                               {col.type === 'timeline' && (
-                                <TimelineBar data={task.values[col.id] || {}} />
+                                <TimelineBar data={task?.values?.[col.id] || {}} />
                               )}
                               {col.type === 'text' && (
                                 <span className="text-xs font-medium text-neutral-600">{task.values[col.id] || '—'}</span>
