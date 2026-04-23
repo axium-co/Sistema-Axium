@@ -140,23 +140,32 @@ const Configuracoes = () => {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[CONFIG] handleSaveProfile iniciado', { userId: user?.id, name: profileData.name });
+    
     if (!user?.id) {
       setProfileError('Usuário não autenticado');
+      console.error('[CONFIG] Erro: usuário não autenticado');
       return;
     }
     if (!profileData.name.trim()) {
       setProfileError('Nome não pode ser vazio');
+      console.error('[CONFIG] Erro: nome vazio');
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (profileData.email && profileData.email.trim() && !emailRegex.test(profileData.email.trim())) {
       setProfileError('Email profissional inválido');
+      console.error('[CONFIG] Erro: email inválido');
       return;
     }
+    
     setIsSavingProfile(true);
     setProfileError('');
     setProfileSuccess('');
+    
     try {
+      console.log('[CONFIG] Tentando salvar no Supabase...');
+      
       const updateData: Record<string, unknown> = { 
         nome: profileData.name.trim(),
         telefone: profileData.phone.trim()
@@ -166,23 +175,36 @@ const Configuracoes = () => {
         updateData.avatar = avatarPreview;
       }
       
-      const { error } = await supabase
+      console.log('[CONFIG] Dados a salvar:', updateData);
+      
+      const { data, error } = await supabase
         .from(PROFILES_TABLE)
         .update(updateData)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select()
+        .single();
       
-      if (error) throw error;
+      console.log('[CONFIG] Resposta do Supabase:', { data, error });
       
+      if (error) {
+        console.error('[CONFIG] Erro do Supabase:', error);
+        throw error;
+      }
+      
+      console.log('[CONFIG] Perfil salvo com sucesso!');
       setProfileSuccess('Perfil atualizado com sucesso!');
       setProfileData(prev => ({ ...prev, avatar: avatarPreview || prev.avatar, email: profileData.email.trim() || prev.email }));
       setTimeout(() => {
+        console.log('[CONFIG] Fechando modal...');
         setProfileSuccess('');
         setActiveModal(null);
       }, 1500);
     } catch (err: any) {
       console.error('[CONFIG] Erro ao salvar perfil:', err);
-      setProfileError(err.message || 'Erro ao salvar perfil. Tente novamente.');
+      const errorMessage = err.message || 'Erro ao salvar perfil. Tente novamente.';
+      setProfileError(errorMessage);
     } finally {
+      console.log('[CONFIG] Finalizando, isSavingProfile:', false);
       setIsSavingProfile(false);
     }
   };
