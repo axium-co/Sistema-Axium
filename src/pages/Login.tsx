@@ -117,11 +117,24 @@ try {
         return;
       }
       const normalizedEmail = email.trim().toLowerCase();
+      console.log('[LOGIN] Tentando recuperar senha para:', normalizedEmail);
       await resetPassword(normalizedEmail);
-      setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
-      setTimeout(() => setShowForgotPassword(false), 3000);
-    } catch {
-      setError('Erro ao enviar e-mail. Tente novamente.');
+      setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada (e spam).');
+      setTimeout(() => setShowForgotPassword(false), 5000);
+    } catch (err: any) {
+      console.error('[LOGIN] Erro ao recuperar senha:', err?.message || err);
+      
+      const errorMsg = err?.message || '';
+      
+      if (errorMsg.includes('não encontrado') || errorMsg.includes('not found')) {
+        setError('E-mail não encontrado. Verifique o endereço informado.');
+      } else if (errorMsg.includes('muitas tentativas') || errorMsg.includes('rate limit')) {
+        setError('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
+      } else if (errorMsg.includes('indisponível')) {
+        setError('Serviço temporariamente indisponível. Tente novamente mais tarde.');
+      } else {
+        setError('Erro ao enviar e-mail. Verifique o endereço e tente novamente.');
+      }
     }
     setIsLoading(false);
   };

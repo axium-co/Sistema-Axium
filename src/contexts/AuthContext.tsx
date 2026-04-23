@@ -158,13 +158,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('[AUTH] Solicitação de reset de senha:', { email: normalizedEmail });
     
     const redirectTo = `${window.location.origin}/update-password`;
-    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo,
     });
     
     if (error) {
       console.error('[AUTH] Erro ao solicitar reset:', error.message);
+      
+      if (error.message.includes('Email rate limit exceeded') || error.message.includes('rate limit')) {
+        throw new Error('Muitas tentativas. Por favor, aguarde alguns minutos e tente novamente.');
+      }
+      
+      if (error.message.includes('No eligible') || error.message.includes('not found') || error.message.includes('User not found')) {
+        throw new Error('E-mail não encontrado. Verifique se o e-mail está correto ou crie uma nova conta.');
+      }
+      
+      if (error.message.includes('Email provider') || error.message.includes('smtp')) {
+        throw new Error('Serviço de recuperação temporariamente indisponível. Por favor, contacte o administrador do sistema.');
+      }
+      
       throw new Error(error.message);
+    }
+    
+    if (data) {
+      console.log('[AUTH] Reset email enviado:', data);
     }
   };
 
