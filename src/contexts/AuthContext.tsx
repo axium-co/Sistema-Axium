@@ -80,13 +80,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('[AUTH] Tentativa de login:', { email: normalizedEmail, hasPassword: !!password });
+    
+    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
     
     if (error) {
+      console.error('[AUTH] Erro no login:', error.message);
+      if (error.message.includes('Invalid login credentials') || error.message.includes('invalid credentials')) {
+        throw new Error('E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.');
+      }
       throw new Error(error.message);
     }
     
     if (data.user) {
+      console.log('[AUTH] Login bem-sucedido:', { userId: data.user.id, email: data.user.email });
       const profile = await fetchUserProfile(data.user.id);
       setUser({ id: data.user.id, email: data.user.email || '', fullName: profile?.nome });
       setIsAuthenticated(true);
@@ -100,8 +108,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signup = async ({ nome, sobrenome, email, password, cargo }: SignUpData) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('[AUTH] Tentativa de cadastro:', { email: normalizedEmail, hasPassword: !!password });
+    
     const { data, error } = await supabase.auth.signUp({ 
-      email, 
+      email: normalizedEmail, 
       password,
       options: {
         data: {
@@ -112,6 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     
     if (error) {
+      console.error('[AUTH] Erro no cadastro:', error.message);
       if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
         throw new Error('Este e-mail já está cadastrado. Por favor, faça login.');
       }
@@ -119,6 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     if (data.user) {
+      console.log('[AUTH] Cadastro bem-sucedido:', { userId: data.user.id, email: normalizedEmail });
       const fullName = `${nome} ${sobrenome}`.trim();
       const userCargo = cargo || 'Funcionario';
       
@@ -141,12 +154,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const resetPassword = async (email: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('[AUTH] Solicitação de reset de senha:', { email: normalizedEmail });
+    
     const redirectTo = `${window.location.origin}/update-password`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo,
     });
     
     if (error) {
+      console.error('[AUTH] Erro ao solicitar reset:', error.message);
       throw new Error(error.message);
     }
   };

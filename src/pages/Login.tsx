@@ -41,7 +41,13 @@ const Login = ({ onLogin }: LoginProps) => {
     setError('');
     setSuccess('');
     setIsLoading(true);
-    try {
+try {
+      setError('');
+      setSuccess('');
+      setIsLoading(true);
+      
+      const normalizedEmail = email.trim().toLowerCase();
+      
       if (isSignUp) {
         if (!nome || !sobrenome || !email || !password) {
           setError('Por favor, preencha todos os campos.');
@@ -53,13 +59,14 @@ const Login = ({ onLogin }: LoginProps) => {
           setIsLoading(false);
           return;
         }
-        await signup({ nome, sobrenome, email, password, cargo: inviteRole as 'Socio' | 'Funcionario' });
+        await signup({ nome, sobrenome, email: normalizedEmail, password, cargo: inviteRole as 'Socio' | 'Funcionario' });
         setSuccess('Conta criada com sucesso!');
         if (onLogin) onLogin();
         navigate('/crm/painel');
       } else {
         if (email && password) {
-          await login(email, password);
+          const normalizedEmail = email.trim().toLowerCase();
+          await login(normalizedEmail, password);
           if (onLogin) onLogin();
           navigate('/crm/painel');
         } else {
@@ -67,8 +74,27 @@ const Login = ({ onLogin }: LoginProps) => {
           setIsLoading(false);
         }
       }
-    } catch (err) {
-      setError(isSignUp ? 'Erro ao criar conta. O email pode já estar em uso.' : 'Credenciais inválidas. Tente novamente.');
+    } catch (err: any) {
+      console.error('[LOGIN] Erro:', err?.message || err);
+      const errorMessage = err?.message || '';
+      
+      if (isSignUp) {
+        if (errorMessage.includes('already registered') || errorMessage.includes('cadastrado')) {
+          setError('Este e-mail já está cadastrado. Por favor, faça login.');
+        } else if (errorMessage.includes('valid email')) {
+          setError('Por favor, insira um e-mail válido.');
+        } else {
+          setError('Erro ao criar conta. Verifique os dados e tente novamente.');
+        }
+      } else {
+        if (errorMessage.includes('incorrect') || errorMessage.includes('inválidas') || errorMessage.includes('incorrect')) {
+          setError('E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.');
+        } else if (errorMessage.includes('valid email')) {
+          setError('Por favor, insira um e-mail válido.');
+        } else {
+          setError('Erro ao fazer login. Verifique suas credenciais e tente novamente.');
+        }
+      }
       setIsLoading(false);
     }
   };
@@ -90,7 +116,8 @@ const Login = ({ onLogin }: LoginProps) => {
         setIsLoading(false);
         return;
       }
-      await resetPassword(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      await resetPassword(normalizedEmail);
       setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
       setTimeout(() => setShowForgotPassword(false), 3000);
     } catch {
