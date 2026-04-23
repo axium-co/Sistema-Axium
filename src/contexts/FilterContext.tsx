@@ -75,8 +75,8 @@ function FilterProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const hasActiveFilters = 
-    filters.stages.length > 0 || 
-    filters.niches.length > 0 || 
+    (filters.stages?.length ?? 0) > 0 || 
+    (filters.niches?.length ?? 0) > 0 || 
     filters.dateFilter !== '' ||
     Object.values(filters).some(v => v !== null && (Array.isArray(v) ? v.length > 0 : true));
 

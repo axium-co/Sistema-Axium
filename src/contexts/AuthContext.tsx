@@ -29,17 +29,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const fetchUserProfile = async (userId: string): Promise<string | undefined> => {
-  const { data, error } = await supabase
-    .from(PROFILES_TABLE)
-    .select('nome')
-    .eq('user_id', userId)
-    .single();
-  
-  if (!error && data) {
-    return data.nome;
+const fetchUserProfile = async (userId: string): Promise<{ nome?: string } | null> => {
+  try {
+    const { data, error } = await supabase
+      .from(PROFILES_TABLE)
+      .select('nome')
+      .eq('user_id', userId)
+      .single();
+    
+    if (error || !data) {
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
   }
-  return undefined;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -52,15 +56,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        const fullName = await fetchUserProfile(session.user.id);
-        setUser({ id: session.user.id, email: session.user.email || '', fullName });
+        const profile = await fetchUserProfile(session.user.id);
+        setUser({ id: session.user.id, email: session.user.email || '', fullName: profile?.nome });
         setIsAuthenticated(true);
       }
       
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
-          const fullName = await fetchUserProfile(session.user.id);
-          setUser({ id: session.user.id, email: session.user.email || '', fullName });
+          const profile = await fetchUserProfile(session.user.id);
+          setUser({ id: session.user.id, email: session.user.email || '', fullName: profile?.nome });
           setIsAuthenticated(true);
         } else {
           setUser(null);
@@ -83,8 +87,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     if (data.user) {
-      const fullName = await fetchUserProfile(data.user.id);
-      setUser({ id: data.user.id, email: data.user.email || '', fullName });
+      const profile = await fetchUserProfile(data.user.id);
+      setUser({ id: data.user.id, email: data.user.email || '', fullName: profile?.nome });
       setIsAuthenticated(true);
     }
   };
@@ -118,17 +122,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const fullName = `${nome} ${sobrenome}`.trim();
       const userCargo = cargo || 'Funcionario';
       
-      const { error: profileError } = await supabase
+      await supabase
         .from(PROFILES_TABLE)
         .insert({
           user_id: data.user.id,
           nome: fullName,
           cargo: userCargo,
+        })
+        .then(({ error: profileError }) => {
+          if (profileError) {
+            console.error('Erro ao criar perfil:', profileError);
+          }
         });
-
-      if (profileError) {
-        console.error('Erro ao criar perfil:', profileError);
-      }
       
       setUser({ id: data.user.id, email: data.user.email || '', fullName });
       setIsAuthenticated(true);
@@ -154,8 +159,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     if (data.user) {
-      const fullName = await fetchUserProfile(data.user.id);
-      setUser({ id: data.user.id, email: data.user.email || '', fullName });
+      const profile = await fetchUserProfile(data.user.id);
+      setUser({ id: data.user.id, email: data.user.email || '', fullName: profile?.nome });
     }
   };
 
