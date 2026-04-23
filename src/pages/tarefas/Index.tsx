@@ -920,7 +920,7 @@ const Tarefas = () => {
   });
 
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  const [isColumnCenterOpen, setIsColumnCenterOpen] = useState(false);
+  const [columnOpenByGroup, setColumnOpenByGroup] = useState<Record<string, boolean>>({});
   const [tableScrollLeft, setTableScrollLeft] = useState(0);
   const [newGroupTitle, setNewGroupTitle] = useState('');
   const [isAddingGroup, setIsAddingGroup] = useState(false);
@@ -1069,10 +1069,10 @@ const Tarefas = () => {
       width: tool.type === 'timeline' ? 180 : 140,
       formula: tool.type === 'formula' ? '' : undefined
     };
-    const updated = [...columns, newColumn];
+const updated = [...columns, newColumn];
     setColumns(updated);
     localStorage.setItem('axium_cols_v5', JSON.stringify(updated));
-    setIsColumnCenterOpen(false);
+    setColumnOpenByGroup({});
   };
 
   const handleDeleteColumn = (colId: string) => {
@@ -1357,7 +1357,7 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
               </div>
 
               {group.isExpanded && Array.isArray(group.tasks) && (
-                <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-x-auto">
+                <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-x-auto" style={{ overflowX: 'auto' }}>
                   <table className="w-full border-collapse min-w-[800px]">
                     <thead>
                       <tr className="bg-neutral-50 border-b border-neutral-200 text-[10px] text-neutral-400 font-black uppercase tracking-widest sticky top-0 z-10">
@@ -1389,14 +1389,14 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
                         </DndContext>
                         <th className="w-12 p-3 border-l border-neutral-200 bg-neutral-50/50 text-center relative">
                           <button 
-                            onClick={() => setIsColumnCenterOpen(!isColumnCenterOpen)} 
+                            onClick={() => setColumnOpenByGroup(prev => ({ ...prev, [group.id]: !prev[group.id] }))} 
                             className="w-7 h-7 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-all text-neutral-400 hover:text-black"
                             title="Adicionar coluna"
                           >
                             <Plus size={18} />
                           </button>
-                          {isColumnCenterOpen && (
-                            <div className="absolute top-12 right-0 z-[100] w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden">
+                          {columnOpenByGroup[group.id] && (
+                            <div className="fixed z-[200] w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-visible" style={{ right: '20px' }}>
                               <div className="p-4 border-b border-neutral-100">
                                 <div className="relative">
                                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -1693,8 +1693,8 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
         />
       )}
 
-      {(activeCellMenu || isColumnCenterOpen) && (
-        <div className="fixed inset-0 z-[50]" onClick={() => { setActiveCellMenu(null); setIsColumnCenterOpen(false); }} />
+      {(activeCellMenu || Object.values(columnOpenByGroup).some(Boolean)) && (
+        <div className="fixed inset-0 z-[50]" onClick={() => { setActiveCellMenu(null); setColumnOpenByGroup({}); }} />
       )}
     </div>
   );
