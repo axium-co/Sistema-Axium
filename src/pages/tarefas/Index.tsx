@@ -810,20 +810,28 @@ const Tarefas = () => {
     const title = newGroupTitle.trim();
     if (!title) return;
     
+    const currentGroups = Array.isArray(groups) ? groups : [];
+    
+    if (currentGroups.some(g => g.title.toLowerCase() === title.toLowerCase())) {
+      alert('Já existe um quadro com este nome. Escolha outro nome.');
+      return;
+    }
+    
     const colors = ['#579bfc', '#00c875', '#ffcb00', '#ff5ac6', '#8e44ad', '#e74c3c'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const usedColors = currentGroups.map(g => g.color);
+    const availableColor = colors.find(c => !usedColors.includes(c)) || colors[0];
     
     const newGroup: Group = {
       id: `g-${Date.now()}`,
       title,
-      color: randomColor,
+      color: availableColor,
       isExpanded: true,
       tasks: []
     };
     
     setGroups(prev => {
       const updated = [...prev, newGroup];
-      localStorage.setItem('axium_groups', JSON.stringify(updated));
+      localStorage.setItem('axium_groups_v5', JSON.stringify(updated));
       return updated;
     });
     
@@ -836,7 +844,7 @@ const Tarefas = () => {
     
     setGroups(prev => {
       const updated = prev.filter(g => g.id !== groupId);
-      localStorage.setItem('axium_groups', JSON.stringify(updated));
+      localStorage.setItem('axium_groups_v5', JSON.stringify(updated));
       return updated;
     });
   };
@@ -1043,11 +1051,11 @@ const Tarefas = () => {
               </div>
 
               {group.isExpanded && Array.isArray(group.tasks) && (
-                <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-visible">
-                  <table className="w-full border-collapse overflow-visible">
+                <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-x-auto">
+                  <table className="w-full border-collapse min-w-[800px]">
                     <thead>
-                      <tr className="bg-neutral-50 border-b border-neutral-200 text-[10px] text-neutral-400 font-black uppercase tracking-widest">
-                        <th className="w-10 p-3 border-r border-neutral-200">
+                      <tr className="bg-neutral-50 border-b border-neutral-200 text-[10px] text-neutral-400 font-black uppercase tracking-widest sticky top-0 z-10">
+                        <th className="w-10 p-3 border-r border-neutral-200 bg-neutral-50 sticky left-0 z-20">
                           <button 
                             onClick={() => toggleAllInGroup(group.id)}
                             className="w-5 h-5 rounded border-2 border-neutral-200 flex items-center justify-center hover:border-black transition-colors"
@@ -1057,7 +1065,7 @@ const Tarefas = () => {
                             )}
                           </button>
                         </th>
-                        <th className="text-left p-3 min-w-[280px] font-semibold">Tarefa</th>
+                        <th className="text-left p-3 min-w-[280px] font-semibold sticky left-10 bg-neutral-50 z-10">Tarefa</th>
                         {columns.map(col => (
                           <th key={col.id} className="p-3 border-l border-neutral-200 text-center font-semibold" style={{ width: col.width }}>
                             {col.title}
@@ -1127,7 +1135,7 @@ const Tarefas = () => {
                     <tbody>
                       {Array.isArray(group.tasks) && group.tasks.map(task => (
                         <tr key={task.id} className={`border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors ${selectedTasks.has(task.id) ? 'bg-blue-50/30' : ''}`}>
-                          <td className="p-3 border-r border-neutral-100 text-center">
+                          <td className="p-3 border-r border-neutral-100 sticky left-0 bg-white z-10">
                             <button 
                               onClick={() => toggleTaskSelection(task.id)}
                               className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
@@ -1139,7 +1147,7 @@ const Tarefas = () => {
                               {selectedTasks.has(task.id) && <Check size={12} strokeWidth={3} />}
                             </button>
                           </td>
-                          <td className="p-3">
+                          <td className="p-3 sticky left-10 bg-white z-10">
                             {editingTaskId === task.id ? (
                               <input
                                 type="text"
