@@ -260,14 +260,20 @@ const CRMPipeline = () => {
           <h1 className="text-3xl font-black text-black tracking-tight mb-1">Pipeline</h1>
           <p className="text-neutral-500 text-sm">Visualize o progresso das suas oportunidades. Arraste e solte para mover entre etapas.</p>
         </div>
-        <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all relative ${hasActiveFilters ? 'bg-black text-white border-black' : 'bg-white border-neutral-200 text-neutral-700 hover:border-black'}`}
-        >
-          <Filter size={14} />
-          <span className="text-xs font-bold uppercase tracking-widest">Filtros</span>
-          {hasActiveFilters && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />}
-        </button>
+        <div className="relative group">
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className={`p-2 rounded-lg border transition-all relative ${hasActiveFilters ? 'bg-neutral-100 text-black border-neutral-200' : 'bg-transparent border-transparent text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50'}`}
+          >
+            <Filter size={16} strokeWidth={hasActiveFilters ? 2.5 : 1.5} />
+            {hasActiveFilters && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
+            )}
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-800 text-white text-[10px] font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+            Filtros
+          </span>
+        </div>
       </div>
 
       <DndContext 

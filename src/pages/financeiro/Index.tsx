@@ -572,15 +572,20 @@ const Financeiro = () => {
       <main className="flex-1 overflow-hidden p-4 md:p-6">
         <div className="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className={`p-2 rounded-md border transition-all relative ${hasActiveFilters ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:border-black'}`}
-            >
-              <SlidersHorizontal size={14} />
-              {hasActiveFilters && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
-              )}
-            </button>
+            <div className="relative group">
+              <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className={`p-2 rounded-lg border transition-all relative ${hasActiveFilters ? 'bg-neutral-100 text-black border-neutral-200' : 'bg-transparent border-transparent text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50'}`}
+              >
+                <SlidersHorizontal size={16} strokeWidth={hasActiveFilters ? 2.5 : 1.5} />
+                {hasActiveFilters && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
+                )}
+              </button>
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-800 text-white text-[10px] font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                Filtros
+              </span>
+            </div>
             <div>
               <div className="flex items-center gap-2 md:gap-3 mb-1">
                 <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight">Financeiro</h1>
