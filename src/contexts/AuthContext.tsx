@@ -13,6 +13,7 @@ interface SignUpData {
   sobrenome: string;
   email: string;
   password: string;
+  cargo?: 'Socio' | 'Funcionario';
 }
 
 interface AuthContextType {
@@ -94,7 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(false);
   };
 
-  const signup = async ({ nome, sobrenome, email, password }: SignUpData) => {
+  const signup = async ({ nome, sobrenome, email, password, cargo }: SignUpData) => {
     const { data, error } = await supabase.auth.signUp({ 
       email, 
       password,
@@ -107,18 +108,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     
     if (error) {
+      if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
+        throw new Error('Este e-mail já está cadastrado. Por favor, faça login.');
+      }
       throw new Error(error.message);
     }
     
     if (data.user) {
       const fullName = `${nome} ${sobrenome}`.trim();
+      const userCargo = cargo || 'Funcionario';
       
       const { error: profileError } = await supabase
         .from(PROFILES_TABLE)
         .insert({
           user_id: data.user.id,
           nome: fullName,
-          cargo: 'Funcionario',
+          cargo: userCargo,
         });
 
       if (profileError) {

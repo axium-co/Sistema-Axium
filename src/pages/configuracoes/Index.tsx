@@ -7,13 +7,13 @@ import {
   UserCircle, Smartphone, Eye, EyeOff,
   Sun, Moon, Monitor, Check, Server,
   Key, Hash, Send, Bold, Italic, Link as LinkIcon,
-  RefreshCw
+  RefreshCw, Users, Copy, CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 
-type ModalType = 'perfil' | 'seguranca' | 'notificacoes' | 'tema' | 'email' | 'delete' | null;
+type ModalType = 'perfil' | 'seguranca' | 'notificacoes' | 'tema' | 'email' | 'delete' | 'equipe' | null;
 
 const Configuracoes = () => {
   const { user, logout } = useAuth();
@@ -27,6 +27,36 @@ const Configuracoes = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+
+  // Team Invite State
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'Socio' | 'Funcionario'>('Funcionario');
+  const [inviteLink, setInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
+
+  // Generate invite link
+  const generateInviteLink = () => {
+    if (!inviteEmail) {
+      setInviteError('Digite o e-mail do membro');
+      return;
+    }
+    const token = btoa(`${inviteEmail}-${Date.now()}-${inviteRole}`);
+    const link = `${window.location.origin}/signup?invite=${token}&email=${encodeURIComponent(inviteEmail)}&role=${inviteRole}`;
+    setInviteLink(link);
+    setInviteError('');
+    setInviteSuccess('Link gerado com sucesso!');
+    setTimeout(() => setInviteSuccess(''), 3000);
+  };
+
+  const copyInviteLink = async () => {
+    if (inviteLink) {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   // Form States
   const [profileData, setProfileData] = useState({ name: 'Admin Axium', email: user?.email || '', phone: '(11) 99999-9999' });
@@ -71,6 +101,13 @@ const Configuracoes = () => {
       title: 'Email',
       description: 'SMTP, assinatura e templates de email',
       items: ['SMTP', 'Assinatura', 'Templates'],
+    },
+    {
+      id: 'equipe' as ModalType,
+      icon: Users,
+      title: 'Equipe',
+      description: 'Convidar membros e gerenciar acessos',
+      items: ['Convidar', 'Permissões', 'Membros'],
     },
   ];
 
@@ -345,6 +382,105 @@ const Configuracoes = () => {
                     <SettingsIcon size={64} className="mx-auto text-neutral-100 animate-spin-slow" />
                     <p className="text-neutral-400 font-black text-[10px] uppercase tracking-[4px]">Área em Desenvolvimento</p>
                     <p className="text-sm text-neutral-500 font-medium max-w-xs mx-auto leading-relaxed">As configurações detalhadas de {activeModal} estarão disponíveis na próxima atualização do sistema.</p>
+                  </div>
+                )}
+
+                {activeModal === 'equipe' && (
+                  <div className="space-y-8">
+                    <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 flex items-center gap-4">
+                      <Users className="text-blue-500" size={32} />
+                      <div>
+                        <p className="text-sm font-black text-blue-900">Convide sua Equipe</p>
+                        <p className="text-xs text-blue-600 font-medium">Gere um link de convite para adicionar novos membros.</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">E-mail do Membro</label>
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                          <input 
+                            type="email" 
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            placeholder="colega@email.com"
+                            className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl pl-12 pr-6 py-4 font-bold text-black focus:border-black outline-none transition-all" 
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Cargo</label>
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setInviteRole('Funcionario')}
+                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                              inviteRole === 'Funcionario' 
+                                ? 'bg-black text-white' 
+                                : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'
+                            }`}
+                          >
+                            Funcionário
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setInviteRole('Socio')}
+                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                              inviteRole === 'Socio' 
+                                ? 'bg-black text-white' 
+                                : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'
+                            }`}
+                          >
+                            Sócio
+                          </button>
+                        </div>
+                      </div>
+
+                      {inviteError && (
+                        <p className="text-red-500 text-xs font-medium">{inviteError}</p>
+                      )}
+                      {inviteSuccess && (
+                        <p className="text-green-600 text-xs font-medium">{inviteSuccess}</p>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={generateInviteLink}
+                        className="w-full py-4 bg-black text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-neutral-800 transition-all flex items-center justify-center gap-2"
+                      >
+                        <LinkIcon size={16} />
+                        Gerar Link de Convite
+                      </button>
+
+                      {inviteLink && (
+                        <div className="space-y-3 pt-4 border-t border-neutral-100">
+                          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Link Gerado</label>
+                          <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              value={inviteLink}
+                              readOnly
+                              className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-xs font-medium text-neutral-600 truncate"
+                            />
+                            <button
+                              type="button"
+                              onClick={copyInviteLink}
+                              className={`px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 ${
+                                copied 
+                                  ? 'bg-green-500 text-white' 
+                                  : 'bg-black text-white hover:bg-neutral-800'
+                              }`}
+                            >
+                              {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
+                              {copied ? 'Copiado!' : 'Copiar'}
+                            </button>
+                          </div>
+                          <p className="text-xs text-neutral-400 font-medium">Compartilhe este link com seu colega. Ele será redirecionado para criar uma conta com acesso automático.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

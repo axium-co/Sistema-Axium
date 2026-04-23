@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader2, User, ArrowLeft, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,10 +10,17 @@ interface LoginProps {
 
 const Login = ({ onLogin }: LoginProps) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, signup, resetPassword } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(false);
+  
+  // Check for invite params in URL
+  const inviteEmail = searchParams.get('email');
+  const inviteRole = searchParams.get('role');
+  const inviteToken = searchParams.get('invite');
+  
+  const [isSignUp, setIsSignUp] = useState(!!inviteEmail); // If invite present, show signup
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [email, setEmail] = useState('axium.contato@gmail.com');
+  const [email, setEmail] = useState(inviteEmail || 'axium.contato@gmail.com');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +28,13 @@ const Login = ({ onLogin }: LoginProps) => {
   const [success, setSuccess] = useState('');
   const [nome, setNome] = useState('');
   const [sobrenome, setSobrenome] = useState('');
+
+  // Pre-fill signup mode if invited
+  useEffect(() => {
+    if (inviteEmail && inviteRole) {
+      setIsSignUp(true);
+    }
+  }, [inviteEmail, inviteRole]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,7 +53,7 @@ const Login = ({ onLogin }: LoginProps) => {
           setIsLoading(false);
           return;
         }
-        await signup({ nome, sobrenome, email, password });
+        await signup({ nome, sobrenome, email, password, cargo: inviteRole as 'Socio' | 'Funcionario' });
         setSuccess('Conta criada com sucesso!');
         if (onLogin) onLogin();
         navigate('/crm/painel');
