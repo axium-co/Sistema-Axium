@@ -239,25 +239,39 @@ const CRMLeads = () => {
     setCurrent(prev => ({ ...prev, [field]: val }));
 
 const toggleStageFilter = (stage: string) => {
-    const newStages = filters.stages.includes(stage)
-      ? filters.stages.filter(s => s !== stage)
-      : [...filters.stages, stage];
-    setStagesFilter(newStages);
+    try {
+      const currentStages = filters?.stages || [];
+      const newStages = currentStages.includes(stage)
+        ? currentStages.filter(s => s !== stage)
+        : [...currentStages, stage];
+      setStagesFilter(newStages);
+    } catch (err) {
+      console.error('Erro ao filtrar por etapa:', err);
+    }
   };
 
   const toggleOriginFilter = (origin: string) => {
-    const currentOrigins = (filters as any).origins || [];
-    const newOrigins = currentOrigins.includes(origin)
-      ? currentOrigins.filter((o: string) => o !== origin)
-      : [...currentOrigins, origin];
-    setFilter('origin' as any, newOrigins);
+    try {
+      const currentOrigins = (filters as any)?.origins || [];
+      const newOrigins = currentOrigins.includes(origin)
+        ? currentOrigins.filter((o: string) => o !== origin)
+        : [...currentOrigins, origin];
+      setFilter('origin' as any, newOrigins);
+    } catch (err) {
+      console.error('Erro ao filtrar por origem:', err);
+    }
   };
 
   const toggleNicheFilter = (niche: string) => {
-    const newNiches = filters.niches.includes(niche)
-      ? filters.niches.filter(n => n !== niche)
-      : [...filters.niches, niche];
-    setNichesFilter(newNiches);
+    try {
+      const currentNiches = filters?.niches || [];
+      const newNiches = currentNiches.includes(niche)
+        ? currentNiches.filter(n => n !== niche)
+        : [...currentNiches, niche];
+      setNichesFilter(newNiches);
+    } catch (err) {
+      console.error('Erro ao filtrar por nicho:', err);
+    }
   };
 
   return (
@@ -289,33 +303,33 @@ const toggleStageFilter = (stage: string) => {
             )}
 
             <FilterSection title="Etapa" defaultOpen={true}>
-              {STAGES.map(stage => (
+              {(STAGES || []).map(stage => (
                 <CheckboxFilter
                   key={stage}
                   label={stage}
-                  checked={filters.stages.includes(stage)}
+                  checked={(filters?.stages || []).includes(stage)}
                   onChange={() => toggleStageFilter(stage)}
                 />
               ))}
             </FilterSection>
 
             <FilterSection title="Origem">
-              {STAGE_ORIGINS.map(origin => (
+              {(STAGE_ORIGINS || []).map(origin => (
                 <CheckboxFilter
                   key={origin}
                   label={origin}
-                  checked={filters.origins.includes(origin)}
+                  checked={((filters as any)?.origins || []).includes(origin)}
                   onChange={() => toggleOriginFilter(origin)}
                 />
               ))}
             </FilterSection>
 
             <FilterSection title="Nicho do Cliente">
-              {uniqueNiches.slice(0, 10).map(niche => (
+              {(uniqueNiches || []).slice(0, 10).map(niche => (
                 <CheckboxFilter
                   key={niche}
                   label={niche}
-                  checked={filters.niches.includes(niche)}
+                  checked={(filters?.niches || []).includes(niche)}
                   onChange={() => toggleNicheFilter(niche)}
                 />
               ))}
@@ -330,19 +344,18 @@ const toggleStageFilter = (stage: string) => {
                   { value: 'month', label: 'Este mês' }
                 ].map(opt => (
                   <label key={opt.value} className="flex items-center gap-2 cursor-pointer group">
-                    <div className={`w-4 h-4 border rounded-full flex items-center justify-center transition-all ${filters.dateFilter === opt.value ? 'bg-black border-black' : 'border-neutral-300 group-hover:border-black'}`}>
-                      {filters.dateFilter === opt.value && (
+                    <div className={`w-4 h-4 border rounded-full flex items-center justify-center transition-all ${filters?.dateFilter === opt.value ? 'bg-black border-black' : 'border-neutral-300 group-hover:border-black'}`}>
+                      {filters?.dateFilter === opt.value && (
                         <div className="w-2 h-2 bg-white rounded-full" />
                       )}
                     </div>
                     <input 
                       type="radio" 
-                      name="dateFilter"
                       className="hidden" 
-                      checked={filters.dateFilter === opt.value}
+                      checked={filters?.dateFilter === opt.value}
                       onChange={() => setDateFilter(opt.value as any)}
                     />
-                    <span className={`text-xs font-medium ${filters.dateFilter === opt.value ? 'text-black' : 'text-neutral-500'}`}>{opt.label}</span>
+                    <span className={`text-xs font-medium ${filters?.dateFilter === opt.value ? 'text-black' : 'text-neutral-500'}`}>{opt.label}</span>
                   </label>
                 ))}
               </div>
