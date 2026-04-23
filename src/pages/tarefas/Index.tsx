@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -104,10 +104,7 @@ const ColumnDropdown = ({
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) => {
   const [search, setSearch] = useState('');
-  const dropdownRef = useRef<HTMLDivElement>(null);
   
-  if (!isOpen) return null;
-
   const filteredTools = TOOL_CATALOG.map(cat => ({
     ...cat,
     items: cat.items.filter(item => 
@@ -117,57 +114,33 @@ const ColumnDropdown = ({
 
   let dropdownStyle: React.CSSProperties = { position: 'fixed' as const, top: 100, left: 20, zIndex: 9999 };
   
-  try {
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const dropdownWidth = 340;
-      const rightEdge = rect.right + dropdownWidth;
-      const shouldAlignRight = rightEdge > window.innerWidth - 20;
-      
-      dropdownStyle = {
-        position: 'fixed' as const,
-        top: rect.bottom + 8,
-        left: shouldAlignRight ? undefined : rect.left,
-        right: shouldAlignRight ? Math.max(20, window.innerWidth - rect.right) : undefined,
-        zIndex: 9999,
-      };
-    }
-  } catch (e) {
-    console.warn('ColumnDropdown: getBoundingClientRect error', e);
+  if (buttonRef.current) {
+    const rect = buttonRef.current.getBoundingClientRect();
+    const dropdownWidth = 340;
+    const rightEdge = rect.right + dropdownWidth;
+    const shouldAlignRight = rightEdge > window.innerWidth - 20;
+    
+    dropdownStyle = {
+      position: 'fixed' as const,
+      top: rect.bottom + 8,
+      left: shouldAlignRight ? undefined : rect.left,
+      right: shouldAlignRight ? Math.max(20, window.innerWidth - rect.right) : undefined,
+      zIndex: 9999,
+    };
   }
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      try {
-        const target = e.target as Node;
-        const buttonContains = buttonRef.current?.contains(target);
-        const dropdownContains = dropdownRef.current?.contains(target);
-        
-        if (!buttonContains && !dropdownContains) {
-          onClose();
-        }
-      } catch (e) {
-        onClose();
-      }
-    };
-    
-    const timer = setTimeout(() => {
-      document.addEventListener('click', handleClickOutside);
-    }, 0);
-    
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [onClose, buttonRef]);
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  };
+
+  if (!isOpen) return null;
+
   return (
     <div 
-      ref={dropdownRef}
       className="w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-xl overflow-hidden"
       style={dropdownStyle}
       onClick={handleButtonClick}
@@ -178,7 +151,7 @@ const ColumnDropdown = ({
           type="text"
           placeholder="Pesquise ou descreva sua coluna"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={handleSearchChange}
           className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-black"
         />
       </div>
