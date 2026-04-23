@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, createPortal } from 'react';
-import ReactDOM from 'react-dom';
+import { useState, useEffect, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -8,20 +7,15 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
   horizontalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
 import { 
-  ChevronDown, 
-  ChevronRight, 
   Plus, 
   Calendar,
   Check,
-  X,
   Trash2,
-  Search,
   Hash,
   FileText,
   Type,
@@ -98,8 +92,6 @@ const DEFAULT_GROUPS: Group[] = [
   ]},
 ];
 
-const normalizeText = (text: string) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
 const ColumnDropdown = ({ 
   isOpen, 
   onClose, 
@@ -109,7 +101,7 @@ const ColumnDropdown = ({
   isOpen: boolean; 
   onClose: () => void; 
   onAddColumn: (tool: any) => void;
-  buttonRef: React.RefObject<HTMLButtonElement>;
+  buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) => {
   const [search, setSearch] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -123,30 +115,38 @@ const ColumnDropdown = ({
     )
   })).filter(cat => cat.items.length > 0);
 
-  const dropdownStyle: React.CSSProperties = buttonRef.current
-    ? (() => {
-        const rect = buttonRef.current!.getBoundingClientRect();
-        const dropdownWidth = 340;
-        const rightEdge = rect.right + dropdownWidth;
-        const shouldAlignRight = rightEdge > window.innerWidth - 20;
-        
-        return {
-          position: 'fixed' as const,
-          top: rect.bottom + 8,
-          left: shouldAlignRight ? undefined : rect.left,
-          right: shouldAlignRight ? Math.max(20, window.innerWidth - rect.right) : undefined,
-          zIndex: 9999,
-        };
-      })()
-    : { position: 'fixed' as const, top: 100, left: 20, zIndex: 9999 };
+  let dropdownStyle: React.CSSProperties = { position: 'fixed' as const, top: 100, left: 20, zIndex: 9999 };
+  
+  try {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = 340;
+      const rightEdge = rect.right + dropdownWidth;
+      const shouldAlignRight = rightEdge > window.innerWidth - 20;
+      
+      dropdownStyle = {
+        position: 'fixed' as const,
+        top: rect.bottom + 8,
+        left: shouldAlignRight ? undefined : rect.left,
+        right: shouldAlignRight ? Math.max(20, window.innerWidth - rect.right) : undefined,
+        zIndex: 9999,
+      };
+    }
+  } catch (e) {
+    console.warn('ColumnDropdown: getBoundingClientRect error', e);
+  }
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      const buttonContains = buttonRef.current?.contains(target);
-      const dropdownContains = dropdownRef.current?.contains(target);
-      
-      if (!buttonContains && !dropdownContains) {
+      try {
+        const target = e.target as Node;
+        const buttonContains = buttonRef.current?.contains(target);
+        const dropdownContains = dropdownRef.current?.contains(target);
+        
+        if (!buttonContains && !dropdownContains) {
+          onClose();
+        }
+      } catch (e) {
         onClose();
       }
     };
@@ -159,30 +159,30 @@ const ColumnDropdown = ({
       clearTimeout(timer);
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [onClose]);
+  }, [onClose, buttonRef]);
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
 
-  return ReactDOM.createPortal(
+  return (
     <div 
       ref={dropdownRef}
-      className="w-[340px] bg-white dark:bg-gray-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl overflow-hidden"
+      className="w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-xl overflow-hidden"
       style={dropdownStyle}
       onClick={handleButtonClick}
     >
-      <div className="p-4 border-b border-neutral-100 dark:border-neutral-700">
+      <div className="p-4 border-b border-neutral-100">
         <input
           autoFocus
           type="text"
           placeholder="Pesquise ou descreva sua coluna"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600 rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-black"
+          className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-black"
         />
       </div>
-      <div className="max-h-[350px] overflow-y-scroll">
+      <div className="max-h-[350px] overflow-y-auto">
         {filteredTools.map(cat => (
           <div key={cat.category} className="p-3">
             <div className="flex items-center gap-2 mb-2 px-1">
@@ -195,18 +195,17 @@ const ColumnDropdown = ({
                 <button
                   key={tool.id}
                   onClick={() => onAddColumn(tool)}
-                  className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-xl transition-all text-left"
+                  className="flex items-center gap-3 p-3 bg-neutral-50 hover:bg-neutral-100 rounded-xl transition-all text-left"
                 >
                   <tool.icon size={18} className={tool.color} />
-                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{tool.label}</span>
+                  <span className="text-sm font-medium text-neutral-700">{tool.label}</span>
                 </button>
               ))}
             </div>
           </div>
         ))}
       </div>
-    </div>,
-    document.body
+    </div>
   );
 };
 
@@ -218,7 +217,7 @@ const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (
     <th
       ref={setNodeRef}
       style={{ width: column.width, transform, transition }}
-      className="p-3 border-l border-neutral-200 dark:border-neutral-700 text-center font-semibold relative group text-neutral-600 dark:text-neutral-200"
+      className="p-3 border-l border-neutral-200 text-center font-semibold relative group text-neutral-600"
     >
       <div className="flex items-center justify-center gap-1">
         <span className="text-[10px] font-black uppercase tracking-widest">{column.title}</span>
@@ -257,39 +256,51 @@ const Board = ({
   );
 
   const handleAddColumn = (tool: any) => {
-    const exists = columns.some(c => c.type === tool.type);
-    if (exists) {
-      alert(`Uma coluna "${tool.label}" já existe.`);
-      return;
+    try {
+      const exists = columns.some(c => c.type === tool.type);
+      if (exists) {
+        alert(`Uma coluna "${tool.label}" já existe.`);
+        return;
+      }
+      const newCol: Column = {
+        id: `col-${Date.now()}`,
+        title: tool.label,
+        type: tool.type,
+        width: tool.type === 'timeline' ? 180 : 140,
+      };
+      onUpdateColumns([...columns, newCol]);
+      setIsColumnDropdownOpen(false);
+    } catch (e) {
+      console.error('handleAddColumn error:', e);
     }
-    const newCol: Column = {
-      id: `col-${Date.now()}`,
-      title: tool.label,
-      type: tool.type,
-      width: tool.type === 'timeline' ? 180 : 140,
-    };
-    onUpdateColumns([...columns, newCol]);
-    setIsColumnDropdownOpen(false);
   };
 
   const handleDeleteColumn = (colId: string) => {
-    const col = columns.find(c => c.id === colId);
-    if (!col) return;
-    if (col.title.toLowerCase() === 'tarefa') {
-      alert('A coluna TAREFA não pode ser deletada.');
-      return;
+    try {
+      const col = columns.find(c => c.id === colId);
+      if (!col) return;
+      if (col.title.toLowerCase() === 'tarefa') {
+        alert('A coluna TAREFA não pode ser deletada.');
+        return;
+      }
+      if (!confirm(`Deletar coluna "${col.title}"?`)) return;
+      onUpdateColumns(columns.filter(c => c.id !== colId));
+    } catch (e) {
+      console.error('handleDeleteColumn error:', e);
     }
-    if (!confirm(`Deletar coluna "${col.title}"?`)) return;
-    onUpdateColumns(columns.filter(c => c.id !== colId));
   };
 
   const handleStatusChange = (taskId: string, newStatus: string) => {
-    const task = group.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    
-    const updatedTask = { ...task, values: { ...task.values, 'col-status': newStatus } };
-    const otherTasks = group.tasks.filter(t => t.id !== taskId);
-    onUpdateTasks([...otherTasks, updatedTask]);
+    try {
+      const task = group.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      
+      const updatedTask = { ...task, values: { ...task.values, 'col-status': newStatus } };
+      const otherTasks = group.tasks.filter(t => t.id !== taskId);
+      onUpdateTasks([...otherTasks, updatedTask]);
+    } catch (e) {
+      console.error('handleStatusChange error:', e);
+    }
   };
 
   const toggleTaskSelection = (taskId: string) => {
@@ -310,12 +321,24 @@ const Board = ({
   };
 
   const handleAddTask = () => {
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
-      title: 'Nova Tarefa',
-      values: { 'col-status': 'Não iniciado' },
-    };
-    onUpdateTasks([...group.tasks, newTask]);
+    try {
+      const newTask: Task = {
+        id: `task-${Date.now()}`,
+        title: 'Nova Tarefa',
+        values: { 'col-status': 'Não iniciado' },
+      };
+      onUpdateTasks([...group.tasks, newTask]);
+    } catch (e) {
+      console.error('handleAddTask error:', e);
+    }
+  };
+
+  const handleAddButtonClick = () => {
+    try {
+      setIsColumnDropdownOpen(!isColumnDropdownOpen);
+    } catch (e) {
+      console.error('handleAddButtonClick error:', e);
+    }
   };
 
   return (
@@ -331,20 +354,20 @@ const Board = ({
         )}
       </div>
 
-      <div className="border border-neutral-200 dark:border-neutral-700 rounded-2xl bg-white dark:bg-neutral-900 overflow-visible">
+      <div className="border border-neutral-200 rounded-2xl bg-white overflow-visible">
         <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
           <table className="w-full border-collapse min-w-[600px]">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 sticky top-0 z-10">
-                <th className="w-10 p-3 border-r border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 sticky left-0 z-20">
+              <tr className="bg-neutral-50 border-b border-neutral-200 sticky top-0 z-10">
+                <th className="w-10 p-3 border-r border-neutral-200 bg-neutral-50 sticky left-0 z-20">
                   <button 
                     onClick={toggleAll}
-                    className="w-5 h-5 rounded border-2 border-neutral-300 dark:border-neutral-600 flex items-center justify-center hover:border-black"
+                    className="w-5 h-5 rounded border-2 border-neutral-300 flex items-center justify-center hover:border-black"
                   >
                     {selectedTasks.size === group.tasks.length && group.tasks.length > 0 && <Check size={12} className="text-black" />}
                   </button>
                 </th>
-                <th className="text-left p-3 min-w-[200px] font-semibold sticky left-10 z-10 bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-200 text-[10px] font-black uppercase">Tarefa</th>
+                <th className="text-left p-3 min-w-[200px] font-semibold sticky left-10 z-10 bg-neutral-50 text-neutral-600 text-[10px] font-black uppercase">Tarefa</th>
                 <SortableContext items={columns.map(c => c.id)} strategy={horizontalListSortingStrategy}>
                   {columns.map(col => (
                     <SortableHeaderCell 
@@ -354,11 +377,11 @@ const Board = ({
                     />
                   ))}
                 </SortableContext>
-                <th className="w-12 p-3 border-l border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
+                <th className="w-12 p-3 border-l border-neutral-200 bg-neutral-50">
                   <button 
                     ref={addButtonRef}
-                    onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}
-                    className="w-7 h-7 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center justify-center text-neutral-400 hover:text-black"
+                    onClick={handleAddButtonClick}
+                    className="w-7 h-7 rounded-full hover:bg-neutral-200 flex items-center justify-center text-neutral-400 hover:text-black"
                   >
                     <Plus size={18} />
                   </button>
@@ -367,8 +390,8 @@ const Board = ({
             </thead>
             <tbody>
               {group.tasks.map(task => (
-                <tr key={task.id} className="border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                  <td className="p-3 border-r border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 sticky left-0">
+                <tr key={task.id} className="border-b border-neutral-100 hover:bg-neutral-50">
+                  <td className="p-3 border-r border-neutral-200 bg-white sticky left-0">
                     <button 
                       onClick={() => toggleTaskSelection(task.id)}
                       className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
@@ -378,7 +401,7 @@ const Board = ({
                       {selectedTasks.has(task.id) && <Check size={12} className="text-white" />}
                     </button>
                   </td>
-                  <td className="p-3 sticky left-10 bg-white dark:bg-neutral-900 z-10">
+                  <td className="p-3 sticky left-10 bg-white z-10">
                     <input
                       value={task.title}
                       onChange={(e) => {
@@ -387,11 +410,11 @@ const Board = ({
                         );
                         onUpdateTasks(updated);
                       }}
-                      className="bg-transparent outline-none font-medium text-black dark:text-white w-full"
+                      className="bg-transparent outline-none font-medium text-black w-full"
                     />
                   </td>
                   {columns.map(col => (
-                    <td key={col.id} className="p-2 border-l border-neutral-200 dark:border-neutral-700">
+                    <td key={col.id} className="p-2 border-l border-neutral-200">
                       {col.type === 'status' && (
                         <select
                           value={task.values[col.id] || ''}
@@ -438,7 +461,7 @@ const Board = ({
                       )}
                     </td>
                   ))}
-                  <td className="border-l border-neutral-200 dark:border-neutral-700" />
+                  <td className="border-l border-neutral-200" />
                 </tr>
               ))}
             </tbody>
@@ -466,22 +489,38 @@ const Board = ({
 const Tarefas = () => {
   const [currentView, setCurrentView] = useState<'board' | 'reports'>('board');
   const [groups, setGroups] = useState<Group[]>(() => {
-    const stored = localStorage.getItem('axium_groups_v2');
-    return stored ? JSON.parse(stored) : DEFAULT_GROUPS;
+    try {
+      const stored = localStorage.getItem('axium_groups_v2');
+      return stored ? JSON.parse(stored) : DEFAULT_GROUPS;
+    } catch (e) {
+      return DEFAULT_GROUPS;
+    }
   });
   const [columns, setColumns] = useState<Column[]>(() => {
-    const stored = localStorage.getItem('axium_cols_v5');
-    return stored ? JSON.parse(stored) : DEFAULT_COLUMNS;
+    try {
+      const stored = localStorage.getItem('axium_cols_v5');
+      return stored ? JSON.parse(stored) : DEFAULT_COLUMNS;
+    } catch (e) {
+      return DEFAULT_COLUMNS;
+    }
   });
   const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [newGroupTitle, setNewGroupTitle] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('axium_groups_v2', JSON.stringify(groups));
+    try {
+      localStorage.setItem('axium_groups_v2', JSON.stringify(groups));
+    } catch (e) {
+      console.warn('Failed to save groups to localStorage', e);
+    }
   }, [groups]);
 
   useEffect(() => {
-    localStorage.setItem('axium_cols_v5', JSON.stringify(columns));
+    try {
+      localStorage.setItem('axium_cols_v5', JSON.stringify(columns));
+    } catch (e) {
+      console.warn('Failed to save columns to localStorage', e);
+    }
   }, [columns]);
 
   const sensors = useSensors(
@@ -512,17 +551,17 @@ const Tarefas = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 p-4 md:p-8">
+    <div className="min-h-screen bg-neutral-50 p-4 md:p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-black dark:text-white tracking-tight">Operações Axium</h1>
+          <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight">Operações Axium</h1>
           <p className="text-neutral-500 text-sm">Gestão dinâmica de alto desempenho.</p>
         </div>
-        <div className="flex items-center gap-2 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+        <div className="flex items-center gap-2 p-1 bg-neutral-100 rounded-xl">
           <button
             onClick={() => setCurrentView('board')}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-              currentView === 'board' ? 'bg-white dark:bg-neutral-700 text-black dark:text-white shadow-sm' : 'text-neutral-500'
+              currentView === 'board' ? 'bg-white shadow-sm' : 'text-neutral-500'
             }`}
           >
             <LayoutGrid size={18} className="inline mr-2" />
@@ -531,7 +570,7 @@ const Tarefas = () => {
           <button
             onClick={() => setCurrentView('reports')}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-              currentView === 'reports' ? 'bg-white dark:bg-neutral-700 text-black dark:text-white shadow-sm' : 'text-neutral-500'
+              currentView === 'reports' ? 'bg-white shadow-sm' : 'text-neutral-500'
             }`}
           >
             <BarChart3 size={18} className="inline mr-2" />
@@ -551,7 +590,7 @@ const Tarefas = () => {
                 onChange={(e) => setNewGroupTitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddGroup()}
                 placeholder="Nome do novo quadro..."
-                className="px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg outline-none focus:border-black"
+                className="px-4 py-2 border border-neutral-300 rounded-lg outline-none focus:border-black"
               />
               <button onClick={handleAddGroup} className="px-4 py-2 bg-black text-white rounded-lg font-medium">Adicionar</button>
               <button onClick={() => setIsAddingGroup(false)} className="px-4 py-2 text-neutral-500">Cancelar</button>
