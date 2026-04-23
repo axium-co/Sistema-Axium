@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, createPortal } from 'react';
+import ReactDOM from 'react-dom';
 import {
   DndContext,
   closestCenter,
@@ -111,6 +112,7 @@ const ColumnDropdown = ({
   buttonRef: React.RefObject<HTMLButtonElement>;
 }) => {
   const [search, setSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
   if (!isOpen) return null;
 
@@ -122,56 +124,88 @@ const ColumnDropdown = ({
   })).filter(cat => cat.items.length > 0);
 
   const dropdownStyle: React.CSSProperties = buttonRef.current
-    ? {
-        position: 'fixed' as const,
-        top: buttonRef.current.getBoundingClientRect().bottom + 8,
-        right: Math.max(20, window.innerWidth - buttonRef.current.getBoundingClientRect().right - 360),
-        zIndex: 9999,
-      }
-    : { position: 'fixed' as const, top: 100, right: 20, zIndex: 9999 };
+    ? (() => {
+        const rect = buttonRef.current!.getBoundingClientRect();
+        const dropdownWidth = 340;
+        const rightEdge = rect.right + dropdownWidth;
+        const shouldAlignRight = rightEdge > window.innerWidth - 20;
+        
+        return {
+          position: 'fixed' as const,
+          top: rect.bottom + 8,
+          left: shouldAlignRight ? undefined : rect.left,
+          right: shouldAlignRight ? Math.max(20, window.innerWidth - rect.right) : undefined,
+          zIndex: 9999,
+        };
+      })()
+    : { position: 'fixed' as const, top: 100, left: 20, zIndex: 9999 };
 
-  return createPortal(
-    <>
-      <div className="fixed inset-0 z-[9998]" onClick={onClose} />
-      <div 
-        className="w-[340px] bg-white dark:bg-gray-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl overflow-hidden"
-        style={dropdownStyle}
-      >
-        <div className="p-4 border-b border-neutral-100 dark:border-neutral-700">
-          <input
-            autoFocus
-            type="text"
-            placeholder="Pesquise ou descreva sua coluna"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600 rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-black"
-          />
-        </div>
-        <div className="max-h-[350px] overflow-y-auto">
-          {filteredTools.map(cat => (
-            <div key={cat.category} className="p-3">
-              <div className="flex items-center gap-2 mb-2 px-1">
-                {cat.category === 'Essenciais' && <CheckCircle2 size={14} className="text-emerald-500" />}
-                {cat.category === 'Super úteis' && <Zap size={14} className="text-amber-500" />}
-                <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">{cat.category}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {cat.items.map(tool => (
-                  <button
-                    key={tool.id}
-                    onClick={() => onAddColumn(tool)}
-                    className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-xl transition-all text-left"
-                  >
-                    <tool.icon size={18} className={tool.color} />
-                    <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{tool.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const buttonContains = buttonRef.current?.contains(target);
+      const dropdownContains = dropdownRef.current?.contains(target);
+      
+      if (!buttonContains && !dropdownContains) {
+        onClose();
+      }
+    };
+    
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 0);
+    
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [onClose]);
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  return ReactDOM.createPortal(
+    <div 
+      ref={dropdownRef}
+      className="w-[340px] bg-white dark:bg-gray-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl overflow-hidden"
+      style={dropdownStyle}
+      onClick={handleButtonClick}
+    >
+      <div className="p-4 border-b border-neutral-100 dark:border-neutral-700">
+        <input
+          autoFocus
+          type="text"
+          placeholder="Pesquise ou descreva sua coluna"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600 rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-black"
+        />
       </div>
-    </>,
+      <div className="max-h-[350px] overflow-y-scroll">
+        {filteredTools.map(cat => (
+          <div key={cat.category} className="p-3">
+            <div className="flex items-center gap-2 mb-2 px-1">
+              {cat.category === 'Essenciais' && <CheckCircle2 size={14} className="text-emerald-500" />}
+              {cat.category === 'Super úteis' && <Zap size={14} className="text-amber-500" />}
+              <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">{cat.category}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {cat.items.map(tool => (
+                <button
+                  key={tool.id}
+                  onClick={() => onAddColumn(tool)}
+                  className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-xl transition-all text-left"
+                >
+                  <tool.icon size={18} className={tool.color} />
+                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{tool.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>,
     document.body
   );
 };
@@ -297,7 +331,7 @@ const Board = ({
         )}
       </div>
 
-      <div className="border border-neutral-200 dark:border-neutral-700 rounded-2xl bg-white dark:bg-neutral-900 overflow-hidden">
+      <div className="border border-neutral-200 dark:border-neutral-700 rounded-2xl bg-white dark:bg-neutral-900 overflow-visible">
         <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
           <table className="w-full border-collapse min-w-[600px]">
             <thead>
