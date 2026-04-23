@@ -130,9 +130,6 @@ const CheckboxFilter = ({ label, checked, onChange }: { label: string; checked: 
     <span className="text-xs font-medium text-neutral-600 group-hover:text-black">{label}</span>
   </label>
 );
-    <span className={`text-xs font-medium ${checked ? 'text-black' : 'text-neutral-500'}`}>{label}</span>
-  </label>
-);
 
 const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
   <div className="space-y-1.5">
