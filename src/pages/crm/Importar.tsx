@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Table, X, ArrowRight } from 'lucide-react';
 
 interface ImportRecord {
   name: string;
@@ -11,11 +11,19 @@ interface ImportRecord {
   status: 'Concluída' | 'Erro' | 'Processando';
 }
 
+interface PreviewData {
+  fileName: string;
+  data: any[];
+  columns: string[];
+}
+
 const CRMImportar = () => {
   const { addLead } = useCRM();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [preview, setPreview] = useState<PreviewData | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const [recentImports, setRecentImports] = useState<ImportRecord[]>([
     { name: 'clientes_abril.csv', date: '20 Abr 2026', records: '142 registros', status: 'Concluída' },
     { name: 'leads_web.xlsx', date: '18 Abr 2026', records: '89 registros', status: 'Concluída' },
@@ -49,15 +57,13 @@ const CRMImportar = () => {
     };
   };
 
-  const processData = (results: any[], fileName: string) => {
-    if (!results || results.length === 0) {
-      setNotification({ type: 'error', message: 'Arquivo vazio ou sem dados válidos.' });
-      setIsUploading(false);
-      return;
-    }
-
+  const confirmImport = () => {
+    if (!preview?.data) return;
+    
+    setIsImporting(true);
     let count = 0;
-    results.forEach(row => {
+    
+    preview.data.forEach(row => {
       const lead = mapRecordToLead(row);
       if (lead.name) {
         addLead(lead);
@@ -66,7 +72,7 @@ const CRMImportar = () => {
     });
 
     const newImport: ImportRecord = {
-      name: fileName,
+      name: preview.fileName,
       date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
       records: `${count} registros`,
       status: 'Concluída'
@@ -77,10 +83,15 @@ const CRMImportar = () => {
       type: 'success', 
       message: `Sucesso! ${count} leads foram importados e já estão disponíveis no seu Pipeline.` 
     });
-    setIsUploading(false);
-    
-    // Clear notification after 5 seconds
+    setPreview(null);
+    setIsImporting(false);
     setTimeout(() => setNotification(null), 5000);
+  };
+
+  const cancelPreview = () => {
+    setPreview(null);
+    setNotification(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,11 +115,12 @@ const CRMImportar = () => {
         skipEmptyLines: true,
         complete: (results) => {
           try {
-            processData(results.data, fileName);
+            const columns = results.data.length > 0 ? Object.keys(results.data[0]) : [];
+            setPreview({ fileName, data: results.data, columns });
           } catch (err) {
             setNotification({ type: 'error', message: 'Erro ao processar CSV: arquivo pode estar corrompido.' });
-            setIsUploading(false);
           }
+          setIsUploading(false);
         },
         error: (err) => {
           setNotification({ type: 'error', message: 'Erro ao processar CSV: ' + err.message });
@@ -126,11 +138,12 @@ const CRMImportar = () => {
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws);
-          processData(data, fileName);
+          const columns = data.length > 0 ? Object.keys(data[0]) : [];
+          setPreview({ fileName, data, columns });
         } catch (err) {
           setNotification({ type: 'error', message: 'Erro ao processar Excel: arquivo pode estar corrompido ou em formato inválido.' });
-          setIsUploading(false);
         }
+        setIsUploading(false);
       };
       reader.readAsBinaryString(file);
     } else {
@@ -159,69 +172,130 @@ const CRMImportar = () => {
         </div>
       )}
 
-      <div className="max-w-2xl space-y-8">
-        <input 
-          type="file" 
-          ref={fileInputRef}
-          className="hidden" 
-          accept=".csv,.xlsx,.xls"
-          onChange={handleFileUpload}
-        />
-        
-        <div 
-          onClick={() => !isUploading && fileInputRef.current?.click()}
-          className={`bg-white border-2 border-dashed rounded-2xl p-16 text-center transition-all cursor-pointer group shadow-sm ${
-            isUploading ? 'border-neutral-200 cursor-not-allowed' : 'border-neutral-300 hover:border-black hover:shadow-md'
-          }`}
-        >
-          {isUploading ? (
-            <div className="flex flex-col items-center">
-              <Loader2 className="w-12 h-12 text-black animate-spin mb-4" />
-              <h3 className="text-black font-black text-lg mb-1">Processando arquivo...</h3>
-              <p className="text-neutral-400 text-sm font-bold uppercase tracking-widest">Aguarde enquanto importamos seus dados</p>
-            </div>
-          ) : (
-            <>
-              <div className="w-16 h-16 bg-neutral-100 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-black transition-all group-hover:scale-110 group-hover:rotate-3">
-                <Upload className="w-6 h-6 text-neutral-400 group-hover:text-white transition-colors" />
-              </div>
-              <h3 className="text-black font-black text-xl mb-2">Arraste ou clique para selecionar</h3>
-              <p className="text-neutral-400 text-sm font-bold">CSV, XLSX, XLS — máximo 10MB</p>
-              <div className="mt-8 flex justify-center gap-4">
-                <span className="px-4 py-2 bg-neutral-50 rounded-lg text-[10px] font-black text-neutral-400 uppercase tracking-widest border border-neutral-100">Excel</span>
-                <span className="px-4 py-2 bg-neutral-50 rounded-lg text-[10px] font-black text-neutral-400 uppercase tracking-widest border border-neutral-100">CSV</span>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-8 py-5 border-b border-neutral-100 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-neutral-50 flex items-center justify-center">
-              <FileText size={16} className="text-black" />
-            </div>
-            <h3 className="text-[11px] font-black text-black uppercase tracking-widest">Importações Recentes</h3>
-          </div>
-          <div className="divide-y divide-neutral-100">
-            {recentImports.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between px-8 py-5 hover:bg-neutral-50 transition-colors group">
+      {preview ? (
+        <div className="max-w-4xl">
+          <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm mb-6">
+            <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                  <Table size={16} className="text-emerald-600" />
+                </div>
                 <div>
-                  <p className="text-sm font-black text-black group-hover:underline cursor-pointer">{item.name}</p>
-                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-1">
-                    {item.date} · <span className="text-neutral-500">{item.records}</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${
-                    item.status === 'Concluída' ? 'bg-emerald-500' : 'bg-neutral-300'
-                  }`} />
-                  <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">{item.status}</span>
+                  <h3 className="text-sm font-black text-black">Preview: {preview.fileName}</h3>
+                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">{preview.data.length} registros encontrados</p>
                 </div>
               </div>
-            ))}
+              <button onClick={cancelPreview} className="p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+                <X size={18} className="text-neutral-400" />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-neutral-100">
+                    {preview.columns.map((col, i) => (
+                      <th key={i} className="text-left px-3 py-2 font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.data.slice(0, 5).map((row, i) => (
+                    <tr key={i} className="border-b border-neutral-50 hover:bg-neutral-50">
+                      {preview.columns.map((col, j) => (
+                        <td key={j} className="px-3 py-2 font-medium text-black whitespace-nowrap">
+                          {row[col] || '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {preview.data.length > 5 && (
+                <p className="text-center py-3 text-[10px] text-neutral-400 font-bold uppercase tracking-widest">
+                  ... e mais {preview.data.length - 5} registros
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <button onClick={cancelPreview} className="flex-1 py-4 rounded-xl font-black text-sm uppercase tracking-widest border border-neutral-200 text-neutral-500 hover:bg-neutral-50 transition-colors">
+              Cancelar
+            </button>
+            <button onClick={confirmImport} disabled={isImporting} className="flex-[2] py-4 rounded-xl font-black text-sm uppercase tracking-widest bg-black text-white hover:brightness-90 transition-all flex items-center justify-center gap-2">
+              {isImporting ? <Loader2 className="animate-spin" size={18} /> : <ArrowRight size={18} />}
+              Importar {preview.data.length} Leads
+            </button>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="max-w-2xl space-y-8">
+          <input 
+            type="file" 
+            ref={fileInputRef}
+            className="hidden" 
+            accept=".csv,.xlsx,.xls"
+            onChange={handleFileUpload}
+          />
+          
+          <div 
+            onClick={() => !isUploading && fileInputRef.current?.click()}
+            className={`bg-white border-2 border-dashed rounded-2xl p-16 text-center transition-all cursor-pointer group shadow-sm ${
+              isUploading ? 'border-neutral-200 cursor-not-allowed' : 'border-neutral-300 hover:border-black hover:shadow-md'
+            }`}
+          >
+            {isUploading ? (
+              <div className="flex flex-col items-center">
+                <Loader2 className="w-12 h-12 text-black animate-spin mb-4" />
+                <h3 className="text-black font-black text-lg mb-1">Processando arquivo...</h3>
+                <p className="text-neutral-400 text-sm font-bold uppercase tracking-widest">Aguarde enquanto importamos seus dados</p>
+              </div>
+            ) : (
+              <>
+                <div className="w-16 h-16 bg-neutral-100 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-black transition-all group-hover:scale-110 group-hover:rotate-3">
+                  <Upload className="w-6 h-6 text-neutral-400 group-hover:text-white transition-colors" />
+                </div>
+                <h3 className="text-black font-black text-xl mb-2">Arraste ou clique para selecionar</h3>
+                <p className="text-neutral-400 text-sm font-bold">CSV, XLSX, XLS — máximo 10MB</p>
+                <div className="mt-8 flex justify-center gap-4">
+                  <span className="px-4 py-2 bg-neutral-50 rounded-lg text-[10px] font-black text-neutral-400 uppercase tracking-widest border border-neutral-100">Excel</span>
+                  <span className="px-4 py-2 bg-neutral-50 rounded-lg text-[10px] font-black text-neutral-400 uppercase tracking-widest border border-neutral-100">CSV</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-8 py-5 border-b border-neutral-100 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-neutral-50 flex items-center justify-center">
+                <FileText size={16} className="text-black" />
+              </div>
+              <h3 className="text-[11px] font-black text-black uppercase tracking-widest">Importações Recentes</h3>
+            </div>
+            <div className="divide-y divide-neutral-100">
+              {recentImports.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between px-8 py-5 hover:bg-neutral-50 transition-colors group">
+                  <div>
+                    <p className="text-sm font-black text-black group-hover:underline cursor-pointer">{item.name}</p>
+                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-1">
+                      {item.date} · <span className="text-neutral-500">{item.records}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${
+                      item.status === 'Concluída' ? 'bg-emerald-500' : 'bg-neutral-300'
+                    }`} />
+                    <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">{item.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
