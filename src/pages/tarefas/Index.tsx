@@ -1094,6 +1094,12 @@ const Tarefas = () => {
     setEditingColumnId(null);
   };
 
+  const handleDeleteColumn = (colId: string, colTitle: string) => {
+    const updated = columns.filter(c => c.id !== colId);
+    setColumns(updated);
+    localStorage.setItem('axium_cols_v5', JSON.stringify(updated));
+  };
+
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
     setActiveDragId(null);
@@ -1114,7 +1120,7 @@ const Tarefas = () => {
     setActiveDragId(event.active.id);
   };
 
-const SortableHeaderCell = ({ column }: { column: Column }) => {
+const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: (colId: string) => void }) => {
     const {
       attributes,
       listeners,
@@ -1134,18 +1140,19 @@ const SortableHeaderCell = ({ column }: { column: Column }) => {
       <th
         ref={setNodeRef}
         style={{ ...style, ...{ width: column.width } }}
-        className="p-3 border-l border-neutral-200 text-center font-semibold relative group"
+        className="p-3 border-l border-neutral-200 text-center font-semibold relative group text-neutral-600 dark:text-neutral-200"
       >
         <div className="flex items-center justify-center gap-1">
-          <span
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-500 text-xs"
-            title="Arraste para reordenar"
-          >
-            ⋮⋮
-          </span>
-          <span className="text-[10px] font-black text-neutral-600 uppercase tracking-widest">{column.title}</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">{column.title}</span>
+          {!isTaskColumn && onDelete && (
+            <button
+              onClick={() => onDelete(column.id)}
+              className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-500 text-xs ml-1"
+              title="Excluir coluna"
+            >
+              ×
+            </button>
+          )}
         </div>
       </th>
     );
@@ -1436,98 +1443,11 @@ const SortableHeaderCell = ({ column }: { column: Column }) => {
                             strategy={horizontalListSortingStrategy}
                           >
                             {columns.map(col => (
-                              <SortableHeaderCell key={col.id} column={col} />
+                              <SortableHeaderCell key={col.id} column={col} onDelete={handleDeleteColumn} />
                             ))}
                           </SortableContext>
                         </DndContext>
-                        <th className="w-12 p-3 border-l border-neutral-200 bg-neutral-50/50 text-center relative">
-                          <button 
-                            onClick={() => setIsColumnCenterOpen(!isColumnCenterOpen)} 
-                            className="w-7 h-7 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-all text-neutral-400 hover:text-black"
-                          >
-                            <Plus size={18} />
-                          </button>
-                          {isColumnCenterOpen && (
-                            <div className="absolute top-12 right-0 z-[100] w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden">
-                              <div className="p-4 border-b border-neutral-100">
-                                <div className="relative">
-                                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                  <input 
-                                    autoFocus 
-                                    type="text" 
-                                    placeholder="Pesquise ou descreva sua coluna" 
-                                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium placeholder:text-neutral-400 outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all"
-                                    value={searchTool}
-                                    onChange={(e) => setSearchTool(e.target.value)}
-                                  />
-                                </div>
-                              </div>
-                              <div className="p-3 max-h-[320px] overflow-y-auto">
-                                {filteredTools.map(cat => (
-                                  <div key={cat.category} className="mb-4 last:mb-0">
-                                    <div className="flex items-center gap-2 mb-2 px-1">
-                                      {cat.category === 'Essenciais' && (
-                                        <>
-                                          <CheckCircle2 size={14} className="text-emerald-500" />
-                                          <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Essenciais</p>
-                                        </>
-                                      )}
-                                      {cat.category === 'Super úteis' && (
-                                        <>
-                                          <Zap size={14} className="text-amber-500" />
-                                          <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Super úteis</p>
-                                        </>
-                                      )}
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                      {cat.items.map(tool => (
-                                        <button 
-                                          key={tool.id} 
-                                          onClick={() => addColumn(tool)} 
-                                          className="flex items-center gap-3 p-3 bg-neutral-50 hover:bg-neutral-100 border border-neutral-100 hover:border-neutral-300 rounded-xl transition-all text-left group"
-                                        >
-                                          <div className={`p-2 rounded-lg bg-white shadow-sm`}>
-                                            <tool.icon size={18} className={tool.color} />
-                                          </div>
-                                          <span className="text-sm font-semibold text-neutral-700 group-hover:text-black">{tool.label}</span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {columnContextMenu && columnContextMenu.colId && (
-                            <div 
-                              className="absolute top-12 right-0 z-[200] bg-white border border-neutral-200 rounded-xl shadow-xl py-2 min-w-[160px]"
-                              style={{ position: 'fixed', left: columnContextMenu.x, top: columnContextMenu.y }}
-                            >
-                              <button 
-                                onClick={() => {
-                                  const col = columns.find(c => c.id === columnContextMenu.colId);
-                                  if (col) {
-                                    setEditingColumnId(col.id);
-                                    setEditingColumnName(col.title);
-                                  }
-                                  setColumnContextMenu(null);
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-                              >
-                                ✏️ Editar nome
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  const col = columns.find(c => c.id === columnContextMenu.colId);
-                                  if (col) handleDeleteColumn(columnContextMenu.colId, col.title);
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50"
-                              >
-                                🗑️ Deletar coluna
-                              </button>
-                            </div>
-                          )}
-                        </th>
+<th className="w-12 p-3 border-l border-neutral-200 bg-neutral-50/50 text-center" />
                       </tr>
                     </thead>
                     <tbody>
