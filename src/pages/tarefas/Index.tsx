@@ -173,9 +173,10 @@ const DEFAULT_GROUPS: Group[] = [
   }
 ];
 
-const Avatar = ({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) => {
-  const initials = (name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  const bgColor = ['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500'][(name || '').length % 5];
+const Avatar = ({ name, size = 'sm' }: { name: string | null | undefined; size?: 'sm' | 'md' }) => {
+  const safeName = name || 'Usuário';
+  const initials = safeName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const bgColor = ['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500'][safeName.length % 5];
   
   if (size === 'md') {
     return (
@@ -551,7 +552,7 @@ const ReportsView = ({ data }: { data: any }) => {
         <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-black mb-4">Tarefas por Responsável</h3>
           <div className="h-[280px] min-h-[280px]">
-            {data.responsibleData.length > 0 ? (
+            {data?.responsibleData?.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.responsibleData} layout="vertical" margin={{ left: 20, right: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -854,7 +855,7 @@ const Tarefas = () => {
 
       {currentView === 'board' ? (
         <div className="space-y-6 px-4 pb-24">
-          {groups.map(group => (
+          {groups && Array.isArray(groups) && groups.map(group => (
             <div key={group.id}>
               <div 
                 className="flex items-center gap-3 mb-3 cursor-pointer group/header"
@@ -866,7 +867,7 @@ const Tarefas = () => {
                 <span className="text-xs text-neutral-300 font-medium ml-2">{group.tasks.length} itens</span>
               </div>
 
-              {group.isExpanded && (
+              {group.isExpanded && Array.isArray(group.tasks) && (
                 <div className="border border-neutral-200 rounded-2xl bg-white shadow-sm overflow-visible">
                   <table className="w-full border-collapse overflow-visible">
                     <thead>
@@ -949,7 +950,7 @@ const Tarefas = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {group.tasks.map(task => (
+                      {Array.isArray(group.tasks) && group.tasks.map(task => (
                         <tr key={task.id} className={`border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors ${selectedTasks.has(task.id) ? 'bg-blue-50/30' : ''}`}>
                           <td className="p-3 border-r border-neutral-100 text-center">
                             <button 
@@ -1043,12 +1044,12 @@ const Tarefas = () => {
                                 </span>
                               )}
                               {col.type === 'users' && (
-                                task.values[col.id]?.name ? (
+                                task.values?.[col.id]?.name ? (
                                   <button 
                                     onClick={() => setUserSelectorState({ taskId: task.id, colId: col.id })}
                                     className="w-6 h-6 rounded-full flex items-center justify-center hover:ring-2 hover:ring-black/20 transition-all"
                                   >
-                                    <Avatar name={task.values[col.id].name} />
+                                    <Avatar name={task.values?.[col.id]?.name} />
                                   </button>
                                 ) : (
                                   <button 

@@ -340,7 +340,7 @@ const toggleStageFilter = (stage: string) => {
                       name="dateFilter"
                       className="hidden" 
                       checked={filters.dateFilter === opt.value}
-                      onChange={() => setFilters(prev => ({ ...prev, dateFilter: opt.value as any }))}
+                      onChange={() => setDateFilter(opt.value as any)}
                     />
                     <span className={`text-xs font-medium ${filters.dateFilter === opt.value ? 'text-black' : 'text-neutral-500'}`}>{opt.label}</span>
                   </label>
@@ -392,22 +392,22 @@ const toggleStageFilter = (stage: string) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {filteredLeads.map(lead => (
-                  <tr key={lead.id} className="hover:bg-neutral-50 transition-colors group">
+                {Array.isArray(filteredLeads) && filteredLeads.length > 0 ? filteredLeads.map(lead => (
+                  <tr key={lead?.id} className="hover:bg-neutral-50 transition-colors group">
                     <td className="px-3 md:px-5 py-2 md:py-4">
-                      <div className="font-semibold text-black text-xs md:text-sm">{lead.name}</div>
-                      <div className="text-[10px] md:text-xs text-neutral-400 truncate">{lead.niche} · {lead.email}</div>
+                      <div className="font-semibold text-black text-xs md:text-sm">{lead?.name}</div>
+                      <div className="text-[10px] md:text-xs text-neutral-400 truncate">{lead?.niche} · {lead?.email}</div>
                     </td>
-                    <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead.whatsapp}</td>
-                    <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead.instagram}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead?.whatsapp}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead?.instagram}</td>
                     <td className="px-3 md:px-5 py-2 md:py-4">
-                      <div className="text-black font-semibold text-xs md:text-sm">{lead.gmnStars} ★</div>
-                      <div className="text-[10px] md:text-xs text-neutral-400">{lead.gmnReviews} avaliações</div>
+                      <div className="text-black font-semibold text-xs md:text-sm">{lead?.gmnStars} ★</div>
+                      <div className="text-[10px] md:text-xs text-neutral-400">{lead?.gmnReviews} avaliações</div>
                     </td>
-                    <td className="px-3 md:px-5 py-2 md:py-4 text-black font-medium text-xs md:text-sm whitespace-nowrap">{lead.value || '—'}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-4 text-black font-medium text-xs md:text-sm whitespace-nowrap">{lead?.value || '—'}</td>
                     <td className="px-3 md:px-5 py-2 md:py-4">
-                      <span className={`px-2 md:px-2.5 py-1 rounded-md text-[10px] md:text-[11px] font-semibold ${stageStyle[lead.stage] ?? 'bg-neutral-100 text-neutral-600'}`}>
-                        {lead.stage}
+                      <span className={`px-2 md:px-2.5 py-1 rounded-md text-[10px] md:text-[11px] font-semibold ${stageStyle[lead?.stage] ?? 'bg-neutral-100 text-neutral-600'}`}>
+                        {lead?.stage}
                       </span>
                     </td>
                     <td className="px-3 md:px-5 py-2 md:py-4">
@@ -415,14 +415,13 @@ const toggleStageFilter = (stage: string) => {
                         <button onClick={() => openEdit(lead)} className="p-1 md:p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100 rounded-md transition-all">
                           <Pencil size={12} className="md:w-3.5 md:h-3.5" />
                         </button>
-                        <button onClick={() => handleDelete(lead.id)} className="p-1 md:p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all">
+                        <button onClick={() => handleDelete(lead?.id)} className="p-1 md:p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all">
                           <Trash2 size={12} className="md:w-3.5 md:h-3.5" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
-                {filteredLeads.length === 0 && (
+                )) : (
                   <tr>
                     <td colSpan={7} className="px-3 md:px-5 py-8 md:py-12 text-center text-neutral-400 font-medium italic text-xs md:text-sm">
                       {hasActiveFilters ? 'Nenhum lead encontrado com os filtros aplicados' : `Nenhum lead encontrado para "${searchTerm}"`}

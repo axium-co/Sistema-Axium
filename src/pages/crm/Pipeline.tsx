@@ -15,6 +15,10 @@ import { useFilters } from '../../contexts/FilterContext';
 import type { Lead } from '../../contexts/CRMContext';
 import { Filter, XCircle } from 'lucide-react';
 
+const formatCurrency = (val: number) => {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+};
+
 const STAGES = [
   'Novos Leads',
   'Primeiro Contato',
@@ -153,6 +157,28 @@ const CRMPipeline = () => {
   const { filters, hasActiveFilters } = useFilters();
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeLead, setActiveLead] = useState<Lead | null>(null);
+
+  const handleDragStart = (event: any) => {
+    const { active } = event;
+    const lead = leads?.find(l => l.id === active.id);
+    setActiveLead(lead || null);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveLead(null);
+    
+    if (!over) return;
+    
+    const leadId = active.id as string;
+    const newStage = over.id as string;
+    
+    const lead = leads?.find(l => l.id === leadId);
+    if (lead && lead.stage !== newStage) {
+      await updateLead(leadId, { ...lead, stage: newStage });
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
