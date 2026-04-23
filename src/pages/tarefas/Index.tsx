@@ -1,4 +1,19 @@
 import { useState, useEffect, useRef, useCallback, useMemo, createPortal } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -915,6 +930,21 @@ const Tarefas = () => {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskTitle, setEditingTaskTitle] = useState('');
   const [userSelectorState, setUserSelectorState] = useState<{ taskId: string; colId: string } | null>(null);
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
+  const [editingColumnName, setEditingColumnName] = useState('');
+  const [columnContextMenu, setColumnContextMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [targetGroupId, setTargetGroupId] = useState<string>('g1');
@@ -1026,16 +1056,138 @@ const Tarefas = () => {
   };
 
   const addColumn = (tool: any) => {
-    const newId = `col-${Math.random().toString(36).substring(2, 9)}`;
-    setColumns([...columns, { 
-      id: newId, 
-      title: tool.label, 
-      type: tool.type, 
+    const newId = `col-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+    const newColumn: Column = {
+      id: newId,
+      title: tool.label,
+      type: tool.type,
       width: tool.type === 'timeline' ? 180 : 140,
-      formula: tool.type === 'formula' ? '' : undefined 
-    }]);
+      formula: tool.type === 'formula' ? '' : undefined
+    };
+    const updated = [...columns, newColumn];
+    setColumns(updated);
+    localStorage.setItem('axium_cols_v5', JSON.stringify(updated));
     setIsColumnCenterOpen(false);
   };
+
+  const handleDeleteColumn = (colId: string) => {
+    if (!confirm('Tem certeza que deseja deletar esta coluna? Todos os dados dessa coluna serão excluídos.')) return;
+    const updated = columns.filter(c => c.id !== colId);
+    setColumns(updated);
+    localStorage.setItem('axium_cols_v5', JSON.stringify(updated));
+    setColumnContextMenu(null);
+  };
+
+  const handleEditColumnName = (colId: string, newName: string) => {
+    if (!newName.trim()) return;
+    if (columns.some(c => c.id !== colId && c.title.toLowerCase() === newName.toLowerCase())) {
+      alert('Já existe uma coluna com este nome.');
+      return;
+    }
+    const updated = columns.map(c => c.id === colId ? { ...c, title: newName.trim() } : c);
+    setColumns(updated);
+    localStorage.setItem('axium_cols_v5', JSON.stringify(updated));
+    setEditingColumnId(null);
+  };
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    setActiveDragId(null);
+    
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = columns.findIndex(c => c.id === active.id);
+    const newIndex = columns.findIndex(c => c.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const updated = arrayMove(columns, oldIndex, newIndex);
+      setColumns(updated);
+      localStorage.setItem('axium_cols_v5', JSON.stringify(updated));
+    }
+  };
+
+  const handleDragStart = (event: any) => {
+    setActiveDragId(event.active.id);
+  };
+
+  const SortableHeaderCell = ({ column }: { column: Column }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: column.id });
+
+    const style = transform 
+      ? { transform: `translateX(${transform.x}px)`, transition } 
+      : { transition };
+
+    return (
+      <th
+        ref={setNodeRef}
+        style={{ ...style, ...{ width: column.width } }}
+        className="p-3 border-l border-neutral-200 text-center font-semibold relative group"
+      >
+        <div className="flex items-center justify-center gap-1">
+          <span
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-500"
+            onClick={(e) => {
+              if (e.shiftKey) {
+                e.preventDefault();
+                setColumnContextMenu({ colId: column.id, x: e.clientX, y: e.clientY });
+              }
+            }}
+            onDoubleClick={() => {
+              setEditingColumnId(column.id);
+              setEditingColumnName(column.title);
+            }}
+          >
+            ⋮⋮
+          </span>
+          {editingColumnId === column.id ? (
+            <input
+              autoFocus
+              type="text"
+              value={editingColumnName}
+              onChange={(e) => setEditingColumnName(e.target.value)}
+              onBlur={() => handleEditColumnName(column.id, editingColumnName)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleEditColumnName(column.id, editingColumnName);
+                if (e.key === 'Escape') setEditingColumnId(null);
+              }}
+              className="w-20 text-xs font-semibold text-center border border-black rounded px-1"
+            />
+          ) : (
+            <span
+              className="cursor-pointer"
+              onDoubleClick={() => {
+                setEditingColumnId(column.id);
+                setEditingColumnName(column.title);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setColumnContextMenu({ colId: column.id, x: e.clientX, y: e.clientY });
+              }}
+            >
+              {column.title}
+            </span>
+          )}
+        </div>
+      </th>
+    );
+  };
+
+  useEffect(() => {
+    const handleClickOutside = () => setColumnContextMenu(null);
+    if (columnContextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [columnContextMenu]);
 
   const toggleTaskSelection = (taskId: string) => {
     setSelectedTasks(prev => {
@@ -1242,11 +1394,21 @@ const Tarefas = () => {
                           </button>
                         </th>
                         <th className="text-left p-3 min-w-[280px] font-semibold sticky left-10 bg-neutral-50 z-10">Tarefa</th>
-                        {columns.map(col => (
-                          <th key={col.id} className="p-3 border-l border-neutral-200 text-center font-semibold" style={{ width: col.width }}>
-                            {col.title}
-                          </th>
-                        ))}
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragStart={handleDragStart}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={columns.map(c => c.id)}
+                            strategy={horizontalListSortingStrategy}
+                          >
+                            {columns.map(col => (
+                              <SortableHeaderCell key={col.id} column={col} />
+                            ))}
+                          </SortableContext>
+                        </DndContext>
                         <th className="w-12 p-3 border-l border-neutral-200 bg-neutral-50/50 text-center relative">
                           <button 
                             onClick={() => setIsColumnCenterOpen(!isColumnCenterOpen)} 
@@ -1303,6 +1465,32 @@ const Tarefas = () => {
                                   </div>
                                 ))}
                               </div>
+                            </div>
+                          )}
+                          {columnContextMenu && columnContextMenu.colId && (
+                            <div 
+                              className="absolute top-12 right-0 z-[200] bg-white border border-neutral-200 rounded-xl shadow-xl py-2 min-w-[160px]"
+                              style={{ position: 'fixed', left: columnContextMenu.x, top: columnContextMenu.y }}
+                            >
+                              <button 
+                                onClick={() => {
+                                  const col = columns.find(c => c.id === columnContextMenu.colId);
+                                  if (col) {
+                                    setEditingColumnId(col.id);
+                                    setEditingColumnName(col.title);
+                                  }
+                                  setColumnContextMenu(null);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                              >
+                                ✏️ Editar nome
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteColumn(columnContextMenu.colId)}
+                                className="w-full px-4 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                              >
+                                🗑️ Deletar coluna
+                              </button>
                             </div>
                           )}
                         </th>
