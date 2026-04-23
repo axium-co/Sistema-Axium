@@ -1,44 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { 
-  Plus, 
-  Calendar,
-  Check,
-  Trash2,
-  Hash,
-  FileText,
-  Type,
-  Calculator,
-  Users,
-  CheckCircle2,
-  Flag,
-  Clock3,
-  StickyNote,
-  Zap,
-  LayoutGrid,
-  BarChart3,
-} from 'lucide-react';
-
-type ColumnType = 'status' | 'priority' | 'date' | 'number' | 'text' | 'file' | 'timeline' | 'notes' | 'users' | 'formula';
-
-interface Column {
-  id: string;
-  title: string;
-  type: ColumnType;
-  width: number;
-  formula?: string;
-}
+import { Plus, Check, Trash2, Users, CheckCircle2, Flag, StickyNote, FileText, Calendar, LayoutGrid, BarChart3 } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -54,156 +15,83 @@ interface Group {
   tasks: Task[];
 }
 
+interface Column {
+  id: string;
+  title: string;
+  type: string;
+  width: number;
+}
+
 const STATUS_OPTIONS = ['Não iniciado', 'Em andamento', 'Feito', 'Parado'];
 const PRIORITY_OPTIONS = ['Baixa', 'Média', 'Alta'];
 
-const TOOL_CATALOG = [
-  { category: 'Essenciais', items: [
-    { id: 'status', label: 'Status', icon: CheckCircle2, color: 'text-emerald-500', type: 'status' as ColumnType },
-    { id: 'priority', label: 'Prioridade', icon: Flag, color: 'text-red-500', type: 'priority' as ColumnType },
-    { id: 'date', label: 'Data', icon: Calendar, color: 'text-blue-500', type: 'date' as ColumnType },
-    { id: 'users', label: 'Pessoas', icon: Users, color: 'text-amber-500', type: 'users' as ColumnType },
-  ]},
-  { category: 'Super úteis', items: [
-    { id: 'number', label: 'Números', icon: Hash, color: 'text-purple-500', type: 'number' as ColumnType },
-    { id: 'formula', label: 'Fórmula', icon: Calculator, color: 'text-indigo-500', type: 'formula' as ColumnType },
-    { id: 'file', label: 'Arquivos', icon: FileText, color: 'text-orange-500', type: 'file' as ColumnType },
-    { id: 'timeline', label: 'Cronograma', icon: Clock3, color: 'text-cyan-500', type: 'timeline' as ColumnType },
-    { id: 'notes', label: 'Notas', icon: StickyNote, color: 'text-yellow-500', type: 'notes' as ColumnType },
-    { id: 'text', label: 'Texto', icon: Type, color: 'text-blue-500', type: 'text' as ColumnType },
-  ]}
-];
-
 const DEFAULT_COLUMNS: Column[] = [
-  { id: 'col-status', title: 'Status', type: 'status', width: 140 },
-  { id: 'col-priority', title: 'Prioridade', type: 'priority', width: 100 },
-  { id: 'col-deadline', title: 'Prazo', type: 'date', width: 120 },
-  { id: 'col-budget', title: 'Orçamento', type: 'number', width: 120 },
-  { id: 'col-notes', title: 'Notas', type: 'notes', width: 80 },
+  { id: 'col-tarefa', title: 'Tarefa', type: 'text', width: 200 },
+  { id: 'col-responsavel', title: 'Responsável', type: 'users', width: 140 },
+  { id: 'col-status', title: 'Status', type: 'status', width: 130 },
+  { id: 'col-prioridade', title: 'Prioridade', type: 'priority', width: 100 },
+  { id: 'col-notas', title: 'Notas', type: 'notes', width: 150 },
+  { id: 'col-arquivos', title: 'Arquivos', type: 'file', width: 80 },
+  { id: 'col-data-inicio', title: 'Data de início', type: 'date', width: 120 },
+  { id: 'col-prazo', title: 'Prazo de Entrega', type: 'date', width: 130 },
 ];
 
 const DEFAULT_GROUPS: Group[] = [
   { id: 'g1', title: 'Tarefas Pendentes', color: '#579bfc', isExpanded: true, tasks: [
-    { id: '1', title: 'Lead - Clínica Sorriso', values: { 'col-status': 'Em andamento', 'col-priority': 'Alta', 'col-deadline': '2026-04-25', 'col-budget': 15000, 'col-notes': 'Aguardando aprovação' }},
-    { id: '2', title: 'Follow-up Cliente XPTO', values: { 'col-status': 'Não iniciado', 'col-priority': 'Média', 'col-deadline': '2026-04-30', 'col-budget': 8500, 'col-notes': '' }},
+    { id: '1', title: 'Lead - Clínica Sorriso', values: { 'col-status': 'Em andamento', 'col-prioridade': 'Alta', 'col-prazo': '2026-04-25', 'col-data-inicio': '2026-04-20', 'col-notas': 'Aguardando aprovação' }},
+    { id: '2', title: 'Follow-up Cliente XPTO', values: { 'col-status': 'Não iniciado', 'col-prioridade': 'Média', 'col-prazo': '2026-04-30', 'col-data-inicio': '2026-04-22', 'col-notas': '' }},
   ]},
   { id: 'g2', title: 'Concluídos', color: '#00c875', isExpanded: true, tasks: [
-    { id: '3', title: 'Projeto Redesign Site', values: { 'col-status': 'Feito', 'col-priority': 'Baixa', 'col-deadline': '2026-04-15', 'col-budget': 12000, 'col-notes': 'Concluído com sucesso' }},
+    { id: '3', title: 'Projeto Redesign Site', values: { 'col-status': 'Feito', 'col-prioridade': 'Baixa', 'col-prazo': '2026-04-15', 'col-data-inicio': '2026-04-01', 'col-notas': 'Concluído com sucesso' }},
   ]},
 ];
 
-const ColumnDropdown = ({ 
-  isOpen, 
-  onClose, 
-  onAddColumn,
-  buttonRef 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onAddColumn: (tool: any) => void;
-  buttonRef: React.RefObject<HTMLButtonElement | null>;
-}) => {
-  const [search, setSearch] = useState('');
-  
-  const filteredTools = TOOL_CATALOG.map(cat => ({
-    ...cat,
-    items: cat.items.filter(item => 
-      item.label.toLowerCase().includes(search.toLowerCase())
-    )
-  })).filter(cat => cat.items.length > 0);
+const ColumnHeader = ({ column, onRename }: { column: Column; onRename: (id: string, newTitle: string) => void }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(column.title);
 
-  let dropdownStyle: React.CSSProperties = { position: 'fixed' as const, top: 100, left: 20, zIndex: 9999 };
-  
-  if (buttonRef.current) {
-    const rect = buttonRef.current.getBoundingClientRect();
-    const dropdownWidth = 340;
-    const rightEdge = rect.right + dropdownWidth;
-    const shouldAlignRight = rightEdge > window.innerWidth - 20;
-    
-    dropdownStyle = {
-      position: 'fixed' as const,
-      top: rect.bottom + 8,
-      left: shouldAlignRight ? undefined : rect.left,
-      right: shouldAlignRight ? Math.max(20, window.innerWidth - rect.right) : undefined,
-      zIndex: 9999,
-    };
+  const handleDoubleClick = () => {
+    setEditValue(column.title);
+    setIsEditing(true);
+  };
+
+  const handleBlur = () => {
+    if (editValue.trim() && editValue !== column.title) {
+      onRename(column.id, editValue.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleBlur();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <input
+        autoFocus
+        type="text"
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="w-full bg-white border-2 border-black rounded px-1 py-0.5 text-[10px] font-black uppercase text-center outline-none"
+      />
+    );
   }
 
-  const handleButtonClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-  };
-
-  if (!isOpen) return null;
-
   return (
-    <div 
-      className="w-[340px] bg-white border border-neutral-200 rounded-2xl shadow-xl overflow-hidden"
-      style={dropdownStyle}
-      onClick={handleButtonClick}
+    <span 
+      onDoubleClick={handleDoubleClick}
+      className="cursor-pointer text-[10px] font-black uppercase tracking-widest select-none"
+      title="Clique duas vezes para editar"
     >
-      <div className="p-4 border-b border-neutral-100">
-        <input
-          autoFocus
-          type="text"
-          placeholder="Pesquise ou descreva sua coluna"
-          value={search}
-          onChange={handleSearchChange}
-          className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-black"
-        />
-      </div>
-      <div className="max-h-[350px] overflow-y-auto">
-        {filteredTools.map(cat => (
-          <div key={cat.category} className="p-3">
-            <div className="flex items-center gap-2 mb-2 px-1">
-              {cat.category === 'Essenciais' && <CheckCircle2 size={14} className="text-emerald-500" />}
-              {cat.category === 'Super úteis' && <Zap size={14} className="text-amber-500" />}
-              <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">{cat.category}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {cat.items.map(tool => (
-                <button
-                  key={tool.id}
-                  onClick={() => onAddColumn(tool)}
-                  className="flex items-center gap-3 p-3 bg-neutral-50 hover:bg-neutral-100 rounded-xl transition-all text-left"
-                >
-                  <tool.icon size={18} className={tool.color} />
-                  <span className="text-sm font-medium text-neutral-700">{tool.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const SortableHeaderCell = ({ column, onDelete }: { column: Column; onDelete?: () => void }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: column.id });
-  const isTaskColumn = column.title.toLowerCase() === 'tarefa';
-
-  return (
-    <th
-      ref={setNodeRef}
-      style={{ width: column.width, transform, transition }}
-      className="p-3 border-l border-neutral-200 text-center font-semibold relative group text-neutral-600"
-    >
-      <div className="flex items-center justify-center gap-1">
-        <span className="text-[10px] font-black uppercase tracking-widest">{column.title}</span>
-        {!isTaskColumn && onDelete && (
-          <button
-            onClick={onDelete}
-            className="text-neutral-300 hover:text-red-500 text-xs ml-1 opacity-60 hover:opacity-100"
-          >
-            ×
-          </button>
-        )}
-      </div>
-    </th>
+      {column.title}
+    </span>
   );
 };
 
@@ -220,60 +108,15 @@ const Board = ({
   onUpdateTasks: (tasks: Task[]) => void;
   onDeleteGroup?: () => void;
 }) => {
-  const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  const addButtonRef = useRef<HTMLButtonElement>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
-
-  const handleAddColumn = (tool: any) => {
-    try {
-      const exists = columns.some(c => c.type === tool.type);
-      if (exists) {
-        alert(`Uma coluna "${tool.label}" já existe.`);
-        return;
-      }
-      const newCol: Column = {
-        id: `col-${Date.now()}`,
-        title: tool.label,
-        type: tool.type,
-        width: tool.type === 'timeline' ? 180 : 140,
-      };
-      onUpdateColumns([...columns, newCol]);
-      setIsColumnDropdownOpen(false);
-    } catch (e) {
-      console.error('handleAddColumn error:', e);
-    }
-  };
-
-  const handleDeleteColumn = (colId: string) => {
-    try {
-      const col = columns.find(c => c.id === colId);
-      if (!col) return;
-      if (col.title.toLowerCase() === 'tarefa') {
-        alert('A coluna TAREFA não pode ser deletada.');
-        return;
-      }
-      if (!confirm(`Deletar coluna "${col.title}"?`)) return;
-      onUpdateColumns(columns.filter(c => c.id !== colId));
-    } catch (e) {
-      console.error('handleDeleteColumn error:', e);
-    }
-  };
 
   const handleStatusChange = (taskId: string, newStatus: string) => {
-    try {
-      const task = group.tasks.find(t => t.id === taskId);
-      if (!task) return;
-      
-      const updatedTask = { ...task, values: { ...task.values, 'col-status': newStatus } };
-      const otherTasks = group.tasks.filter(t => t.id !== taskId);
-      onUpdateTasks([...otherTasks, updatedTask]);
-    } catch (e) {
-      console.error('handleStatusChange error:', e);
-    }
+    const task = group.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const updatedTask = { ...task, values: { ...task.values, 'col-status': newStatus } };
+    const otherTasks = group.tasks.filter(t => t.id !== taskId);
+    onUpdateTasks([...otherTasks, updatedTask]);
   };
 
   const toggleTaskSelection = (taskId: string) => {
@@ -294,24 +137,17 @@ const Board = ({
   };
 
   const handleAddTask = () => {
-    try {
-      const newTask: Task = {
-        id: `task-${Date.now()}`,
-        title: 'Nova Tarefa',
-        values: { 'col-status': 'Não iniciado' },
-      };
-      onUpdateTasks([...group.tasks, newTask]);
-    } catch (e) {
-      console.error('handleAddTask error:', e);
-    }
+    const newTask: Task = {
+      id: `task-${Date.now()}`,
+      title: 'Nova Tarefa',
+      values: { 'col-status': 'Não iniciado' },
+    };
+    onUpdateTasks([...group.tasks, newTask]);
   };
 
-  const handleAddButtonClick = () => {
-    try {
-      setIsColumnDropdownOpen(!isColumnDropdownOpen);
-    } catch (e) {
-      console.error('handleAddButtonClick error:', e);
-    }
+  const handleDeleteTask = (taskId: string) => {
+    if (!confirm('Excluir esta tarefa?')) return;
+    onUpdateTasks(group.tasks.filter(t => t.id !== taskId));
   };
 
   return (
@@ -329,7 +165,7 @@ const Board = ({
 
       <div className="border border-neutral-200 rounded-2xl bg-white overflow-visible">
         <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-          <table className="w-full border-collapse min-w-[600px]">
+          <table className="w-full border-collapse min-w-[900px]">
             <thead>
               <tr className="bg-neutral-50 border-b border-neutral-200 sticky top-0 z-10">
                 <th className="w-10 p-3 border-r border-neutral-200 bg-neutral-50 sticky left-0 z-20">
@@ -340,25 +176,18 @@ const Board = ({
                     {selectedTasks.size === group.tasks.length && group.tasks.length > 0 && <Check size={12} className="text-black" />}
                   </button>
                 </th>
-                <th className="text-left p-3 min-w-[200px] font-semibold sticky left-10 z-10 bg-neutral-50 text-neutral-600 text-[10px] font-black uppercase">Tarefa</th>
-                <SortableContext items={columns.map(c => c.id)} strategy={horizontalListSortingStrategy}>
-                  {columns.map(col => (
-                    <SortableHeaderCell 
-                      key={col.id} 
-                      column={col} 
-                      onDelete={() => handleDeleteColumn(col.id)} 
-                    />
-                  ))}
-                </SortableContext>
-                <th className="w-12 p-3 border-l border-neutral-200 bg-neutral-50">
-                  <button 
-                    ref={addButtonRef}
-                    onClick={handleAddButtonClick}
-                    className="w-7 h-7 rounded-full hover:bg-neutral-200 flex items-center justify-center text-neutral-400 hover:text-black"
+                {columns.map(col => (
+                  <th 
+                    key={col.id} 
+                    className="p-3 border-l border-neutral-200 bg-neutral-50 text-center font-semibold text-neutral-600"
+                    style={{ minWidth: col.width }}
                   >
-                    <Plus size={18} />
-                  </button>
-                </th>
+                    <ColumnHeader 
+                      column={col} 
+                      onRename={(id, newTitle) => onUpdateColumns(columns.map(c => c.id === id ? { ...c, title: newTitle } : c))}
+                    />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -374,7 +203,7 @@ const Board = ({
                       {selectedTasks.has(task.id) && <Check size={12} className="text-white" />}
                     </button>
                   </td>
-                  <td className="p-3 sticky left-10 bg-white z-10">
+                  <td className="p-2 border-l border-neutral-200">
                     <input
                       value={task.title}
                       onChange={(e) => {
@@ -383,58 +212,104 @@ const Board = ({
                         );
                         onUpdateTasks(updated);
                       }}
-                      className="bg-transparent outline-none font-medium text-black w-full"
+                      className="w-full bg-transparent border-none outline-none font-medium text-sm"
                     />
                   </td>
-                  {columns.map(col => (
-                    <td key={col.id} className="p-2 border-l border-neutral-200">
-                      {col.type === 'status' && (
-                        <select
-                          value={task.values[col.id] || ''}
-                          onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                          className="w-full bg-transparent border-none outline-none text-sm"
-                        >
-                          {STATUS_OPTIONS.map(opt => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      )}
-                      {col.type === 'priority' && (
-                        <select
-                          value={task.values[col.id] || ''}
-                          onChange={(e) => {
-                            const updated = group.tasks.map(t => 
-                              t.id === task.id ? { ...t, values: { ...t.values, [col.id]: e.target.value } } : t
-                            );
-                            onUpdateTasks(updated);
-                          }}
-                          className="w-full bg-transparent border-none outline-none text-sm"
-                        >
-                          {PRIORITY_OPTIONS.map(opt => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      )}
-                      {(col.type === 'date' || col.type === 'number' || col.type === 'text' || col.type === 'notes') && (
-                        <input
-                          type={col.type === 'date' ? 'date' : col.type === 'number' ? 'number' : 'text'}
-                          value={task.values[col.id] || ''}
-                          onChange={(e) => {
-                            const updated = group.tasks.map(t => 
-                              t.id === task.id ? { ...t, values: { ...t.values, [col.id]: e.target.value } } : t
-                            );
-                            onUpdateTasks(updated);
-                          }}
-                          className="w-full bg-transparent border-none outline-none text-sm"
-                          placeholder={col.type === 'notes' ? 'Notas...' : ''}
-                        />
-                      )}
-                      {!['status', 'priority', 'date', 'number', 'text', 'notes'].includes(col.type) && (
-                        <span className="text-neutral-400 text-xs">-</span>
-                      )}
-                    </td>
-                  ))}
-                  <td className="border-l border-neutral-200" />
+                  <td className="p-2 border-l border-neutral-200">
+                    <input
+                      type="text"
+                      value={task.values['col-responsavel'] || ''}
+                      onChange={(e) => {
+                        const updated = group.tasks.map(t => 
+                          t.id === task.id ? { ...t, values: { ...t.values, 'col-responsavel': e.target.value } } : t
+                        );
+                        onUpdateTasks(updated);
+                      }}
+                      placeholder="Nome..."
+                      className="w-full bg-transparent border-none outline-none text-sm"
+                    />
+                  </td>
+                  <td className="p-2 border-l border-neutral-200">
+                    <select
+                      value={task.values['col-status'] || ''}
+                      onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                      className="w-full bg-transparent border-none outline-none text-sm"
+                    >
+                      {STATUS_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-2 border-l border-neutral-200">
+                    <select
+                      value={task.values['col-prioridade'] || ''}
+                      onChange={(e) => {
+                        const updated = group.tasks.map(t => 
+                          t.id === task.id ? { ...t, values: { ...t.values, 'col-prioridade': e.target.value } } : t
+                        );
+                        onUpdateTasks(updated);
+                      }}
+                      className="w-full bg-transparent border-none outline-none text-sm"
+                    >
+                      {PRIORITY_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-2 border-l border-neutral-200">
+                    <textarea
+                      value={task.values['col-notas'] || ''}
+                      onChange={(e) => {
+                        const updated = group.tasks.map(t => 
+                          t.id === task.id ? { ...t, values: { ...t.values, 'col-notas': e.target.value } } : t
+                        );
+                        onUpdateTasks(updated);
+                      }}
+                      placeholder="Notas..."
+                      className="w-full bg-transparent border-none outline-none text-sm resize-none"
+                      rows={1}
+                    />
+                  </td>
+                  <td className="p-2 border-l border-neutral-200">
+                    <input
+                      type="text"
+                      value={task.values['col-arquivos'] || ''}
+                      onChange={(e) => {
+                        const updated = group.tasks.map(t => 
+                          t.id === task.id ? { ...t, values: { ...t.values, 'col-arquivos': e.target.value } } : t
+                        );
+                        onUpdateTasks(updated);
+                      }}
+                      placeholder="Arquivos..."
+                      className="w-full bg-transparent border-none outline-none text-sm"
+                    />
+                  </td>
+                  <td className="p-2 border-l border-neutral-200">
+                    <input
+                      type="date"
+                      value={task.values['col-data-inicio'] || ''}
+                      onChange={(e) => {
+                        const updated = group.tasks.map(t => 
+                          t.id === task.id ? { ...t, values: { ...t.values, 'col-data-inicio': e.target.value } } : t
+                        );
+                        onUpdateTasks(updated);
+                      }}
+                      className="w-full bg-transparent border-none outline-none text-sm"
+                    />
+                  </td>
+                  <td className="p-2 border-l border-neutral-200">
+                    <input
+                      type="date"
+                      value={task.values['col-prazo'] || ''}
+                      onChange={(e) => {
+                        const updated = group.tasks.map(t => 
+                          t.id === task.id ? { ...t, values: { ...t.values, 'col-prazo': e.target.value } } : t
+                        );
+                        onUpdateTasks(updated);
+                      }}
+                      className="w-full bg-transparent border-none outline-none text-sm"
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -442,19 +317,14 @@ const Board = ({
         </div>
       </div>
 
-      <button
-        onClick={handleAddTask}
-        className="mt-3 flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-400 hover:text-black hover:bg-neutral-100 rounded-lg transition-all"
-      >
-        <Plus size={16} /> Nova Tarefa
-      </button>
-
-      <ColumnDropdown
-        isOpen={isColumnDropdownOpen}
-        onClose={() => setIsColumnDropdownOpen(false)}
-        onAddColumn={handleAddColumn}
-        buttonRef={addButtonRef}
-      />
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={handleAddTask}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-400 hover:text-black hover:bg-neutral-100 rounded-lg transition-all"
+        >
+          <Plus size={16} /> Nova Tarefa
+        </button>
+      </div>
     </div>
   );
 };
@@ -471,7 +341,7 @@ const Tarefas = () => {
   });
   const [columns, setColumns] = useState<Column[]>(() => {
     try {
-      const stored = localStorage.getItem('axium_cols_v5');
+      const stored = localStorage.getItem('axium_cols_fixed');
       return stored ? JSON.parse(stored) : DEFAULT_COLUMNS;
     } catch (e) {
       return DEFAULT_COLUMNS;
@@ -490,15 +360,11 @@ const Tarefas = () => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('axium_cols_v5', JSON.stringify(columns));
+      localStorage.setItem('axium_cols_fixed', JSON.stringify(columns));
     } catch (e) {
       console.warn('Failed to save columns to localStorage', e);
     }
   }, [columns]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
 
   const handleUpdateGroupTasks = (groupId: string, tasks: Task[]) => {
     setGroups(prev => prev.map(g => g.id === groupId ? { ...g, tasks } : g));
