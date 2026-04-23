@@ -730,6 +730,9 @@ const Tarefas = () => {
 
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [isColumnCenterOpen, setIsColumnCenterOpen] = useState(false);
+  const [tableScrollLeft, setTableScrollLeft] = useState(0);
+  const [newGroupTitle, setNewGroupTitle] = useState('');
+  const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [searchTool, setSearchTool] = useState('');
   const [activeCellMenu, setActiveCellMenu] = useState<{ taskId: string; colId: string } | null>(null);
   const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
@@ -801,6 +804,41 @@ const Tarefas = () => {
         setQuickAddTitles(prev => ({ ...prev, [groupId]: '' }));
       }
     }
+  };
+
+  const handleAddGroup = () => {
+    const title = newGroupTitle.trim();
+    if (!title) return;
+    
+    const colors = ['#579bfc', '#00c875', '#ffcb00', '#ff5ac6', '#8e44ad', '#e74c3c'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    const newGroup: Group = {
+      id: `g-${Date.now()}`,
+      title,
+      color: randomColor,
+      isExpanded: true,
+      tasks: []
+    };
+    
+    setGroups(prev => {
+      const updated = [...prev, newGroup];
+      localStorage.setItem('axium_groups', JSON.stringify(updated));
+      return updated;
+    });
+    
+    setNewGroupTitle('');
+    setIsAddingGroup(false);
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    if (!confirm('Tem certeza que deseja deletar este quadro? Todas as tarefas serão excluídas.')) return;
+    
+    setGroups(prev => {
+      const updated = prev.filter(g => g.id !== groupId);
+      localStorage.setItem('axium_groups', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const addColumn = (tool: any) => {
@@ -945,6 +983,45 @@ const Tarefas = () => {
 
       {currentView === 'board' ? (
         <div className="space-y-6 px-4 pb-24">
+          <div className="flex items-center gap-3">
+            {isAddingGroup ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newGroupTitle}
+                  onChange={(e) => setNewGroupTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddGroup();
+                    if (e.key === 'Escape') { setIsAddingGroup(false); setNewGroupTitle(''); }
+                  }}
+                  placeholder="Nome do novo quadro..."
+                  className="px-3 py-2 border border-neutral-300 rounded-lg text-sm font-semibold outline-none focus:border-black"
+                  autoFocus
+                />
+                <button 
+                  onClick={handleAddGroup}
+                  className="p-2 bg-black text-white rounded-lg hover:bg-neutral-800"
+                >
+                  <Check size={14} />
+                </button>
+                <button 
+                  onClick={() => { setIsAddingGroup(false); setNewGroupTitle(''); }}
+                  className="p-2 text-neutral-400 hover:text-black"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsAddingGroup(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-dashed border-neutral-300 rounded-lg text-sm font-semibold text-neutral-400 hover:border-black hover:text-black transition-all"
+              >
+                <Plus size={16} />
+                Adicionar quadro
+              </button>
+            )}
+          </div>
+          
           {groups && Array.isArray(groups) && groups.map(group => (
             <div key={group.id}>
               <div 
@@ -955,6 +1032,14 @@ const Tarefas = () => {
                 {group.isExpanded ? <ChevronDown size={18} className="text-neutral-400" /> : <ChevronRight size={18} className="text-neutral-400" />}
                 <h2 className="text-lg font-black transition-all group-hover/header:translate-x-1" style={{ color: group.color }}>{group.title}</h2>
                 <span className="text-xs text-neutral-300 font-medium ml-2">{group.tasks.length} itens</span>
+                {group.id.startsWith('g-') && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleDeleteGroup(group.id); }}
+                    className="opacity-0 group-hover/header:opacity-100 p-1 hover:bg-red-50 rounded transition-all"
+                  >
+                    <Trash2 size={14} className="text-red-400" />
+                  </button>
+                )}
               </div>
 
               {group.isExpanded && Array.isArray(group.tasks) && (
