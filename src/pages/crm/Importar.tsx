@@ -49,7 +49,13 @@ const CRMImportar = () => {
     };
   };
 
-  const processData = (results: any[]) => {
+  const processData = (results: any[], fileName: string) => {
+    if (!results || results.length === 0) {
+      setNotification({ type: 'error', message: 'Arquivo vazio ou sem dados válidos.' });
+      setIsUploading(false);
+      return;
+    }
+
     let count = 0;
     results.forEach(row => {
       const lead = mapRecordToLead(row);
@@ -60,7 +66,7 @@ const CRMImportar = () => {
     });
 
     const newImport: ImportRecord = {
-      name: fileInputRef.current?.files?.[0].name || 'Arquivo importado',
+      name: fileName,
       date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
       records: `${count} registros`,
       status: 'Concluída'
@@ -79,36 +85,50 @@ const CRMImportar = () => {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    
+    if (!file) {
+      setNotification({ type: 'error', message: 'Nenhum arquivo selecionado.' });
+      return;
+    }
+
+    const fileName = file.name;
 
     setIsUploading(true);
     setNotification(null);
 
     const reader = new FileReader();
 
-    if (file.name.endsWith('.csv')) {
+    if (fileName.endsWith('.csv')) {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          processData(results.data);
+          try {
+            processData(results.data, fileName);
+          } catch (err) {
+            setNotification({ type: 'error', message: 'Erro ao processar CSV: arquivo pode estar corrompido.' });
+            setIsUploading(false);
+          }
         },
         error: (err) => {
           setNotification({ type: 'error', message: 'Erro ao processar CSV: ' + err.message });
           setIsUploading(false);
         }
       });
-    } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
       reader.onload = (evt) => {
         try {
           const bstr = evt.target?.result;
+          if (!bstr) {
+            throw new Error('Arquivo não pôde ser lido.');
+          }
           const wb = XLSX.read(bstr, { type: 'binary' });
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws);
-          processData(data);
+          processData(data, fileName);
         } catch (err) {
-          setNotification({ type: 'error', message: 'Erro ao processar Excel: ' + (err as Error).message });
+          setNotification({ type: 'error', message: 'Erro ao processar Excel: arquivo pode estar corrompido ou em formato inválido.' });
           setIsUploading(false);
         }
       };
@@ -118,7 +138,6 @@ const CRMImportar = () => {
       setIsUploading(false);
     }
 
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 

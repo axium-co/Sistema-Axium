@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, X, Save } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
 import type { Lead } from '../../contexts/CRMContext';
 
@@ -31,6 +31,27 @@ const STAGES = [
   'Perdido'
 ];
 
+const ORIGINS = [
+  'Instagram',
+  'Indicação',
+  'WhatsApp',
+  'Facebook',
+  'Google',
+  'Site',
+  'Evento',
+  'Outros'
+];
+
+const STAGE_ORIGINS = [
+  'Instagram',
+  'Indicação', 
+  'Website',
+  'Facebook',
+  'Google Ads',
+  'Evento',
+  'Outros'
+];
+
 const stageStyle: Record<string, string> = {
   'Novos Leads':      'bg-neutral-100 text-neutral-600',
   'Primeiro Contato': 'bg-neutral-200 text-neutral-700',
@@ -42,7 +63,35 @@ const stageStyle: Record<string, string> = {
   'Perdido':          'bg-red-50 text-red-600',
 };
 
-/* ── Reusable white-modal field components ── */
+const FilterSection = ({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-neutral-100 pb-3 mb-3">
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)} 
+        className="flex items-center justify-between w-full text-left py-1"
+      >
+        <span className="text-[10px] font-black text-black uppercase tracking-widest">{title}</span>
+        {isOpen ? <ChevronUp size={14} className="text-neutral-400" /> : <ChevronDown size={14} className="text-neutral-400" />}
+      </button>
+      {isOpen && <div className="mt-2 space-y-2">{children}</div>}
+    </div>
+  );
+};
+
+const CheckboxFilter = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) => (
+  <label className="flex items-center gap-2 cursor-pointer group">
+    <div className={`w-4 h-4 border rounded flex items-center justify-center transition-all ${checked ? 'bg-black border-black' : 'border-neutral-300 group-hover:border-black'}`}>
+      {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+      </svg>}
+    </div>
+    <input type="checkbox" className="hidden" checked={checked} onChange={e => onChange(e.target.checked)} />
+    <span className={`text-xs font-medium ${checked ? 'text-black' : 'text-neutral-500'}`}>{label}</span>
+  </label>
+);
+
 const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
   <div className="space-y-1.5">
     <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
@@ -61,12 +110,90 @@ const CRMLeads = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [current, setCurrent] = useState<Partial<Lead>>(EMPTY_LEAD);
   const [mode, setMode] = useState<'add' | 'edit'>('add');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const filteredLeads = leads.filter(lead => 
-    lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.niche.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const [filters, setFilters] = useState({
+    stages: [] as string[],
+    origins: [] as string[],
+    niches: [] as string[],
+   DateFilter: '' as '' | 'today' | 'week' | 'month',
+  });
+
+  const stageCheckboxes = useRef(new Set<string>());
+  const originCheckboxes = useRef(new Set<string>());
+  const nicheCheckboxes = useRef(new Set<string>());
+
+  const uniqueNiches = useMemo(() => {
+    const niches = new Set(leads.map(l => l.niche).filter(Boolean));
+    return Array.from(niches).sort();
+  }, [leads]);
+
+  const filteredLeads = useMemo(() => {
+    let result = leads;
+
+    if (searchTerm) {
+      result = result.filter(lead => 
+        lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.niche.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (filters.stages.length > 0) {
+      result = result.filter(lead => filters.stages.includes(lead.stage));
+    }
+
+    if (filters.origins.length > 0) {
+      result = result.filter(lead => {
+        const leadOrigin = (lead as any).source || 'Outros';
+        return filters.origins.includes(leadOrigin);
+      });
+    }
+
+    if (filters.niches.length > 0) {
+      result = result.filter(lead => filters.niches.includes(lead.niche));
+    }
+
+    if (filters.DateFilter) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      if (filters.DateFilter === 'today') {
+        result = result.filter(lead => {
+          if (!lead.firstContact) return false;
+          const leadDate = new Date(lead.firstContact);
+          return leadDate.toDateString() === today.toDateString();
+        });
+      } else if (filters.DateFilter === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        result = result.filter(lead => {
+          if (!lead.firstContact) return false;
+          const leadDate = new Date(lead.firstContact);
+          return leadDate >= weekAgo;
+        });
+      } else if (filters.DateFilter === 'month') {
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        result = result.filter(lead => {
+          if (!lead.firstContact) return false;
+          const leadDate = new Date(lead.firstContact);
+          return leadDate >= monthAgo;
+        });
+      }
+    }
+
+    return result;
+  }, [leads, searchTerm, filters]);
+
+  const hasActiveFilters = filters.stages.length > 0 || filters.origins.length > 0 || filters.niches.length > 0 || filters.DateFilter !== '';
+
+  const clearFilters = () => {
+    setFilters({ stages: [], origins: [], niches: [], dateFilter: '' });
+    stageCheckboxes.current.clear();
+    originCheckboxes.current.clear();
+    nicheCheckboxes.current.clear();
+  };
 
   const openAdd = () => { setMode('add'); setCurrent(EMPTY_LEAD); setIsOpen(true); };
   const openEdit = (lead: Lead) => { setMode('edit'); setCurrent({ ...lead }); setIsOpen(true); };
@@ -88,81 +215,201 @@ const CRMLeads = () => {
   const set = (field: keyof Lead, val: string) =>
     setCurrent(prev => ({ ...prev, [field]: val }));
 
+  const toggleStageFilter = (stage: string) => {
+    setFilters(prev => {
+      const stages = prev.stages.includes(stage)
+        ? prev.stages.filter(s => s !== stage)
+        : [...prev.stages, stage];
+      return { ...prev, stages };
+    });
+  };
+
+  const toggleOriginFilter = (origin: string) => {
+    setFilters(prev => {
+      const origins = prev.origins.includes(origin)
+        ? prev.origins.filter(o => o !== origin)
+        : [...prev.origins, origin];
+      return { ...prev, origins };
+    });
+  };
+
+  const toggleNicheFilter = (niche: string) => {
+    setFilters(prev => {
+      const niches = prev.niches.includes(niche)
+        ? prev.niches.filter(n => n !== niche)
+        : [...prev.niches, niche];
+      return { ...prev, niches };
+    });
+  };
+
   return (
-    <div>
-      {/* ── Page header ── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-start gap-4 mb-2 md:mb-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Leads</h1>
-          <p className="text-neutral-500 text-xs md:text-sm">Gerenciamento de contatos e funil de vendas.</p>
-        </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2 whitespace-nowrap">
-          <Plus size={15} strokeWidth={2.5} />
-          <span className="hidden sm:inline">Novo Lead</span>
-          <span className="sm:hidden text-xs">Novo</span>
-        </button>
-      </div>
+    <div className="flex min-h-screen">
+      {isSidebarOpen && (
+        <aside className="w-64 md:w-72 flex-shrink-0 bg-white border-r border-neutral-200 overflow-y-auto" style={{ height: 'calc(100vh - 120px)' }}>
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Filter size={14} className="text-black" />
+                <span className="text-xs font-black text-black uppercase tracking-widest">Filtros</span>
+              </div>
+              {hasActiveFilters && (
+                <button 
+                  onClick={clearFilters}
+                  className="text-[10px] font-bold text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1"
+                >
+                  <XCircle size={12} />
+                  Limpar
+                </button>
+              )}
+            </div>
 
-      {/* ── Table ── */}
-      <div className="bg-white border border-neutral-200 rounded-md overflow-x-auto shadow-sm">
-        <table className="w-full text-xs md:text-sm">
-          <thead>
-            <tr className="border-b border-neutral-200 bg-neutral-50">
-              {['Nome / Nicho', 'WhatsApp', 'Instagram', 'GMN ⭐', 'Valor', 'Etapa', 'Ações'].map(h => (
-                <th key={h} className="px-3 md:px-5 py-2 md:py-3.5 text-left text-[10px] md:text-[11px] text-neutral-400 font-semibold uppercase tracking-wider last:text-center whitespace-nowrap">
-                  {h}
-                </th>
+            <FilterSection title="Status do Funil">
+              {STAGES.map(stage => (
+                <CheckboxFilter
+                  key={stage}
+                  label={stage}
+                  checked={filters.stages.includes(stage)}
+                  onChange={() => toggleStageFilter(stage)}
+                />
               ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100">
-            {filteredLeads.map(lead => (
-              <tr key={lead.id} className="hover:bg-neutral-50 transition-colors group">
-                <td className="px-3 md:px-5 py-2 md:py-4">
-                  <div className="font-semibold text-black text-xs md:text-sm">{lead.name}</div>
-                  <div className="text-[10px] md:text-xs text-neutral-400 truncate">{lead.niche} · {lead.email}</div>
-                </td>
-                <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead.whatsapp}</td>
-                <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead.instagram}</td>
-                <td className="px-3 md:px-5 py-2 md:py-4">
-                  <div className="text-black font-semibold text-xs md:text-sm">{lead.gmnStars} ★</div>
-                  <div className="text-[10px] md:text-xs text-neutral-400">{lead.gmnReviews} avaliações</div>
-                </td>
-                <td className="px-3 md:px-5 py-2 md:py-4 text-black font-medium text-xs md:text-sm whitespace-nowrap">{lead.value || '—'}</td>
-                <td className="px-3 md:px-5 py-2 md:py-4">
-                  <span className={`px-2 md:px-2.5 py-1 rounded-md text-[10px] md:text-[11px] font-semibold ${stageStyle[lead.stage] ?? 'bg-neutral-100 text-neutral-600'}`}>
-                    {lead.stage}
-                  </span>
-                </td>
-                <td className="px-3 md:px-5 py-2 md:py-4">
-                  <div className="flex items-center justify-center gap-0.5 md:gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(lead)} className="p-1 md:p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100 rounded-md transition-all">
-                      <Pencil size={12} className="md:w-3.5 md:h-3.5" />
-                    </button>
-                    <button onClick={() => handleDelete(lead.id)} className="p-1 md:p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all">
-                      <Trash2 size={12} className="md:w-3.5 md:h-3.5" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filteredLeads.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-3 md:px-5 py-8 md:py-12 text-center text-neutral-400 font-medium italic text-xs md:text-sm">
-                  Nenhum lead encontrado para "{searchTerm}"
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </FilterSection>
 
-      {/* ══════════════════════ WHITE MODAL ══════════════════════ */}
+            <FilterSection title="Origem">
+              {STAGE_ORIGINS.map(origin => (
+                <CheckboxFilter
+                  key={origin}
+                  label={origin}
+                  checked={filters.origins.includes(origin)}
+                  onChange={() => toggleOriginFilter(origin)}
+                />
+              ))}
+            </FilterSection>
+
+            <FilterSection title="Nicho do Cliente">
+              {uniqueNiches.slice(0, 10).map(niche => (
+                <CheckboxFilter
+                  key={niche}
+                  label={niche}
+                  checked={filters.niches.includes(niche)}
+                  onChange={() => toggleNicheFilter(niche)}
+                />
+              ))}
+            </FilterSection>
+
+            <FilterSection title="Data de Entrada">
+              <div className="space-y-2">
+                {[
+                  { value: 'today', label: 'Hoje' },
+                  { value: 'week', label: 'Esta semana' },
+                  { value: 'month', label: 'Este mês' }
+                ].map(opt => (
+                  <label key={opt.value} className="flex items-center gap-2 cursor-pointer group">
+                    <div className={`w-4 h-4 border rounded flex items-center justify-center transition-all ${filters.dateFilter === opt.value ? 'bg-black border-black' : 'border-neutral-300 group-hover:border-black'}`}>
+                      {filters.dateFilter === opt.value && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <input 
+                      type="radio" 
+                      name="dateFilter"
+                      className="hidden" 
+                      checked={filters.dateFilter === opt.value}
+                      onChange={() => setFilters(prev => ({ ...prev, dateFilter: opt.value as any }))}
+                    />
+                    <span className={`text-xs font-medium ${filters.dateFilter === opt.value ? 'text-black' : 'text-neutral-500'}`}>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </FilterSection>
+          </div>
+        </aside>
+      )}
+
+      <main className="flex-1 overflow-hidden">
+        <div className="p-4 md:p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-start gap-4 mb-2 md:mb-4">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className={`p-2 rounded-md border transition-all ${isSidebarOpen ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:border-black'}`}
+              >
+                <Filter size={14} />
+              </button>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Leads</h1>
+                <p className="text-neutral-500 text-xs md:text-sm">
+                  {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} encontrado{filteredLeads.length !== 1 ? 's' : ''}
+                  {hasActiveFilters && <span className="text-neutral-400"> (filtrado{filteredLeads.length !== 1 ? 's' : ''})</span>}
+                </p>
+              </div>
+            </div>
+            <button onClick={openAdd} className="btn-primary flex items-center gap-2 whitespace-nowrap">
+              <Plus size={15} strokeWidth={2.5} />
+              <span className="hidden sm:inline">Novo Lead</span>
+              <span className="sm:hidden text-xs">Novo</span>
+            </button>
+          </div>
+
+          <div className="bg-white border border-neutral-200 rounded-md overflow-x-auto shadow-sm">
+            <table className="w-full text-xs md:text-sm">
+              <thead>
+                <tr className="border-b border-neutral-200 bg-neutral-50">
+                  {['Nome / Nicho', 'WhatsApp', 'Instagram', 'GMN ⭐', 'Valor', 'Etapa', 'Ações'].map(h => (
+                    <th key={h} className="px-3 md:px-5 py-2 md:py-3.5 text-left text-[10px] md:text-[11px] text-neutral-400 font-semibold uppercase tracking-wider last:text-center whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {filteredLeads.map(lead => (
+                  <tr key={lead.id} className="hover:bg-neutral-50 transition-colors group">
+                    <td className="px-3 md:px-5 py-2 md:py-4">
+                      <div className="font-semibold text-black text-xs md:text-sm">{lead.name}</div>
+                      <div className="text-[10px] md:text-xs text-neutral-400 truncate">{lead.niche} · {lead.email}</div>
+                    </td>
+                    <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead.whatsapp}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead.instagram}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-4">
+                      <div className="text-black font-semibold text-xs md:text-sm">{lead.gmnStars} ★</div>
+                      <div className="text-[10px] md:text-xs text-neutral-400">{lead.gmnReviews} avaliações</div>
+                    </td>
+                    <td className="px-3 md:px-5 py-2 md:py-4 text-black font-medium text-xs md:text-sm whitespace-nowrap">{lead.value || '—'}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-4">
+                      <span className={`px-2 md:px-2.5 py-1 rounded-md text-[10px] md:text-[11px] font-semibold ${stageStyle[lead.stage] ?? 'bg-neutral-100 text-neutral-600'}`}>
+                        {lead.stage}
+                      </span>
+                    </td>
+                    <td className="px-3 md:px-5 py-2 md:py-4">
+                      <div className="flex items-center justify-center gap-0.5 md:gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openEdit(lead)} className="p-1 md:p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100 rounded-md transition-all">
+                          <Pencil size={12} className="md:w-3.5 md:h-3.5" />
+                        </button>
+                        <button onClick={() => handleDelete(lead.id)} className="p-1 md:p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all">
+                          <Trash2 size={12} className="md:w-3.5 md:h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredLeads.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-3 md:px-5 py-8 md:py-12 text-center text-neutral-400 font-medium italic text-xs md:text-sm">
+                      {hasActiveFilters ? 'Nenhum lead encontrado com os filtros aplicados' : `Nenhum lead encontrado para "${searchTerm}"`}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4 bg-black/30 backdrop-blur-sm">
           <div className="bg-white border border-slate-200 w-full max-w-sm md:max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-
-            {/* Modal header */}
             <div className="flex justify-between items-start md:items-center gap-3 px-4 md:px-7 py-3 md:py-5 border-b border-slate-100 shrink-0">
               <div>
                 <h2 className="text-lg md:text-xl font-black text-black tracking-tight">
@@ -177,11 +424,8 @@ const CRMLeads = () => {
               </button>
             </div>
 
-            {/* Scrollable form body */}
             <form onSubmit={handleSave} className="overflow-y-auto flex-1">
               <div className="px-4 md:px-7 py-4 md:py-6 space-y-3 md:space-y-5">
-
-                {/* Row 1: Nome + Nicho */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Nome" required>
                     <input type="text" value={current.name} onChange={e => set('name', e.target.value)}
@@ -193,7 +437,6 @@ const CRMLeads = () => {
                   </Field>
                 </div>
 
-                {/* Row 2: WhatsApp + Email */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="WhatsApp">
                     <input type="text" value={current.whatsapp} onChange={e => set('whatsapp', e.target.value)}
@@ -205,7 +448,6 @@ const CRMLeads = () => {
                   </Field>
                 </div>
 
-                {/* Row 3: Instagram + Etapa do Pipeline */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Instagram">
                     <input type="text" value={current.instagram} onChange={e => set('instagram', e.target.value)}
@@ -219,7 +461,6 @@ const CRMLeads = () => {
                   </Field>
                 </div>
 
-                {/* Row 4: Primeiro Contato + Data de Fechamento */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Primeiro Contato">
                     <input type="date" value={current.firstContact} onChange={e => set('firstContact', e.target.value)}
@@ -231,7 +472,6 @@ const CRMLeads = () => {
                   </Field>
                 </div>
 
-                {/* Row 5: Lembrete de Follow-up + Valor do Contrato */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Lembrete de Follow-up">
                     <input type="date" value={current.followUpReminder} onChange={e => set('followUpReminder', e.target.value)}
@@ -248,13 +488,11 @@ const CRMLeads = () => {
                   </Field>
                 </div>
 
-                {/* Row 6: Endereço (full width) */}
                 <Field label="Endereço / Localização">
                   <input type="text" value={current.address} onChange={e => set('address', e.target.value)}
                     className={inputCls} placeholder="Ex: São Paulo - SP" />
                 </Field>
 
-                {/* Row 7: GMN Reviews + GMN Stars */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Quantidade de Avaliações GMN">
                     <input type="number" min="0" value={current.gmnReviews} onChange={e => set('gmnReviews', e.target.value)}
@@ -266,16 +504,13 @@ const CRMLeads = () => {
                   </Field>
                 </div>
 
-                {/* Row 8: Observações */}
                 <Field label="Observações">
                   <textarea value={current.notes} onChange={e => set('notes', e.target.value)}
                     rows={4} className={`${inputCls} resize-none`}
                     placeholder="Notas internas, contexto do lead..." />
                 </Field>
-
               </div>
 
-              {/* Sticky footer buttons */}
               <div className="flex flex-col md:flex-row gap-2 md:gap-3 px-4 md:px-7 py-3 md:py-5 border-t border-slate-100 shrink-0 bg-white">
                 <button
                   type="button"
