@@ -67,16 +67,16 @@ const stageStyle: Record<string, string> = {
 const FilterSection = ({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="border-b border-neutral-100 pb-3 mb-3">
+    <div className="border-b border-neutral-100 px-3 py-2">
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)} 
         className="flex items-center justify-between w-full text-left py-1"
       >
-        <span className="text-[10px] font-black text-black uppercase tracking-widest">{title}</span>
-        {isOpen ? <ChevronUp size={14} className="text-neutral-400" /> : <ChevronDown size={14} className="text-neutral-400" />}
+        <span className="text-[9px] font-black text-black uppercase tracking-widest">{title}</span>
+        {isOpen ? <ChevronUp size={12} className="text-neutral-400" /> : <ChevronDown size={12} className="text-neutral-400" />}
       </button>
-      {isOpen && <div className="mt-2 space-y-2">{children}</div>}
+      {isOpen && <div className="mt-1 space-y-1">{children}</div>}
     </div>
   );
 };
@@ -227,33 +227,31 @@ const toggleStageFilter = (stage: string) => {
     <div className="relative min-h-screen">
       {isSidebarOpen && (
         <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setIsSidebarOpen(false)} />
-          <div className="fixed left-0 top-0 w-72 h-full bg-white border-r border-neutral-200 overflow-y-auto z-50">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Filter size={14} className="text-black" />
-                  <span className="text-xs font-black text-black uppercase tracking-widest">Filtros</span>
-                </div>
-                <button 
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="p-1 hover:bg-neutral-100 rounded-md transition-colors"
-                >
-                  <X size={16} className="text-neutral-400" />
-                </button>
+          <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setIsSidebarOpen(false)} />
+          <div className="absolute top-14 left-4 w-[280px] max-h-[70vh] bg-white border border-neutral-200 rounded-xl shadow-xl overflow-y-auto z-50">
+            <div className="p-3 sticky top-0 bg-white border-b border-neutral-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter size={12} className="text-black" />
+                <span className="text-[10px] font-black text-black uppercase tracking-widest">Filtros</span>
               </div>
-              {hasActiveFilters && (
-                <button 
-                  onClick={clearFilters}
-                  className="text-[10px] font-bold text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1 mb-4"
-                >
-                  <XCircle size={12} />
-                  Limpar
-                </button>
-              )}
+              <button 
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-1 hover:bg-neutral-100 rounded-md transition-colors"
+              >
+                <X size={14} className="text-neutral-400" />
+              </button>
             </div>
+            {hasActiveFilters && (
+              <button 
+                onClick={clearFilters}
+                className="text-[10px] font-bold text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1 px-3 py-2 border-b border-neutral-100 w-full"
+              >
+                <XCircle size={10} />
+                Limpar filtros
+              </button>
+            )}
 
-            <FilterSection title="Status do Funil">
+            <FilterSection title="Etapa" defaultOpen={true}>
               {STAGES.map(stage => (
                 <CheckboxFilter
                   key={stage}

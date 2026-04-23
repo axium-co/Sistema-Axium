@@ -449,31 +449,29 @@ const Financeiro = () => {
     <div className="relative min-h-screen">
       {isSidebarOpen && (
         <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setIsSidebarOpen(false)} />
-          <div className="fixed left-0 top-0 w-72 h-full bg-white border-r border-neutral-200 overflow-y-auto z-50">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Filter size={14} className="text-black" />
-                  <span className="text-xs font-black text-black uppercase tracking-widest">Filtros</span>
-                </div>
-                <button 
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="p-1 hover:bg-neutral-100 rounded-md transition-colors"
-                >
-                  <X size={16} className="text-neutral-400" />
-                </button>
+          <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setIsSidebarOpen(false)} />
+          <div className="absolute top-14 left-4 w-[280px] max-h-[70vh] bg-white border border-neutral-200 rounded-xl shadow-xl overflow-y-auto z-50">
+            <div className="p-3 sticky top-0 bg-white border-b border-neutral-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter size={12} className="text-black" />
+                <span className="text-[10px] font-black text-black uppercase tracking-widest">Filtros</span>
               </div>
-              {hasActiveFilters && (
-                <button 
-                  onClick={clearFilters}
-                  className="text-[10px] font-bold text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1 mb-4"
-                >
-                  <XCircle size={12} />
-                  Limpar
-                </button>
-              )}
+              <button 
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-1 hover:bg-neutral-100 rounded-md transition-colors"
+              >
+                <X size={14} className="text-neutral-400" />
+              </button>
             </div>
+            {hasActiveFilters && (
+              <button 
+                onClick={clearFilters}
+                className="text-[10px] font-bold text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1 px-3 py-2 border-b border-neutral-100 w-full"
+              >
+                <XCircle size={10} />
+                Limpar filtros
+              </button>
+            )}
 
             <FilterSection title="Período">
               <div className="space-y-2">

@@ -137,17 +137,15 @@ const CRMDashboard = () => {
     <div className="relative min-h-screen bg-white">
       {isSidebarOpen && (
         <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setIsSidebarOpen(false)} />
-          <div className="fixed left-0 top-0 w-72 h-full bg-white border-r border-neutral-200 overflow-y-auto z-50">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-black text-black uppercase tracking-widest">Filtros</span>
-                <button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-neutral-100 rounded-md">
-                  <XCircle size={16} className="text-neutral-400" />
-                </button>
-              </div>
-              <p className="text-xs text-neutral-400">Use os filtros na aba Leads para filtrar dados aqui.</p>
+          <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setIsSidebarOpen(false)} />
+          <div className="absolute top-14 left-4 w-[280px] bg-white border border-neutral-200 rounded-xl shadow-xl z-50 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black text-black uppercase tracking-widest">Filtros</span>
+              <button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-neutral-100 rounded-md">
+                <XCircle size={14} className="text-neutral-400" />
+              </button>
             </div>
+            <p className="text-[10px] text-neutral-400">Aplique filtros na aba Leads para filtrar dados aqui.</p>
           </div>
         </>
       )}
