@@ -1070,7 +1070,9 @@ const Tarefas = () => {
     setIsColumnCenterOpen(false);
   };
 
-  const handleDeleteColumn = (colId: string, colTitle: string) => {
+  const handleDeleteColumn = (colId: string) => {
+    const col = columns.find(c => c.id === colId);
+    const colTitle = col?.title || '';
     if (colTitle.toLowerCase() === 'tarefa') {
       alert('A coluna TAREFA não pode ser deletada.');
       return;
