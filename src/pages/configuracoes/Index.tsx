@@ -7,28 +7,52 @@ import {
   UserCircle, Smartphone, Eye, EyeOff,
   Sun, Moon, Monitor, Check, Server,
   Key, Hash, Send, Bold, Italic, Link as LinkIcon,
-  RefreshCw, Users, Copy, CheckCircle
+  RefreshCw, Users, Copy, CheckCircle,
+  AlertCircle, CheckCircle as CheckCircleIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase, PROFILES_TABLE } from '../../lib/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 
 type ModalType = 'perfil' | 'seguranca' | 'notificacoes' | 'tema' | 'email' | 'delete' | 'equipe' | null;
+type NotificationType = 'email' | 'push' | 'sms';
+
+interface NotificationSettings {
+  email: boolean;
+  push: boolean;
+  sms: boolean;
+}
 
 const Configuracoes = () => {
   const { user, logout } = useAuth();
   const { theme, accentColor, setTheme, setAccentColor } = useTheme();
   const navigate = useNavigate();
   
-  // Modal State
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [confirmationText, setConfirmationText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  // Loading states
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+
+  // Error/Success states
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [notificationsError, setNotificationsError] = useState('');
+  const [notificationsSuccess, setNotificationsSuccess] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
 
-  // Team Invite State
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'Socio' | 'Funcionario'>('Funcionario');
   const [inviteLink, setInviteLink] = useState('');
@@ -36,10 +60,57 @@ const Configuracoes = () => {
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
 
-  // Generate invite link
+  const [profileData, setProfileData] = useState({ name: '', email: '', phone: '' });
+  const [passwordData, setPasswordData] = useState({ current: '', newPassword: '', confirm: '' });
+  const [notifications, setNotifications] = useState<NotificationSettings>({ email: true, push: true, sms: false });
+  const [smtpData, setSmtpData] = useState(() => {
+    try {
+      const stored = localStorage.getItem('axium_smtp_config');
+      return stored ? JSON.parse(stored) : { server: 'smtp.gmail.com', port: '465', user: '', password: '', signature: '' };
+    } catch {
+      return { server: 'smtp.gmail.com', port: '465', user: '', password: '', signature: '' };
+    }
+  });
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from(PROFILES_TABLE)
+          .select('nome, telefone')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data) {
+          setProfileData({
+            name: data.nome || '',
+            email: user.email || '',
+            phone: data.telefone || '(11) 99999-9999'
+          });
+        }
+      } catch (err) {
+        console.error('[CONFIG] Erro ao carregar perfil:', err);
+      }
+
+      try {
+        const stored = localStorage.getItem('axium_notifications');
+        if (stored) {
+          setNotifications(JSON.parse(stored));
+        }
+      } catch {}
+    };
+    loadData();
+  }, [user?.id]);
+
   const generateInviteLink = () => {
     if (!inviteEmail) {
       setInviteError('Digite o e-mail do membro');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail)) {
+      setInviteError('Digite um e-mail válido');
       return;
     }
     const token = btoa(`${inviteEmail}-${Date.now()}-${inviteRole}`);
@@ -58,75 +129,130 @@ const Configuracoes = () => {
     }
   };
 
-  // Form States
-  const [profileData, setProfileData] = useState({ name: 'Admin Axium', email: user?.email || '', phone: '(11) 99999-9999' });
-  const [smtpData, setSmtpData] = useState(() => {
-    const stored = localStorage.getItem('axium_smtp_config');
-    return stored ? JSON.parse(stored) : { server: 'smtp.gmail.com', port: '465', user: '', password: '', signature: '' };
-  });
-  const [isSaved, setIsSaved] = useState(false);
-
-  const sections = [
-    {
-      id: 'perfil' as ModalType,
-      icon: User,
-      title: 'Perfil',
-      description: 'Gerencie nome, email e foto de perfil',
-      items: ['Nome', 'Email', 'Foto de perfil'],
-    },
-    {
-      id: 'seguranca' as ModalType,
-      icon: Lock,
-      title: 'Segurança',
-      description: 'Altere a senha e configure autenticação',
-      items: ['Alterar senha', 'Autenticação 2FA', 'Sessões ativas'],
-    },
-    {
-      id: 'notificacoes' as ModalType,
-      icon: Bell,
-      title: 'Notificações',
-      description: 'Configure alertas por email, push ou SMS',
-      items: ['Email', 'Push', 'SMS'],
-    },
-    {
-      id: 'tema' as ModalType,
-      icon: Palette,
-      title: 'Tema',
-      description: 'Personalizar aparência da interface',
-      items: ['Dark Mode', 'Light Mode', 'Auto'],
-    },
-    {
-      id: 'email' as ModalType,
-      icon: Mail,
-      title: 'Email',
-      description: 'SMTP, assinatura e templates de email',
-      items: ['SMTP', 'Assinatura', 'Templates'],
-    },
-    {
-      id: 'equipe' as ModalType,
-      icon: Users,
-      title: 'Equipe',
-      description: 'Convidar membros e gerenciar acessos',
-      items: ['Convidar', 'Permissões', 'Membros'],
-    },
-  ];
-
-  const handleSave = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (activeModal === 'email') {
-      localStorage.setItem('axium_smtp_config', JSON.stringify(smtpData));
+    if (!user?.id) {
+      setProfileError('Usuário não autenticado');
+      return;
     }
-    setIsSaved(true);
-    setTimeout(() => {
-      setIsSaved(false);
-      setActiveModal(null);
-    }, 1500);
+    setIsSavingProfile(true);
+    setProfileError('');
+    setProfileSuccess('');
+    try {
+      const { error } = await supabase
+        .from(PROFILES_TABLE)
+        .update({ 
+          nome: profileData.name.trim(),
+          telefone: profileData.phone.trim()
+        })
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      setProfileSuccess('Perfil atualizado com sucesso!');
+      setTimeout(() => setProfileSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('[CONFIG] Erro ao salvar perfil:', err);
+      setProfileError(err.message || 'Erro ao salvar perfil. Tente novamente.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    
+    if (!passwordData.current) {
+      setPasswordError('Digite a senha atual');
+      return;
+    }
+    if (!passwordData.newPassword) {
+      setPasswordError('Digite a nova senha');
+      return;
+    }
+    if (passwordData.newPassword.length < 8) {
+      setPasswordError('A senha deve ter pelo menos 8 caracteres');
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirm) {
+      setPasswordError('As senhas não conferem');
+      return;
+    }
+
+    setIsSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: passwordData.current
+      });
+      
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Senha atual incorreta');
+        }
+        throw error;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+      
+      if (updateError) throw updateError;
+      
+      setPasswordSuccess('Senha alterada com sucesso!');
+      setPasswordData({ current: '', newPassword: '', confirm: '' });
+      setTimeout(() => setPasswordSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('[CONFIG] Erro ao alterar senha:', err);
+      setPasswordError(err.message || 'Erro ao alterar senha. Tente novamente.');
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
+  const handleSaveNotifications = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingNotifications(true);
+    setNotificationsError('');
+    setNotificationsSuccess('');
+    try {
+      localStorage.setItem('axium_notifications', JSON.stringify(notifications));
+      setNotificationsSuccess('Notificações salvas com sucesso!');
+      setTimeout(() => setNotificationsSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('[CONFIG] Erro ao salvar notificações:', err);
+      setNotificationsError('Erro ao salvar preferências');
+    } finally {
+      setIsSavingNotifications(false);
+    }
+  };
+
+  const handleSaveEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingEmail(true);
+    setEmailError('');
+    setEmailSuccess('');
+    try {
+      if (!smtpData.server || !smtpData.port || !smtpData.user) {
+        setEmailError('Preencha servidor, porta e usuário');
+        setIsSavingEmail(false);
+        return;
+      }
+      localStorage.setItem('axium_smtp_config', JSON.stringify(smtpData));
+      setEmailSuccess('Configurações de email salvas!');
+      setTimeout(() => setEmailSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('[CONFIG] Erro ao salvar email:', err);
+      setEmailError('Erro ao salvar configurações');
+    } finally {
+      setIsSavingEmail(false);
+    }
   };
 
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
     setTestResult(null);
-    // Simulate SMTP handshake
     await new Promise(resolve => setTimeout(resolve, 2000));
     setTestResult('success');
     setIsTestingConnection(false);
@@ -142,6 +268,19 @@ const Configuracoes = () => {
     logout();
     navigate('/login');
   };
+
+  const toggleNotification = (type: NotificationType) => {
+    setNotifications(prev => ({ ...prev, [type]: !prev[type] }));
+  };
+
+  const sections = [
+    { id: 'perfil' as ModalType, icon: User, title: 'Perfil', description: 'Gerencie nome, email e foto de perfil', items: ['Nome', 'Email', 'Foto de perfil'] },
+    { id: 'seguranca' as ModalType, icon: Lock, title: 'Segurança', description: 'Altere a senha e configure autenticação', items: ['Alterar senha', 'Autenticação 2FA', 'Sessões ativas'] },
+    { id: 'notificacoes' as ModalType, icon: Bell, title: 'Notificações', description: 'Configure alertas por email, push ou SMS', items: ['Email', 'Push', 'SMS'] },
+    { id: 'tema' as ModalType, icon: Palette, title: 'Tema', description: 'Personalizar aparência da interface', items: ['Dark Mode', 'Light Mode', 'Auto'] },
+    { id: 'email' as ModalType, icon: Mail, title: 'Email', description: 'SMTP, assinatura e templates de email', items: ['SMTP', 'Assinatura', 'Templates'] },
+    { id: 'equipe' as ModalType, icon: Users, title: 'Equipe', description: 'Convidar membros e gerenciar acessos', items: ['Convidar', 'Permissões', 'Membros'] },
+  ];
 
   return (
     <div className="min-h-screen pb-20 relative">
@@ -174,7 +313,6 @@ const Configuracoes = () => {
                   Configurar
                 </button>
               </div>
-
               <div className="flex gap-2 flex-wrap mt-8 pt-8 border-t border-neutral-50">
                 {section.items.map((item, itemIdx) => (
                   <span key={itemIdx} className="px-4 py-2 bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-[1.5px] rounded-md border border-neutral-100">
@@ -187,7 +325,6 @@ const Configuracoes = () => {
         })}
       </div>
 
-      {/* Danger Zone Section */}
       <div className="mt-12 max-w-2xl border-2 border-red-50 bg-red-50/20 rounded-[40px] p-10 relative overflow-hidden group/danger">
         <div className="absolute -right-10 -bottom-10 opacity-5 group-hover/danger:opacity-10 transition-opacity">
           <ShieldAlert size={240} className="text-red-500" />
@@ -207,33 +344,33 @@ const Configuracoes = () => {
         </div>
       </div>
 
-      {/* Configuration Modal Orchestrator */}
       {activeModal && activeModal !== 'delete' && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white border border-neutral-200 rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden transform animate-in slide-in-from-bottom-8 duration-500">
-            <form onSubmit={handleSave}>
-              <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
-                <div>
-                  <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
-                  <h2 className="text-4xl font-black text-black tracking-tighter">
-                    {activeModal === 'perfil' && 'Configurações de Perfil'}
-                    {activeModal === 'seguranca' && 'Segurança da Conta'}
-                    {activeModal === 'notificacoes' && 'Alertas & Avisos'}
-                    {activeModal === 'tema' && 'Personalizar Tema'}
-                    {activeModal === 'email' && 'Integração de Email'}
-                  </h2>
+            {activeModal === 'perfil' ? (
+              <form onSubmit={handleSaveProfile}>
+                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
+                  <div>
+                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
+                    <h2 className="text-4xl font-black text-black tracking-tighter">Configurações de Perfil</h2>
+                  </div>
+                  <button type="button" onClick={() => { setActiveModal(null); setProfileError(''); setProfileSuccess(''); }} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
+                    <X size={24} />
+                  </button>
                 </div>
-                <button 
-                  type="button" 
-                  onClick={() => setActiveModal(null)}
-                  className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                {activeModal === 'perfil' && (
+                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  {profileError && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
+                      <AlertCircle size={20} />
+                      {profileError}
+                    </div>
+                  )}
+                  {profileSuccess && (
+                    <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3 text-green-600 text-sm font-medium">
+                      <CheckCircle2 size={20} />
+                      {profileSuccess}
+                    </div>
+                  )}
                   <div className="space-y-8">
                     <div className="flex items-center gap-8 mb-4">
                       <div className="w-24 h-24 bg-black rounded-3xl flex items-center justify-center relative group/avatar cursor-pointer">
@@ -252,13 +389,42 @@ const Configuracoes = () => {
                       </div>
                       <div className="space-y-3">
                         <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Email Profissional</label>
-                        <input type="email" value={profileData.email} onChange={(e) => setProfileData({...profileData, email: e.target.value})} className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
+                        <input type="email" value={profileData.email} disabled className="w-full bg-neutral-100 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-neutral-400 cursor-not-allowed" />
                       </div>
                     </div>
                   </div>
-                )}
-
-                {activeModal === 'seguranca' && (
+                </div>
+                <div className="px-12 py-10 bg-neutral-50 flex gap-4">
+                  <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Cancelar</button>
+                  <button type="submit" disabled={isSavingProfile} className="flex-[2] text-white py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest hover:brightness-90 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--primary)' }}>
+                    {isSavingProfile ? <><RefreshCw size={18} className="animate-spin" /> Salvando...</> : <><Save size={18} /> Salvar Perfil</>}
+                  </button>
+                </div>
+              </form>
+            ) : activeModal === 'seguranca' ? (
+              <form onSubmit={handleChangePassword}>
+                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
+                  <div>
+                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
+                    <h2 className="text-4xl font-black text-black tracking-tighter">Segurança da Conta</h2>
+                  </div>
+                  <button type="button" onClick={() => { setActiveModal(null); setPasswordError(''); setPasswordSuccess(''); }} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  {passwordError && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
+                      <AlertCircle size={20} />
+                      {passwordError}
+                    </div>
+                  )}
+                  {passwordSuccess && (
+                    <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3 text-green-600 text-sm font-medium">
+                      <CheckCircle2 size={20} />
+                      {passwordSuccess}
+                    </div>
+                  )}
                   <div className="space-y-8">
                     <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 flex items-center gap-4">
                       <ShieldCheck className="text-emerald-500" size={32} />
@@ -271,55 +437,171 @@ const Configuracoes = () => {
                       <div className="space-y-3">
                         <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Senha Atual</label>
                         <div className="relative">
-                          <input type={showPassword ? "text" : "password"} placeholder="••••••••" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
+                          <input type={showPassword ? "text" : "password"} value={passwordData.current} onChange={(e) => setPasswordData({...passwordData, current: e.target.value})} placeholder="••••••••" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
                           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-neutral-300 hover:text-black">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-8">
                         <div className="space-y-3">
                           <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Nova Senha</label>
-                          <input type="password" placeholder="Mínimo 8 caracteres" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
+                          <div className="relative">
+                            <input type={showNewPassword ? "text" : "password"} value={passwordData.newPassword} onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})} placeholder="Mínimo 8 caracteres" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
+                            <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-neutral-300 hover:text-black">{showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
+                          </div>
                         </div>
                         <div className="space-y-3">
                           <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
-                          <input type="password" placeholder="Repita a nova senha" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
+                          <input type="password" value={passwordData.confirm} onChange={(e) => setPasswordData({...passwordData, confirm: e.target.value})} placeholder="Repita a nova senha" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
-
-                {activeModal === 'tema' && (
-                  <div className="space-y-12">
-                    <div className="space-y-6">
-                      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1 block">Modo de Visualização</label>
-                      <div className="grid grid-cols-3 gap-6">
-                        {[
-                          { id: 'light', label: 'Light Mode', icon: Sun, desc: 'Claro e Limpo' },
-                          { id: 'dark', label: 'Dark Mode', icon: Moon, desc: 'Cinza Profundo' },
-                          { id: 'system', label: 'Sistema', icon: Monitor, desc: 'Automático' },
-                        ].map((t) => (
-                          <button key={t.id} type="button" onClick={() => setTheme(t.id as any)} className={`p-6 rounded-[32px] border-2 transition-all text-left relative group ${theme === t.id ? 'border-black bg-black text-white shadow-xl shadow-black/20' : 'border-neutral-100 bg-neutral-50 text-neutral-400 hover:border-neutral-200'}`}>
-                            <t.icon size={24} className={`mb-4 ${theme === t.id ? 'text-white' : 'text-neutral-300'}`} />
-                            <p className="font-black text-sm mb-1">{t.label}</p>
-                            <p className={`text-[10px] font-bold uppercase tracking-widest ${theme === t.id ? 'text-white/50' : 'text-neutral-300'}`}>{t.desc}</p>
-                            {theme === t.id && <div className="absolute top-4 right-4 w-6 h-6 bg-white rounded-full flex items-center justify-center"><Check size={14} className="text-black" strokeWidth={4} /></div>}
-                          </button>
-                        ))}
+                </div>
+                <div className="px-12 py-10 bg-neutral-50 flex gap-4">
+                  <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Cancelar</button>
+                  <button type="submit" disabled={isSavingPassword} className="flex-[2] text-white py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest hover:brightness-90 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--primary)' }}>
+                    {isSavingPassword ? <><RefreshCw size={18} className="animate-spin" /> Alterando...</> : <><Key size={18} /> Alterar Senha</>}
+                  </button>
+                </div>
+              </form>
+            ) : activeModal === 'notificacoes' ? (
+              <form onSubmit={handleSaveNotifications}>
+                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
+                  <div>
+                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
+                    <h2 className="text-4xl font-black text-black tracking-tighter">Alertas & Avisos</h2>
+                  </div>
+                  <button type="button" onClick={() => { setActiveModal(null); setNotificationsError(''); setNotificationsSuccess(''); }} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  {notificationsError && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
+                      <AlertCircle size={20} />
+                      {notificationsError}
+                    </div>
+                  )}
+                  {notificationsSuccess && (
+                    <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3 text-green-600 text-sm font-medium">
+                      <CheckCircle2 size={20} />
+                      {notificationsSuccess}
+                    </div>
+                  )}
+                  <div className="space-y-6">
+                    <div onClick={() => toggleNotification('email')} className={`p-6 rounded-3xl border-2 cursor-pointer transition-all flex items-center justify-between ${notifications.email ? 'border-black bg-black/5' : 'border-neutral-100 hover:border-neutral-200'}`}>
+                      <div className="flex items-center gap-4">
+                        <Mail size={24} className={notifications.email ? 'text-black' : 'text-neutral-300'} />
+                        <div>
+                          <p className="font-black text-black">Notificações por Email</p>
+                          <p className="text-xs text-neutral-400 font-medium">Receba alertas sobre novos leads e tarefas</p>
+                        </div>
+                      </div>
+                      <div className={`w-14 h-8 rounded-full transition-all flex items-center ${notifications.email ? 'bg-black justify-end' : 'bg-neutral-200 justify-start'}`}>
+                        <div className="w-6 h-6 bg-white rounded-full m-1" />
                       </div>
                     </div>
-                    <div className="space-y-6">
-                      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1 block">Cor de Destaque (Accent)</label>
-                      <div className="flex gap-4">
-                        {[{ id: 'blue', color: 'bg-blue-500' }, { id: 'purple', color: 'bg-purple-500' }, { id: 'green', color: 'bg-green-500' }, { id: 'gold', color: 'bg-yellow-500' }, { id: 'black', color: 'bg-black' }].map((c) => (
-                          <button key={c.id} type="button" onClick={() => setAccentColor(c.id as any)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${c.color} ${accentColor === c.id ? 'ring-4 ring-neutral-100 scale-110 shadow-lg' : 'opacity-40 hover:opacity-100'}`}>{accentColor === c.id && <Check size={20} className="text-white" strokeWidth={3} />}</button>
-                        ))}
+                    <div onClick={() => toggleNotification('push')} className={`p-6 rounded-3xl border-2 cursor-pointer transition-all flex items-center justify-between ${notifications.push ? 'border-black bg-black/5' : 'border-neutral-100 hover:border-neutral-200'}`}>
+                      <div className="flex items-center gap-4">
+                        <Smartphone size={24} className={notifications.push ? 'text-black' : 'text-neutral-300'} />
+                        <div>
+                          <p className="font-black text-black">Notificações Push</p>
+                          <p className="text-xs text-neutral-400 font-medium">Receba alertas no navegador</p>
+                        </div>
+                      </div>
+                      <div className={`w-14 h-8 rounded-full transition-all flex items-center ${notifications.push ? 'bg-black justify-end' : 'bg-neutral-200 justify-start'}`}>
+                        <div className="w-6 h-6 bg-white rounded-full m-1" />
+                      </div>
+                    </div>
+                    <div onClick={() => toggleNotification('sms')} className={`p-6 rounded-3xl border-2 cursor-pointer transition-all flex items-center justify-between ${notifications.sms ? 'border-black bg-black/5' : 'border-neutral-100 hover:border-neutral-200'}`}>
+                      <div className="flex items-center gap-4">
+                        <Globe size={24} className={notifications.sms ? 'text-black' : 'text-neutral-300'} />
+                        <div>
+                          <p className="font-black text-black">Notificações SMS</p>
+                          <p className="text-xs text-neutral-400 font-medium">Receba alertas por SMS (em breve)</p>
+                        </div>
+                      </div>
+                      <div className={`w-14 h-8 rounded-full transition-all flex items-center ${notifications.sms ? 'bg-black justify-end' : 'bg-neutral-200 justify-start'}`}>
+                        <div className="w-6 h-6 bg-white rounded-full m-1" />
                       </div>
                     </div>
                   </div>
-                )}
-
-                {activeModal === 'email' && (
+                </div>
+                <div className="px-12 py-10 bg-neutral-50 flex gap-4">
+                  <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Cancelar</button>
+                  <button type="submit" disabled={isSavingNotifications} className="flex-[2] text-white py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest hover:brightness-90 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--primary)' }}>
+                    {isSavingNotifications ? <><RefreshCw size={18} className="animate-spin" /> Salvando...</> : <><Save size={18} /> Salvar Preferências</>}
+                  </button>
+                </div>
+              </form>
+            ) : activeModal === 'tema' ? (
+              <form onSubmit={(e) => { e.preventDefault(); setActiveModal(null); }}>
+                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
+                  <div>
+                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
+                    <h2 className="text-4xl font-black text-black tracking-tighter">Personalizar Tema</h2>
+                  </div>
+                  <button type="button" onClick={() => setActiveModal(null)} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  <div className="space-y-6">
+                    <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1 block">Modo de Visualização</label>
+                    <div className="grid grid-cols-3 gap-6">
+                      {[
+                        { id: 'light', label: 'Light Mode', icon: Sun, desc: 'Claro e Limpo' },
+                        { id: 'dark', label: 'Dark Mode', icon: Moon, desc: 'Cinza Profundo' },
+                        { id: 'system', label: 'Sistema', icon: Monitor, desc: 'Automático' },
+                      ].map((t) => (
+                        <button key={t.id} type="button" onClick={() => setTheme(t.id as any)} className={`p-6 rounded-[32px] border-2 transition-all text-left relative group ${theme === t.id ? 'border-black bg-black text-white shadow-xl shadow-black/20' : 'border-neutral-100 bg-neutral-50 text-neutral-400 hover:border-neutral-200'}`}>
+                          <t.icon size={24} className={`mb-4 ${theme === t.id ? 'text-white' : 'text-neutral-300'}`} />
+                          <p className="font-black text-sm mb-1">{t.label}</p>
+                          <p className={`text-[10px] font-bold uppercase tracking-widest ${theme === t.id ? 'text-white/50' : 'text-neutral-300'}`}>{t.desc}</p>
+                          {theme === t.id && <div className="absolute top-4 right-4 w-6 h-6 bg-white rounded-full flex items-center justify-center"><Check size={14} className="text-black" strokeWidth={4} /></div>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1 block">Cor de Destaque (Accent)</label>
+                    <div className="flex gap-4">
+                      {[{ id: 'blue', color: 'bg-blue-500' }, { id: 'purple', color: 'bg-purple-500' }, { id: 'green', color: 'bg-green-500' }, { id: 'gold', color: 'bg-yellow-500' }, { id: 'black', color: 'bg-black' }].map((c) => (
+                        <button key={c.id} type="button" onClick={() => setAccentColor(c.id as any)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${c.color} ${accentColor === c.id ? 'ring-4 ring-neutral-100 scale-110 shadow-lg' : 'opacity-40 hover:opacity-100'}`}>{accentColor === c.id && <Check size={20} className="text-white" strokeWidth={3} />}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="px-12 py-10 bg-neutral-50">
+                  <button type="submit" className="w-full text-white py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest hover:brightness-90 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--primary)' }}>
+                    <CheckCircleIcon size={18} /> Tema Aplicado
+                  </button>
+                </div>
+              </form>
+            ) : activeModal === 'email' ? (
+              <form onSubmit={handleSaveEmail}>
+                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
+                  <div>
+                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
+                    <h2 className="text-4xl font-black text-black tracking-tighter">Integração de Email</h2>
+                  </div>
+                  <button type="button" onClick={() => { setActiveModal(null); setEmailError(''); setEmailSuccess(''); }} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  {emailError && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
+                      <AlertCircle size={20} />
+                      {emailError}
+                    </div>
+                  )}
+                  {emailSuccess && (
+                    <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3 text-green-600 text-sm font-medium">
+                      <CheckCircle2 size={20} />
+                      {emailSuccess}
+                    </div>
+                  )}
                   <div className="space-y-10">
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-3">
@@ -341,7 +623,6 @@ const Configuracoes = () => {
                         <input type="password" value={smtpData.password} onChange={(e) => setSmtpData({...smtpData, password: e.target.value})} className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
                       </div>
                     </div>
-
                     <div className="space-y-3">
                       <div className="flex justify-between items-center px-1">
                         <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Assinatura de Email</label>
@@ -358,34 +639,45 @@ const Configuracoes = () => {
                         onChange={(e) => setSmtpData({...smtpData, signature: e.target.value})}
                       />
                     </div>
-
                     <div className="flex justify-center">
-                      <button 
-                        type="button" 
-                        onClick={handleTestConnection}
-                        disabled={isTestingConnection}
-                        className={`px-10 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all ${
-                          testResult === 'success' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 
-                          testResult === 'error' ? 'bg-red-500 text-white shadow-lg shadow-red-200' :
-                          'bg-neutral-100 text-neutral-400 hover:bg-black hover:text-white'
-                        }`}
-                      >
+                      <button type="button" onClick={handleTestConnection} disabled={isTestingConnection} className={`px-10 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all ${testResult === 'success' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : testResult === 'error' ? 'bg-red-500 text-white shadow-lg shadow-red-200' : 'bg-neutral-100 text-neutral-400 hover:bg-black hover:text-white'}`}>
                         {isTestingConnection ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
                         {testResult === 'success' ? 'Conexão Estabelecida!' : testResult === 'error' ? 'Falha na Conexão' : 'Testar Conexão SMTP'}
                       </button>
                     </div>
                   </div>
-                )}
-
-                {activeModal === 'notificacoes' && (
-                  <div className="py-20 text-center space-y-4">
-                    <SettingsIcon size={64} className="mx-auto text-neutral-100 animate-spin-slow" />
-                    <p className="text-neutral-400 font-black text-[10px] uppercase tracking-[4px]">Área em Desenvolvimento</p>
-                    <p className="text-sm text-neutral-500 font-medium max-w-xs mx-auto leading-relaxed">As configurações detalhadas de {activeModal} estarão disponíveis na próxima atualização do sistema.</p>
+                </div>
+                <div className="px-12 py-10 bg-neutral-50 flex gap-4">
+                  <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Cancelar</button>
+                  <button type="submit" disabled={isSavingEmail} className="flex-[2] text-white py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest hover:brightness-90 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--primary)' }}>
+                    {isSavingEmail ? <><RefreshCw size={18} className="animate-spin" /> Salvando...</> : <><Save size={18} /> Salvar Integração</>}
+                  </button>
+                </div>
+              </form>
+            ) : activeModal === 'equipe' ? (
+              <div>
+                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
+                  <div>
+                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
+                    <h2 className="text-4xl font-black text-black tracking-tighter">Equipe</h2>
                   </div>
-                )}
-
-                {activeModal === 'equipe' && (
+                  <button type="button" onClick={() => { setActiveModal(null); setInviteError(''); setInviteSuccess(''); }} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  {inviteError && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
+                      <AlertCircle size={20} />
+                      {inviteError}
+                    </div>
+                  )}
+                  {inviteSuccess && (
+                    <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3 text-green-600 text-sm font-medium">
+                      <CheckCircle2 size={20} />
+                      {inviteSuccess}
+                    </div>
+                  )}
                   <div className="space-y-8">
                     <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 flex items-center gap-4">
                       <Users className="text-blue-500" size={32} />
@@ -394,85 +686,30 @@ const Configuracoes = () => {
                         <p className="text-xs text-blue-600 font-medium">Gere um link de convite para adicionar novos membros.</p>
                       </div>
                     </div>
-
                     <div className="space-y-4">
                       <div className="space-y-3">
                         <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">E-mail do Membro</label>
                         <div className="relative">
                           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                          <input 
-                            type="email" 
-                            value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
-                            placeholder="colega@email.com"
-                            className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl pl-12 pr-6 py-4 font-bold text-black focus:border-black outline-none transition-all" 
-                          />
+                          <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colega@email.com" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl pl-12 pr-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
                         </div>
                       </div>
-
                       <div className="space-y-3">
                         <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Cargo</label>
                         <div className="flex gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setInviteRole('Funcionario')}
-                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-                              inviteRole === 'Funcionario' 
-                                ? 'bg-black text-white' 
-                                : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'
-                            }`}
-                          >
-                            Funcionário
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setInviteRole('Socio')}
-                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-                              inviteRole === 'Socio' 
-                                ? 'bg-black text-white' 
-                                : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'
-                            }`}
-                          >
-                            Sócio
-                          </button>
+                          <button type="button" onClick={() => setInviteRole('Funcionario')} className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${inviteRole === 'Funcionario' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'}`}>Funcionário</button>
+                          <button type="button" onClick={() => setInviteRole('Socio')} className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${inviteRole === 'Socio' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'}`}>Sócio</button>
                         </div>
                       </div>
-
-                      {inviteError && (
-                        <p className="text-red-500 text-xs font-medium">{inviteError}</p>
-                      )}
-                      {inviteSuccess && (
-                        <p className="text-green-600 text-xs font-medium">{inviteSuccess}</p>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={generateInviteLink}
-                        className="w-full py-4 bg-black text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-neutral-800 transition-all flex items-center justify-center gap-2"
-                      >
-                        <LinkIcon size={16} />
-                        Gerar Link de Convite
+                      <button type="button" onClick={generateInviteLink} className="w-full py-4 bg-black text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-neutral-800 transition-all flex items-center justify-center gap-2">
+                        <LinkIcon size={16} /> Gerar Link de Convite
                       </button>
-
                       {inviteLink && (
                         <div className="space-y-3 pt-4 border-t border-neutral-100">
                           <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Link Gerado</label>
                           <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              value={inviteLink}
-                              readOnly
-                              className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-xs font-medium text-neutral-600 truncate"
-                            />
-                            <button
-                              type="button"
-                              onClick={copyInviteLink}
-                              className={`px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 ${
-                                copied 
-                                  ? 'bg-green-500 text-white' 
-                                  : 'bg-black text-white hover:bg-neutral-800'
-                              }`}
-                            >
+                            <input type="text" value={inviteLink} readOnly className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-xs font-medium text-neutral-600 truncate" />
+                            <button type="button" onClick={copyInviteLink} className={`px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 ${copied ? 'bg-green-500 text-white' : 'bg-black text-white hover:bg-neutral-800'}`}>
                               {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
                               {copied ? 'Copiado!' : 'Copiar'}
                             </button>
@@ -482,21 +719,16 @@ const Configuracoes = () => {
                       )}
                     </div>
                   </div>
-                )}
+                </div>
+                <div className="px-12 py-10 bg-neutral-50">
+                  <button type="button" onClick={() => setActiveModal(null)} className="w-full py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Fechar</button>
+                </div>
               </div>
-
-              <div className="px-12 py-10 bg-neutral-50 flex gap-4">
-                <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Cancelar</button>
-                <button type="submit" className="flex-[2] text-white py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest hover:brightness-90 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--primary)' }}>
-                  {isSaved ? <><CheckCircle2 size={18} /> Configurações Salvas</> : <><Save size={18} /> Salvar Integração</>}
-                </button>
-              </div>
-            </form>
+            ) : null}
           </div>
         </div>
       )}
 
-      {/* Delete Modal */}
       {activeModal === 'delete' && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in">
           <div className="bg-white border-2 border-red-100 rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden p-12 text-center transform animate-in slide-in-from-bottom-8">
