@@ -514,7 +514,7 @@ const ReportsView = ({ data }: { data: any }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-black mb-4">Tarefas por Status</h3>
-          <div className="h-[280px]">
+          <div className="h-[280px] min-h-[280px]">
             {statusData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -550,7 +550,7 @@ const ReportsView = ({ data }: { data: any }) => {
 
         <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-black mb-4">Tarefas por Responsável</h3>
-          <div className="h-[280px]">
+          <div className="h-[280px] min-h-[280px]">
             {data.responsibleData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.responsibleData} layout="vertical" margin={{ left: 20, right: 20 }}>
@@ -581,7 +581,7 @@ const ReportsView = ({ data }: { data: any }) => {
               {data.overdueTasks}
             </span>
           </div>
-          <div className="h-[200px] flex items-center justify-center">
+          <div className="h-[200px] min-h-[200px] flex items-center justify-center">
             {data.overdueTasks > 0 ? (
               <div className="text-center">
                 <p className="text-5xl font-black text-red-500">{data.overdueTasks}</p>
@@ -598,7 +598,7 @@ const ReportsView = ({ data }: { data: any }) => {
 
         <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-black mb-4">Tarefas por Prazo</h3>
-          <div className="h-[200px]">
+          <div className="h-[200px] min-h-[200px]">
             {data.deadlineData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.deadlineData}>

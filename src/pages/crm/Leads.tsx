@@ -119,11 +119,13 @@ const CRMLeads = () => {
   const nicheCheckboxes = useRef(new Set<string>());
 
   const uniqueNiches = useMemo(() => {
+    if (!leads || !Array.isArray(leads)) return [];
     const niches = new Set(leads.map(l => l.niche).filter(Boolean));
     return Array.from(niches).sort();
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
+    if (!leads || !Array.isArray(leads)) return [];
     let result = leads;
 
     if (searchTerm) {
