@@ -162,10 +162,10 @@ const CRMPipeline = () => {
     })
   );
 
-  const filteredLeadsBase = filters.stages.length > 0 || filters.niches.length > 0 || filters.dateFilter !== ''
-    ? leads.filter(lead => {
-        if (filters.stages.length > 0 && !filters.stages.includes(lead.stage)) return false;
-        if (filters.niches.length > 0 && !filters.niches.includes(lead.niche)) return false;
+  const filteredLeadsBase = (filters.stages?.length > 0 || filters.niches?.length > 0 || filters.dateFilter !== '')
+    ? (leads || []).filter(lead => {
+        if (filters.stages?.length > 0 && !filters.stages.includes(lead.stage)) return false;
+        if (filters.niches?.length > 0 && !filters.niches.includes(lead.niche)) return false;
         if (filters.dateFilter) {
           const now = new Date();
           const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -193,11 +193,11 @@ const CRMPipeline = () => {
 
   // Helper to filter leads by search term
   const getFilteredLeads = (stage: string) => {
-    return filteredLeadsBase.filter(l => 
+    return (filteredLeadsBase || []).filter(l => 
       l.stage === stage && (
-        l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        l.niche.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        l.email.toLowerCase().includes(searchTerm.toLowerCase())
+        l.name?.toLowerCase().includes(searchTerm?.toLowerCase() || '') ||
+        l.niche?.toLowerCase().includes(searchTerm?.toLowerCase() || '') ||
+        l.email?.toLowerCase().includes(searchTerm?.toLowerCase() || '')
       )
     );
   };

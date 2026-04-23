@@ -210,7 +210,7 @@ const Financeiro = () => {
     setIsSyncing(false);
   }, []);
 
-  const computedLeadInvoices: Invoice[] = leads
+  const computedLeadInvoices: Invoice[] = (leads || [])
     .filter(l => l.stage === 'Contrato Fechado')
     .map(l => ({
       id: `lead-${l.id}`,
@@ -227,13 +227,13 @@ const Financeiro = () => {
     ), [asaasInvoices, manualInvoices, leads]);
 
   const filteredInvoices = useMemo(() => {
-    let result = allInvoices;
+    let result = allInvoices || [];
 
-    if (filtersState.statuses.length > 0) {
+    if (filtersState.statuses?.length > 0) {
       result = result.filter(inv => filtersState.statuses.includes(inv.status));
     }
 
-    if (filtersState.origins.length > 0) {
+    if (filtersState.origins?.length > 0) {
       result = result.filter(inv => {
         const source = inv.source || 'manual';
         return filtersState.origins.includes(source);
@@ -255,13 +255,13 @@ const Financeiro = () => {
   }, [allInvoices, filtersState]);
 
   const filteredExpenses = useMemo(() => {
-    let result = expenses;
+    let result = expenses || [];
 
-    if (activeTab === 'fluxo' && filtersState.categories.length > 0) {
+    if (activeTab === 'fluxo' && filtersState.categories?.length > 0) {
       result = result.filter(exp => filtersState.categories.includes(exp.category));
     }
 
-    if (filtersState.statuses.length > 0) {
+    if (filtersState.statuses?.length > 0) {
       result = result.filter(exp => filtersState.statuses.includes(exp.status));
     }
 

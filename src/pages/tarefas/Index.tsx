@@ -174,8 +174,8 @@ const DEFAULT_GROUPS: Group[] = [
 ];
 
 const Avatar = ({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) => {
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  const bgColor = ['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500'][name.length % 5];
+  const initials = (name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const bgColor = ['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500'][(name || '').length % 5];
   
   if (size === 'md') {
     return (

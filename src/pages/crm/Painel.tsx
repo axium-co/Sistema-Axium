@@ -39,10 +39,10 @@ const CRMDashboard = () => {
   const [loaded, setLoaded] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const filteredLeads = filters.stages.length > 0 || filters.niches.length > 0 || filters.dateFilter !== ''
-    ? leads.filter(lead => {
-        if (filters.stages.length > 0 && !filters.stages.includes(lead.stage)) return false;
-        if (filters.niches.length > 0 && !filters.niches.includes(lead.niche)) return false;
+  const filteredLeads = (filters.stages?.length > 0 || filters.niches?.length > 0 || filters.dateFilter !== '')
+    ? (leads || []).filter(lead => {
+        if (filters.stages?.length > 0 && !filters.stages.includes(lead.stage)) return false;
+        if (filters.niches?.length > 0 && !filters.niches.includes(lead.niche)) return false;
         if (filters.dateFilter) {
           const now = new Date();
           const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -66,7 +66,7 @@ const CRMDashboard = () => {
         }
         return true;
       })
-    : leads;
+    : (leads || []);
 
   useEffect(() => {
     if (!loaded) {

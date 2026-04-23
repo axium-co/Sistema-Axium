@@ -6,6 +6,7 @@ import { ActivityLogsProvider } from './contexts/ActivityContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FilterProvider } from './contexts/FilterContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 import MainLayout from './layouts/MainLayout';
@@ -149,17 +150,19 @@ function AppRoutes() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <ThemeProvider>
-          <ActivityLogsProvider>
-            <CRMProvider>
-              <FilterProvider>
-                <AppRoutes />
-              </FilterProvider>
-            </CRMProvider>
-          </ActivityLogsProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <ThemeProvider>
+            <ActivityLogsProvider>
+              <CRMProvider>
+                <FilterProvider>
+                  <AppRoutes />
+                </FilterProvider>
+              </CRMProvider>
+            </ActivityLogsProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </Router>
   );
 }
