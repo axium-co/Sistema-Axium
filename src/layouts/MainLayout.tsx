@@ -4,7 +4,6 @@ import { useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import CRMSubmenu from '../components/CRMSubmenu';
 import TopHeader from '../components/TopHeader';
-import { FilterBar } from '../components/filtros/FilterBar';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -34,11 +33,6 @@ const MainLayout = ({ children }: MainLayoutProps) => {
             <CRMSubmenu />
           </div>
         )}
-
-        {/* Global Filter Bar — sticky below submenu, visible on all pages */}
-        <div className="sticky top-[61px] z-10 bg-white border-b border-neutral-100 px-4 py-2">
-          <FilterBar />
-        </div>
 
         {/* Page content */}
         <div className="flex-1 bg-neutral-50 w-full">
