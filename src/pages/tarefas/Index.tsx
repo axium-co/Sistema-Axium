@@ -1101,12 +1101,6 @@ const Tarefas = () => {
     setEditingColumnId(null);
   };
 
-  const handleDeleteColumn = (colId: string, colTitle: string) => {
-    const updated = columns.filter(c => c.id !== colId);
-    setColumns(updated);
-    localStorage.setItem('axium_cols_v5', JSON.stringify(updated));
-  };
-
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
     setActiveDragId(null);
