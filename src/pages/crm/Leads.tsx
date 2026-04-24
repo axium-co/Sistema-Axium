@@ -1,8 +1,8 @@
-import { useState, useMemo, useRef, useEffect, ReactNode, ReactElement } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
-import { useCRM } from '../../contexts/CRMContext';
+import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
-import type { Lead } from '../../contexts/CRMContext';
 
 const formatBRL = (val: string) => {
   const numeric = val.replace(/\D/g, '');
@@ -122,11 +122,15 @@ const CRMLeads = () => {
       setNicheSuggestions([]);
       return;
     }
-    const search = nicheSearch.toLowerCase();
-    const suggestions = uniqueNiches
-      .filter(n => n.toLowerCase().includes(search))
-      .slice(0, 8);
-    setNicheSuggestions(suggestions);
+    try {
+      const search = nicheSearch.toLowerCase();
+      const suggestions = uniqueNiches
+        .filter(n => n.toLowerCase().includes(search))
+        .slice(0, 8);
+      setNicheSuggestions(suggestions);
+    } catch {
+      setNicheSuggestions([]);
+    }
   }, [nicheSearch, uniqueNiches]);
 
   const handleNicheSelect = (niche: string) => {
