@@ -1,491 +1,677 @@
-import { useState, useEffect } from 'react';
-import { Plus, Check, Trash2, Users, CheckCircle2, Flag, StickyNote, FileText, Calendar, LayoutGrid, BarChart3 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
+import { Plus, Check, Trash2, X, ChevronDown, Tag, Palette, Calendar, Hash, Text, AlignLeft, Calculator, Paperclip, Users, ListFilter, LayoutGrid } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
-interface Task {
+interface Tag {
   id: string;
-  title: string;
-  values: Record<string, any>;
+  name: string;
+  color: string;
 }
 
-interface Group {
+interface ColumnOption {
   id: string;
-  title: string;
+  label: string;
   color: string;
-  isExpanded: boolean;
-  tasks: Task[];
 }
 
 interface Column {
   id: string;
   title: string;
-  type: string;
+  type: 'text' | 'number' | 'status' | 'priority' | 'people' | 'date' | 'tags' | 'notes' | 'files' | 'formula';
   width: number;
+  options?: ColumnOption[];
+  formula?: string;
+  tags?: Tag[];
 }
 
-const STATUS_OPTIONS = ['Não iniciado', 'Em andamento', 'Feito', 'Parado'];
-const PRIORITY_OPTIONS = ['Baixa', 'Média', 'Alta'];
+interface Row {
+  id: string;
+  values: Record<string, any>;
+}
 
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'Baixa': return 'bg-green-500';
-    case 'Média': return 'bg-yellow-500';
-    case 'Alta': return 'bg-red-500';
-    default: return 'bg-neutral-200';
-  }
-};
+interface Board {
+  id: string;
+  title: string;
+  color: string;
+  columns: Column[];
+  rows: Row[];
+}
 
-const getPriorityTextColor = (priority: string) => {
-  switch (priority) {
-    case 'Baixa': return 'text-green-700';
-    case 'Média': return 'text-yellow-700';
-    case 'Alta': return 'text-red-700';
-    default: return 'text-neutral-600';
-  }
-};
+const COLUMN_TYPES = [
+  { id: 'text', label: 'Texto', icon: Text },
+  { id: 'number', label: 'Número', icon: Hash },
+  { id: 'status', label: 'Status', icon: ListFilter },
+  { id: 'priority', label: 'Prioridade', icon: Flag },
+  { id: 'people', label: 'Pessoas', icon: Users },
+  { id: 'date', label: 'Data', icon: Calendar },
+  { id: 'tags', label: 'Etiquetas', icon: Tag },
+  { id: 'notes', label: 'Notas', icon: AlignLeft },
+  { id: 'files', label: 'Arquivos', icon: Paperclip },
+  { id: 'formula', label: 'Fórmula', icon: Calculator },
+] as const;
 
-const DEFAULT_COLUMNS: Column[] = [
-  { id: 'col-tarefa', title: 'Tarefa', type: 'text', width: 200 },
-  { id: 'col-responsavel', title: 'Responsável', type: 'users', width: 140 },
-  { id: 'col-status', title: 'Status', type: 'status', width: 130 },
-  { id: 'col-prioridade', title: 'Prioridade', type: 'priority', width: 100 },
-  { id: 'col-notas', title: 'Notas', type: 'notes', width: 150 },
-  { id: 'col-arquivos', title: 'Arquivos', type: 'file', width: 80 },
-  { id: 'col-data-inicio', title: 'Data de início', type: 'date', width: 120 },
-  { id: 'col-prazo', title: 'Prazo de Entrega', type: 'date', width: 130 },
+const PRESET_COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#0ea5e9',
+  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e',
 ];
 
-const DEFAULT_GROUPS: Group[] = [
-  { id: 'g1', title: 'Tarefas Pendentes', color: '#579bfc', isExpanded: true, tasks: [
-    { id: '1', title: 'Lead - Clínica Sorriso', values: { 'col-status': 'Em andamento', 'col-prioridade': 'Alta', 'col-prazo': '2026-04-25', 'col-data-inicio': '2026-04-20', 'col-notas': 'Aguardando aprovação' }},
-    { id: '2', title: 'Follow-up Cliente XPTO', values: { 'col-status': 'Não iniciado', 'col-prioridade': 'Média', 'col-prazo': '2026-04-30', 'col-data-inicio': '2026-04-22', 'col-notas': '' }},
-  ]},
-  { id: 'g2', title: 'Concluídos', color: '#00c875', isExpanded: true, tasks: [
-    { id: '3', title: 'Projeto Redesign Site', values: { 'col-status': 'Feito', 'col-prioridade': 'Baixa', 'col-prazo': '2026-04-15', 'col-data-inicio': '2026-04-01', 'col-notas': 'Concluído com sucesso' }},
-  ]},
-];
+const DEFAULT_BOARD: Board = {
+  id: 'board-1',
+  title: 'Quadro Principal',
+  color: '#3b82f6',
+  columns: [
+    { id: 'col-1', title: 'Tarefa', type: 'text', width: 250 },
+  ],
+  rows: [],
+};
 
-const ColumnHeader = ({ column, onRename }: { column: Column; onRename: (id: string, newTitle: string) => void }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(column.title);
+const normalizeText = (text: string) => {
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+};
 
-  const handleDoubleClick = () => {
-    setEditValue(column.title);
-    setIsEditing(true);
-  };
-
-  const handleBlur = () => {
-    if (editValue.trim() && editValue !== column.title) {
-      onRename(column.id, editValue.trim());
-    }
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleBlur();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-    }
-  };
-
-  if (isEditing) {
-    return (
-      <input
-        autoFocus
-        type="text"
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className="w-full bg-white border-2 border-black rounded px-1 py-0.5 text-[10px] font-black uppercase text-center outline-none"
-      />
-    );
+const getDefaultOptions = (type: string): ColumnOption[] => {
+  if (type === 'status') {
+    return [
+      { id: 'Não iniciado', label: 'Não iniciado', color: '#6b7280' },
+      { id: 'Em andamento', label: 'Em andamento', color: '#3b82f6' },
+      { id: 'Feito', label: 'Feito', color: '#22c55e' },
+    ];
   }
+  if (type === 'priority') {
+    return [
+      { id: 'Baixa', label: 'Baixa', color: '#22c55e' },
+      { id: 'Média', label: 'Média', color: '#eab308' },
+      { id: 'Alta', label: 'Alta', color: '#ef4444' },
+    ];
+  }
+  return [];
+};
 
-  return (
-    <span 
-      onDoubleClick={handleDoubleClick}
-      className="cursor-pointer text-[10px] font-black uppercase tracking-widest select-none"
-      title="Clique duas vezes para editar"
+const ColumnTypeDropdown = ({ 
+  position, 
+  onSelect, 
+  onClose 
+}: { 
+  position: { top: number; left: number };
+  onSelect: (type: Column['type'], label: string) => void;
+  onClose: () => void;
+}) => {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  const existingTypes = COLUMN_TYPES.map(ct => ct.id);
+  
+  return ReactDOM.createPortal(
+    <div
+      ref={dropdownRef}
+      className="fixed z-50 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-2xl overflow-hidden"
+      style={{ 
+        top: position.top + 4, 
+        left: position.left, 
+        minWidth: 180,
+        maxHeight: 350,
+        overflowY: 'auto'
+      }}
     >
-      {column.title}
-    </span>
+      <div className="p-2">
+        <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2 px-2">
+          Adicionar Coluna
+        </p>
+        {COLUMN_TYPES.map(ct => {
+          const Icon = ct.icon;
+          return (
+            <button
+              key={ct.id}
+              onClick={() => onSelect(ct.type as Column['type'], ct.label)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-all"
+            >
+              <Icon size={16} />
+              {ct.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>,
+    document.body
   );
 };
 
-const Board = ({ 
-  group, 
-  columns, 
-  onUpdateColumns,
-  onUpdateTasks,
-  onDeleteGroup,
+const ColorPicker = ({ 
+  color, 
+  onChange,
+  presetColors = PRESET_COLORS 
 }: { 
-  group: Group; 
-  columns: Column[];
-  onUpdateColumns: (cols: Column[]) => void;
-  onUpdateTasks: (tasks: Task[]) => void;
-  onDeleteGroup?: () => void;
+  color: string;
+  onChange: (color: string) => void;
+  presetColors?: string[];
+}) => {
+  return (
+    <div className="flex flex-wrap gap-1.5 p-2">
+      {presetColors.map(c => (
+        <button
+          key={c}
+          onClick={() => onChange(c)}
+          className={`w-6 h-6 rounded-full transition-all ${color === c ? 'ring-2 ring-offset-2 ring-black dark:ring-white' : 'hover:scale-110'}`}
+          style={{ backgroundColor: c }}
+        />
+      ))}
+      <input
+        type="color"
+        value={color}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-6 h-6 rounded-full cursor-pointer"
+      />
+    </div>
+  );
+};
+
+const Board = ({
+  board,
+  allBoards,
+  onUpdateBoard,
+  onDeleteBoard,
+  onMoveRow,
+}: {
+  board: Board;
+  allBoards: Board[];
+  onUpdateBoard: (board: Board) => void;
+  onDeleteBoard: () => void;
+  onMoveRow: (rowId: string, fromBoardId: string, toBoardId: string) => void;
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [showAddColumn, setShowAddColumn] = useState(false);
+  const [addColumnPosition, setAddColumnPosition] = useState({ top: 0, left: 0 });
+  const addColumnRef = useRef<HTMLButtonElement>(null);
 
-  const handleStatusChange = (taskId: string, newStatus: string) => {
-    const task = group.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    
-    const updatedTask = { ...task, values: { ...task.values, 'col-status': newStatus } };
-    const otherTasks = group.tasks.filter(t => t.id !== taskId);
-    onUpdateTasks([...otherTasks, updatedTask]);
+  const handleAddColumn = (type: Column['type'], label: string) => {
+    const newColumn: Column = {
+      id: `col-${Date.now()}`,
+      title: label,
+      type,
+      width: type === 'notes' ? 200 : type === 'files' ? 120 : 150,
+      options: ['status', 'priority'].includes(type) ? getDefaultOptions(type) : undefined,
+    };
+    onUpdateBoard({ ...board, columns: [...board.columns, newColumn] });
+    setShowAddColumn(false);
   };
 
-  const toggleTaskSelection = (taskId: string) => {
-    setSelectedTasks(prev => {
+  const handleDeleteColumn = (colId: string) => {
+    if (!confirm('Excluir esta coluna?')) return;
+    onUpdateBoard({ ...board, columns: board.columns.filter(c => c.id !== colId) });
+  };
+
+  const handleColumnRename = (colId: string, newTitle: string) => {
+    onUpdateBoard({
+      ...board,
+      columns: board.columns.map(c => c.id === colId ? { ...c, title: newTitle } : c),
+    });
+  };
+
+  const handleAddRow = () => {
+    const newRow: Row = {
+      id: `row-${Date.now()}`,
+      values: {},
+    };
+    onUpdateBoard({ ...board, rows: [...board.rows, newRow] });
+  };
+
+  const handleDeleteRow = (rowId: string) => {
+    if (!confirm('Excluir esta linha?')) return;
+    onUpdateBoard({ ...board, rows: board.rows.filter(r => r.id !== rowId) });
+  };
+
+  const handleUpdateRow = (updatedRows: Row[]) => {
+    onUpdateBoard({ ...board, rows: updatedRows });
+  };
+
+  const handleCellChange = (rowId: string, colId: string, value: any, prevValue?: any) => {
+    const updated = board.rows.map(r => 
+      r.id === rowId ? { ...r, values: { ...r.values, [colId]: value } } : r
+    );
+    onUpdateBoard({ ...board, rows: updated });
+
+    const col = board.columns.find(c => c.id === colId);
+    if (col?.type === 'status' && prevValue !== value) {
+      const targetBoardTitle = normalizeText(value);
+      const targetBoard = allBoards.find(b => normalizeText(b.title) === targetBoardTitle && b.id !== board.id);
+      if (targetBoard) {
+        onMoveRow(rowId, board.id, targetBoard.id);
+      }
+    }
+  };
+
+  const handleAddOption = (colId: string, optionLabel: string) => {
+    const col = board.columns.find(c => c.id === colId);
+    if (!col || !col.options) return;
+    
+    const newOption: ColumnOption = {
+      id: optionLabel,
+      label: optionLabel,
+      color: PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)],
+    };
+    
+    onUpdateBoard({
+      ...board,
+      columns: board.columns.map(c => 
+        c.id === colId ? { ...c, options: [...(c.options || []), newOption] } : c
+      ),
+    });
+  };
+
+  const handleUpdateOption = (colId: string, optionId: string, updates: Partial<ColumnOption>) => {
+    onUpdateBoard({
+      ...board,
+      columns: board.columns.map(c => 
+        c.id === colId ? { 
+          ...c, 
+          options: c.options?.map(o => o.id === optionId ? { ...o, ...updates } : o) 
+        } : c
+      ),
+    });
+  };
+
+  const handleDeleteOption = (colId: string, optionId: string) => {
+    onUpdateBoard({
+      ...board,
+      columns: board.columns.map(c => 
+        c.id === colId ? { ...c, options: c.options?.filter(o => o.id !== optionId) } : c
+      ),
+    });
+  };
+
+  const handleAddTag = (colId: string, tagName: string, tagColor: string) => {
+    const col = board.columns.find(c => c.id === colId);
+    if (!col || !col.tags) return;
+    
+    const newTag: Tag = {
+      id: `tag-${Date.now()}`,
+      name: tagName,
+      color: tagColor,
+    };
+    
+    onUpdateBoard({
+      ...board,
+      columns: board.columns.map(c => 
+        c.id === colId ? { ...c, tags: [...(c.tags || []), newTag] } : c
+      ),
+    });
+  };
+
+  const toggleRowSelection = (rowId: string) => {
+    setSelectedRows(prev => {
       const next = new Set(prev);
-      if (next.has(taskId)) next.delete(taskId);
-      else next.add(taskId);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
       return next;
     });
   };
 
   const toggleAll = () => {
-    if (selectedTasks.size === group.tasks.length) {
-      setSelectedTasks(new Set());
+    if (selectedRows.size === board.rows.length) {
+      setSelectedRows(new Set());
     } else {
-      setSelectedTasks(new Set(group.tasks.map(t => t.id)));
+      setSelectedRows(new Set(board.rows.map(r => r.id)));
     }
   };
 
-  const handleAddTask = () => {
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
-      title: 'Nova Tarefa',
-      values: { 'col-status': 'Não iniciado' },
-    };
-    onUpdateTasks([...group.tasks, newTask]);
+  const getOptionColor = (colId: string, value: string) => {
+    const col = board.columns.find(c => c.id === colId);
+    if (!col?.options) return '#6b7280';
+    return col.options.find(o => o.id === value)?.color || '#6b7280';
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    if (!confirm('Excluir esta tarefa?')) return;
-    onUpdateTasks(group.tasks.filter(t => t.id !== taskId));
+  const renderCell = (row: Row, col: Column, rowIndex: number) => {
+    const value = row.values[col.id] || '';
+    const prevValue = row.values[col.id];
+
+    switch (col.type) {
+      case 'text':
+      case 'people':
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
+            placeholder={col.type === 'people' ? 'Nome...' : 'Texto...'}
+            className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
+          />
+        );
+      
+      case 'number':
+        return (
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
+            className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
+          />
+        );
+      
+      case 'status':
+      case 'priority':
+        const options = col.options || [];
+        return (
+          <select
+            value={value}
+            onChange={(e) => handleCellChange(row.id, col.id, e.target.value, prevValue)}
+            className={`w-full px-2 py-1 rounded text-sm border-none outline-none cursor-pointer text-white font-medium`}
+            style={{ backgroundColor: value ? getOptionColor(col.id, value) : '#6b7280' }}
+          >
+            <option value="" className="bg-neutral-500 text-white">—</option>
+            {options.map(opt => (
+              <option key={opt.id} value={opt.label} style={{ backgroundColor: opt.color }}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        );
+      
+      case 'date':
+        return (
+          <input
+            type="date"
+            value={value}
+            onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
+            className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
+          />
+        );
+      
+      case 'notes':
+        return (
+          <textarea
+            value={value}
+            onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
+            rows={1}
+            className={`w-full bg-transparent border-none outline-none text-sm resize-none ${isDark ? 'text-white' : 'text-black'}`}
+          />
+        );
+      
+      case 'files':
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
+            placeholder="Link ou arquivo..."
+            className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
+          />
+        );
+      
+      case 'tags':
+        const tags = col.tags || [];
+        const rowTags = Array.isArray(value) ? value : [];
+        return (
+          <div className="flex flex-wrap gap-1">
+            {rowTags.map((tagId: string) => {
+              const tag = tags.find(t => t.id === tagId);
+              if (!tag) return null;
+              return (
+                <span
+                  key={tag.id}
+                  className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                  style={{ backgroundColor: tag.color }}
+                >
+                  {tag.name}
+                </span>
+              );
+            })}
+          </div>
+        );
+      
+      case 'formula':
+        return (
+          <div className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Fórmula
+          </div>
+        );
+      
+      default:
+        return null;
+    }
   };
 
   return (
     <div className="mb-8">
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-3 h-8 rounded-full" style={{ backgroundColor: group.color }} />
-        <h2 className="text-xl font-black" style={{ color: group.color }}>{group.title}</h2>
-        <span className="text-xs text-neutral-400 font-medium">{group.tasks.length} itens</span>
-        {onDeleteGroup && (
-          <button onClick={onDeleteGroup} className="ml-auto text-neutral-400 hover:text-red-500">
-            <Trash2 size={16} />
-          </button>
-        )}
+        <div 
+          className="w-3 h-8 rounded-full cursor-pointer"
+          style={{ backgroundColor: board.color }}
+          onClick={() => {
+            const newColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+            onUpdateBoard({ ...board, color: newColor });
+          }}
+        />
+        <input
+          type="text"
+          value={board.title}
+          onChange={(e) => onUpdateBoard({ ...board, title: e.target.value })}
+          className={`text-xl font-black bg-transparent border-none outline-none ${isDark ? 'text-white' : 'text-black'}`}
+        />
+        <span className="text-xs text-neutral-400 font-medium">{board.rows.length} itens</span>
+        <button onClick={onDeleteBoard} className="ml-auto text-neutral-400 hover:text-red-500">
+          <Trash2 size={16} />
+        </button>
       </div>
 
-      <div className="border border-neutral-200 rounded-2xl bg-white overflow-visible">
+      <div className={`border rounded-2xl ${isDark ? 'border-neutral-700 bg-neutral-900' : 'border-neutral-200 bg-white'} overflow-visible`}>
         <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-          <table className="w-full border-collapse min-w-[900px]">
+          <table className="w-full border-collapse min-w-[800px]">
             <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200 sticky top-0 z-10">
-                <th className="w-10 p-3 border-r border-neutral-200 bg-neutral-50 sticky left-0 z-20">
+              <tr className={`border-b ${isDark ? 'border-neutral-700 bg-neutral-800' : 'border-neutral-200 bg-neutral-50'} sticky top-0 z-10`}>
+                <th className={`w-10 p-3 border-r ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-800' : 'bg-neutral-50'} sticky left-0 z-20`}>
                   <button 
                     onClick={toggleAll}
-                    className="w-5 h-5 rounded border-2 border-neutral-300 flex items-center justify-center hover:border-black"
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isDark ? 'border-neutral-600 hover:border-white' : 'border-neutral-300 hover:border-black'}`}
                   >
-                    {selectedTasks.size === group.tasks.length && group.tasks.length > 0 && <Check size={12} className="text-black" />}
+                    {selectedRows.size === board.rows.length && board.rows.length > 0 && <Check size={12} className={isDark ? 'text-white' : 'text-black'} />}
                   </button>
                 </th>
-                {columns.map(col => (
+                {board.columns.map((col, idx) => (
                   <th 
                     key={col.id} 
-                    className="p-3 border-l border-neutral-200 bg-neutral-50 text-center font-semibold text-neutral-600"
+                    className={`p-3 border-l ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-800' : 'bg-neutral-50'} text-center`}
                     style={{ minWidth: col.width }}
                   >
-                    <ColumnHeader 
-                      column={col} 
-                      onRename={(id, newTitle) => onUpdateColumns(columns.map(c => c.id === id ? { ...c, title: newTitle } : c))}
-                    />
+                    <div className="flex items-center justify-center gap-1 relative">
+                      <input
+                        type="text"
+                        value={col.title}
+                        onChange={(e) => handleColumnRename(col.id, e.target.value)}
+                        className={`w-24 text-center text-[10px] font-black uppercase tracking-widest bg-transparent border-none outline-none ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}
+                      />
+                      {idx > 0 && (
+                        <button
+                          onClick={() => handleDeleteColumn(col.id)}
+                          className="text-neutral-400 hover:text-red-500"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
                   </th>
                 ))}
+                <th className={`p-2 ${isDark ? 'bg-neutral-800' : 'bg-neutral-50'}`}>
+                  <button
+                    ref={addColumnRef}
+                    onClick={(e) => {
+                      const rect = addColumnRef.current?.getBoundingClientRect();
+                      if (rect) {
+                        setAddColumnPosition({ top: rect.bottom, left: rect.left });
+                        setShowAddColumn(true);
+                      }
+                    }}
+                    className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-neutral-200 text-neutral-400'}`}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {group.tasks.map(task => (
-                <tr key={task.id} className={`border-b ${isDark ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-100 hover:bg-neutral-50'}`}>
-                  <td className={`p-3 border-r border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'} sticky left-0`}>
-                    <button 
-                      onClick={() => toggleTaskSelection(task.id)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                        selectedTasks.has(task.id) ? 'bg-black border-black' : 'border-neutral-300'
-                      }`}
-                    >
-                      {selectedTasks.has(task.id) && <Check size={12} className="text-white" />}
-                    </button>
-                  </td>
-                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
-                    <input
-                      value={task.title}
-                      onChange={(e) => {
-                        const updated = group.tasks.map(t => 
-                          t.id === task.id ? { ...t, title: e.target.value } : t
-                        );
-                        onUpdateTasks(updated);
-                      }}
-                      className={`w-full bg-transparent border-none outline-none font-medium text-sm ${isDark ? 'text-white' : 'text-black'}`}
-                    />
-                  </td>
-                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
-                    <input
-                      type="text"
-                      value={task.values['col-responsavel'] || ''}
-                      onChange={(e) => {
-                        const updated = group.tasks.map(t => 
-                          t.id === task.id ? { ...t, values: { ...t.values, 'col-responsavel': e.target.value } } : t
-                        );
-                        onUpdateTasks(updated);
-                      }}
-                      placeholder="Nome..."
-                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
-                    />
-                  </td>
-                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
-                    <select
-                      value={task.values['col-status'] || ''}
-                      onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
-                    >
-                      {STATUS_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
-                    <div className="relative">
-                      <select
-                        value={task.values['col-prioridade'] || ''}
-                        onChange={(e) => {
-                          const updated = group.tasks.map(t => 
-                            t.id === task.id ? { ...t, values: { ...t.values, 'col-prioridade': e.target.value } } : t
-                          );
-                          onUpdateTasks(updated);
-                        }}
-                        className={`w-full px-2 py-1 rounded text-sm border-none outline-none cursor-pointer ${getPriorityColor(task.values['col-prioridade'])} ${task.values['col-prioridade'] ? 'text-white font-medium' : 'bg-transparent text-neutral-600'}`}
+              {board.rows.map(row => (
+                <tr key={row.id} className={`border-b ${isDark ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-100 hover:bg-neutral-50'}`}>
+                  <td className={`p-3 border-r ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-900' : 'bg-white'} sticky left-0`}>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => toggleRowSelection(row.id)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                          selectedRows.has(row.id) ? 'bg-black border-black' : isDark ? 'border-neutral-600' : 'border-neutral-300'
+                        }`}
                       >
-                        <option value="" className="bg-white text-neutral-600">—</option>
-                        {PRIORITY_OPTIONS.map(opt => (
-                          <option key={opt} value={opt} className={`${getPriorityColor(opt)} text-white font-medium`}>{opt}</option>
-                        ))}
-                      </select>
+                        {selectedRows.has(row.id) && <Check size={12} className="text-white" />}
+                      </button>
+                      <button onClick={() => handleDeleteRow(row.id)} className="text-neutral-400 hover:text-red-500">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
-                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
-                    <textarea
-                      value={task.values['col-notas'] || ''}
-                      onChange={(e) => {
-                        const updated = group.tasks.map(t => 
-                          t.id === task.id ? { ...t, values: { ...t.values, 'col-notas': e.target.value } } : t
-                        );
-                        onUpdateTasks(updated);
-                      }}
-                      placeholder="Notas..."
-                      className={`w-full bg-transparent border-none outline-none text-sm resize-none ${isDark ? 'text-white' : 'text-black'}`}
-                      rows={1}
-                    />
-                  </td>
-                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
-                    <input
-                      type="text"
-                      value={task.values['col-arquivos'] || ''}
-                      onChange={(e) => {
-                        const updated = group.tasks.map(t => 
-                          t.id === task.id ? { ...t, values: { ...t.values, 'col-arquivos': e.target.value } } : t
-                        );
-                        onUpdateTasks(updated);
-                      }}
-                      placeholder="Arquivos..."
-                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
-                    />
-                  </td>
-                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
-                    <input
-                      type="date"
-                      value={task.values['col-data-inicio'] || ''}
-                      onChange={(e) => {
-                        const updated = group.tasks.map(t => 
-                          t.id === task.id ? { ...t, values: { ...t.values, 'col-data-inicio': e.target.value } } : t
-                        );
-                        onUpdateTasks(updated);
-                      }}
-                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
-                    />
-                  </td>
-                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
-                    <input
-                      type="date"
-                      value={task.values['col-prazo'] || ''}
-                      onChange={(e) => {
-                        const updated = group.tasks.map(t => 
-                          t.id === task.id ? { ...t, values: { ...t.values, 'col-prazo': e.target.value } } : t
-                        );
-                        onUpdateTasks(updated);
-                      }}
-                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
-                    />
-                  </td>
+                  {board.columns.map(col => (
+                    <td 
+                      key={col.id} 
+                      className={`p-2 border-l ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-900' : 'bg-white'}`}
+                    >
+                      {renderCell(row, col, board.rows.indexOf(row))}
+                    </td>
+                  ))}
+                  <td className={`p-2 ${isDark ? 'bg-neutral-900' : 'bg-white'}`} />
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        <div className="p-3 border-t border-neutral-200 dark:border-neutral-700">
+          <button
+            onClick={handleAddRow}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              isDark 
+                ? 'text-neutral-400 hover:text-white hover:bg-neutral-800' 
+                : 'text-neutral-400 hover:text-black hover:bg-neutral-100'
+            }`}
+          >
+            <Plus size={16} /> Nova Linha
+          </button>
+        </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          onClick={handleAddTask}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-400 hover:text-black hover:bg-neutral-100 rounded-lg transition-all"
-        >
-          <Plus size={16} /> Nova Tarefa
-        </button>
-      </div>
+      {showAddColumn && (
+        <ColumnTypeDropdown
+          position={addColumnPosition}
+          onSelect={handleAddColumn}
+          onClose={() => setShowAddColumn(false)}
+        />
+      )}
     </div>
   );
 };
 
 const Tarefas = () => {
-  const [currentView, setCurrentView] = useState<'board' | 'reports'>('board');
-  const [groups, setGroups] = useState<Group[]>(() => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const [boards, setBoards] = useState<Board[]>(() => {
     try {
-      const stored = localStorage.getItem('axium_groups_v2');
-      return stored ? JSON.parse(stored) : DEFAULT_GROUPS;
-    } catch (e) {
-      return DEFAULT_GROUPS;
+      const stored = localStorage.getItem('axium_boards_v3');
+      return stored ? JSON.parse(stored) : [DEFAULT_BOARD];
+    } catch {
+      return [DEFAULT_BOARD];
     }
   });
-  const [columns, setColumns] = useState<Column[]>(() => {
-    try {
-      const stored = localStorage.getItem('axium_cols_fixed');
-      return stored ? JSON.parse(stored) : DEFAULT_COLUMNS;
-    } catch (e) {
-      return DEFAULT_COLUMNS;
-    }
-  });
-  const [isAddingGroup, setIsAddingGroup] = useState(false);
-  const [newGroupTitle, setNewGroupTitle] = useState('');
 
   useEffect(() => {
-    try {
-      localStorage.setItem('axium_groups_v2', JSON.stringify(groups));
-    } catch (e) {
-      console.warn('Failed to save groups to localStorage', e);
-    }
-  }, [groups]);
+    localStorage.setItem('axium_boards_v3', JSON.stringify(boards));
+  }, [boards]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('axium_cols_fixed', JSON.stringify(columns));
-    } catch (e) {
-      console.warn('Failed to save columns to localStorage', e);
-    }
-  }, [columns]);
-
-  const handleUpdateGroupTasks = (groupId: string, tasks: Task[]) => {
-    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, tasks } : g));
-  };
-
-  const handleAddGroup = () => {
-    if (!newGroupTitle.trim()) return;
-    const newGroup: Group = {
-      id: `g-${Date.now()}`,
-      title: newGroupTitle.trim(),
-      color: ['#579bfc', '#00c875', '#ffcb00', '#e54b4b', '#9b59b6'][Math.floor(Math.random() * 5)],
-      isExpanded: true,
-      tasks: [],
+  const handleAddBoard = () => {
+    const newBoard: Board = {
+      id: `board-${Date.now()}`,
+      title: 'Novo Quadro',
+      color: PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)],
+      columns: [
+        { id: 'col-1', title: 'Tarefa', type: 'text', width: 250 },
+      ],
+      rows: [],
     };
-    setGroups(prev => [...prev, newGroup]);
-    setNewGroupTitle('');
-    setIsAddingGroup(false);
+    setBoards([...boards, newBoard]);
   };
 
-  const handleDeleteGroup = (groupId: string) => {
-    if (!confirm('Deletar este quadro?')) return;
-    setGroups(prev => prev.filter(g => g.id !== groupId));
+  const handleDeleteBoard = (boardId: string) => {
+    if (!confirm('Excluir este quadro?')) return;
+    setBoards(boards.filter(b => b.id !== boardId));
+  };
+
+  const handleUpdateBoard = (updatedBoard: Board) => {
+    setBoards(boards.map(b => b.id === updatedBoard.id ? updatedBoard : b));
+  };
+
+  const handleMoveRow = (rowId: string, fromBoardId: string, toBoardId: string) => {
+    const fromBoard = boards.find(b => b.id === fromBoardId);
+    const toBoard = boards.find(b => b.id === toBoardId);
+    if (!fromBoard || !toBoard) return;
+
+    const row = fromBoard.rows.find(r => r.id === rowId);
+    if (!row) return;
+
+    const updatedFromBoard = { ...fromBoard, rows: fromBoard.rows.filter(r => r.id !== rowId) };
+    const updatedToBoard = { ...toBoard, rows: [...toBoard.rows, row] };
+
+    setBoards(boards.map(b => 
+      b.id === fromBoardId ? updatedFromBoard : 
+      b.id === toBoardId ? updatedToBoard : b
+    ));
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-4 md:p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight">Operações Axium</h1>
-          <p className="text-neutral-500 text-sm">Gestão dinâmica de alto desempenho.</p>
-        </div>
-        <div className="flex items-center gap-2 p-1 bg-neutral-100 rounded-xl">
+    <div className={`min-h-screen p-6 ${isDark ? 'bg-neutral-950 text-white' : 'bg-neutral-50 text-black'}`}>
+      <div className="max-w-[95%] mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-black'}`}>
+            Tarefas
+          </h1>
           <button
-            onClick={() => setCurrentView('board')}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-              currentView === 'board' ? 'bg-white shadow-sm' : 'text-neutral-500'
-            }`}
+            onClick={handleAddBoard}
+            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-all"
           >
-            <LayoutGrid size={18} className="inline mr-2" />
-            Quadro
-          </button>
-          <button
-            onClick={() => setCurrentView('reports')}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-              currentView === 'reports' ? 'bg-white shadow-sm' : 'text-neutral-500'
-            }`}
-          >
-            <BarChart3 size={18} className="inline mr-2" />
-            Painéis
+            <Plus size={16} /> Adicionar Quadro
           </button>
         </div>
-      </div>
 
-      {currentView === 'board' && (
-        <div>
-          {isAddingGroup ? (
-            <div className="mb-6 flex items-center gap-2">
-              <input
-                autoFocus
-                type="text"
-                value={newGroupTitle}
-                onChange={(e) => setNewGroupTitle(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddGroup()}
-                placeholder="Nome do novo quadro..."
-                className="px-4 py-2 border border-neutral-300 rounded-lg outline-none focus:border-black"
-              />
-              <button onClick={handleAddGroup} className="px-4 py-2 bg-black text-white rounded-lg font-medium">Adicionar</button>
-              <button onClick={() => setIsAddingGroup(false)} className="px-4 py-2 text-neutral-500">Cancelar</button>
-            </div>
-          ) : (
+        {boards.map(board => (
+          <Board
+            key={board.id}
+            board={board}
+            allBoards={boards}
+            onUpdateBoard={handleUpdateBoard}
+            onDeleteBoard={() => handleDeleteBoard(board.id)}
+            onMoveRow={handleMoveRow}
+          />
+        ))}
+
+        {boards.length === 0 && (
+          <div className="text-center py-20">
+            <p className={`text-lg ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              Nenhum quadro ainda
+            </p>
             <button
-              onClick={() => setIsAddingGroup(true)}
-              className="mb-6 flex items-center gap-2 px-4 py-2 border border-dashed border-neutral-300 rounded-lg text-neutral-400 hover:border-black hover:text-black transition-all"
+              onClick={handleAddBoard}
+              className="mt-4 flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-all mx-auto"
             >
-              <Plus size={16} /> Adicionar quadro
+              <Plus size={16} /> Criar Primeiro Quadro
             </button>
-          )}
-
-          {groups.map(group => (
-            <Board
-              key={group.id}
-              group={group}
-              columns={columns}
-              onUpdateColumns={setColumns}
-              onUpdateTasks={(tasks) => handleUpdateGroupTasks(group.id, tasks)}
-              onDeleteGroup={() => handleDeleteGroup(group.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      {currentView === 'reports' && (
-        <div className="text-center py-20 text-neutral-400">
-          <BarChart3 size={48} className="mx-auto mb-4 opacity-50" />
-          <p>Painéis em breve...</p>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
