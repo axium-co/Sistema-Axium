@@ -120,7 +120,7 @@ const filterLeads = (leads: Lead[], filters: { stages?: string[]; niches?: strin
   });
 };
 
-const calculateStats = (leads: Lead[], icons: { Users: LucideIcon; Calendar: LucideIcon; MessageSquare: LucideIcon; Clock: LucideIcon; FileText: LucideIcon; UserX: LucideIcon; CheckCircle: LucideIcon }) => {
+const calculateStats = (leads: Lead[], icons: typeof CHART_ICONS) => {
   const stats: Stat[] = [
     { title: 'Total de Leads', value: leads.length.toString(), icon: icons.Users },
     { title: 'Reuniões', value: leads.filter(l => l.stage === 'Reunião Agendada').length.toString(), icon: icons.Calendar, stageFilter: 'Reunião Agendada' },

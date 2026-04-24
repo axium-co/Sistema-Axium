@@ -60,6 +60,8 @@ const UpdatePassword = () => {
       }
 
       setSuccess('Senha atualizada com sucesso!');
+      await supabase.auth.signOut();
+      localStorage.removeItem('axium_auth');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
       setError('Erro ao atualizar senha. Tente novamente.');
