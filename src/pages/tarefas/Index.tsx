@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { Plus, Check, Trash2, X, ChevronDown, Tag, Palette, Calendar, Hash, Text, AlignLeft, Calculator, Paperclip, Users, ListFilter, LayoutGrid } from 'lucide-react';
+import { Plus, Check, Trash2, X, Tag, Palette, Calendar, Hash, Text, AlignLeft, Calculator, Paperclip, Users, ListFilter, LayoutGrid, BarChart3 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface Tag {
   id: string;
@@ -577,9 +578,159 @@ const Board = ({
   );
 };
 
+const Dashboard = ({ boards }: { boards: Board[] }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  const allRows = boards.flatMap(b => b.rows);
+  const statusCol = boards[0]?.columns.find(c => c.type === 'status');
+  const ownerCol = boards[0]?.columns.find(c => c.type === 'people');
+  const deadlineCol = boards[0]?.columns.find(c => c.type === 'date' && c.title.includes('Prazo'));
+
+  const statusCounts: Record<string, number> = {};
+  const ownerCounts: Record<string, number> = {};
+  const overdueCounts: Record<string, number> = {};
+  const deadlineCounts: Record<string, number> = {};
+  const uniqueStatuses = new Set<string>();
+
+  allRows.forEach(row => {
+    const status = statusCol ? (row.values[statusCol.id] as string) || 'Sem status' : 'Sem status';
+    const owner = ownerCol ? (row.values[ownerCol.id] as string) || 'Não atribuído' : 'Não atribuído';
+    const deadline = deadlineCol ? (row.values[deadlineCol.id] as string) : null;
+
+    statusCounts[status] = (statusCounts[status] || 0) + 1;
+    ownerCounts[owner] = (ownerCounts[owner] || 0) + 1;
+    uniqueStatuses.add(status);
+
+    if (deadline && new Date(deadline) < new Date()) {
+      overdueCounts[status] = (overdueCounts[status] || 0) + 1;
+    }
+
+    if (deadline) {
+      const dateKey = new Date(deadline).toLocaleDateString('pt-BR');
+      deadlineCounts[dateKey] = (deadlineCounts[dateKey] || 0) + 1;
+    }
+  });
+
+  const total = allRows.length;
+  const statusData = Object.entries(statusCounts).map(([name, value]) => ({
+    name,
+    value,
+    percent: total > 0 ? Math.round((value / total) * 100) : 0,
+  }));
+
+  const ownerData = Object.entries(ownerCounts).map(([name, value]) => ({ name, value }));
+  const overdueData = Object.entries(overdueCounts).map(([name, value]) => ({ name, value }));
+  const deadlineData = Object.entries(deadlineCounts)
+    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+    .slice(-7)
+    .map(([name, value]) => ({ name, value }));
+
+  const COLORS = ['#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
+
+  const renderEmpty = (message: string) => (
+    <div className={`flex items-center justify-center h-64 ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+      {message}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className={`p-4 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${isDark ? 'border-neutral-700' : 'border-neutral-200'}`}>
+          <p className={`text-xs font-medium uppercase tracking-wider ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Todas as tarefas
+          </p>
+          <p className={`text-3xl font-black mt-1 ${isDark ? 'text-white' : 'text-black'}`}>{total}</p>
+        </div>
+        {statusData.map((item, idx) => (
+          <div key={item.name} className={`p-4 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${isDark ? 'border-neutral-700' : 'border-neutral-200'}`}>
+            <p className={`text-xs font-medium uppercase tracking-wider ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              {item.name}
+            </p>
+            <p className={`text-3xl font-black mt-1 ${isDark ? 'text-white' : 'text-black'}`}>{item.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`p-4 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${isDark ? 'border-neutral-700' : 'border-neutral-200'}`}>
+          <h3 className={`text-sm font-bold mb-4 ${isDark ? 'text-white' : 'text-black'}`}>Tarefas por status</h3>
+          {total === 0 ? renderEmpty('Nenhuma tarefa') : (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  label={({ percent }) => `${percent}%`}
+                >
+                  {statusData.map((_, idx) => (
+                    <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className={`p-4 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${isDark ? 'border-neutral-700' : 'border-neutral-200'}`}>
+          <h3 className={`text-sm font-bold mb-4 ${isDark ? 'text-white' : 'text-black'}`}>Tarefas por responsável</h3>
+          {ownerData.length === 0 ? renderEmpty('Nenhum responsável') : (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={ownerData} layout="vertical">
+                <XAxis type="number" stroke={isDark ? '#737373' : '#a3a3a3'} fontSize={12} />
+                <YAxis dataKey="name" type="category" width={100} stroke={isDark ? '#737373' : '#a3a3a3'} fontSize={12} />
+                <Tooltip />
+                <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`p-4 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${isDark ? 'border-neutral-700' : 'border-neutral-200'}`}>
+          <h3 className={`text-sm font-bold mb-4 ${isDark ? 'text-white' : 'text-black'}`}>Tarefas atrasadas</h3>
+          {overdueData.length === 0 ? renderEmpty('Nenhuma tarefa atrasada') : (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={overdueData}>
+                <XAxis dataKey="name" stroke={isDark ? '#737373' : '#a3a3a3'} fontSize={12} />
+                <YAxis stroke={isDark ? '#737373' : '#a3a3a3'} fontSize={12} />
+                <Tooltip />
+                <Bar dataKey="value" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className={`p-4 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${isDark ? 'border-neutral-700' : 'border-neutral-200'}`}>
+          <h3 className={`text-sm font-bold mb-4 ${isDark ? 'text-white' : 'text-black'}`}>Tarefas por prazo</h3>
+          {deadlineData.length === 0 ? renderEmpty('Nenhuma tarefa com prazo') : (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={deadlineData}>
+                <XAxis dataKey="name" stroke={isDark ? '#737373' : '#a3a3a3'} fontSize={10} />
+                <YAxis stroke={isDark ? '#737373' : '#a3a3a3'} fontSize={12} />
+                <Tooltip />
+                <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Tarefas = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const [currentView, setCurrentView] = useState<'board' | 'dashboard'>('board');
   const [boards, setBoards] = useState<Board[]>(() => {
     try {
       const stored = localStorage.getItem('axium_boards_v3');
@@ -636,40 +787,74 @@ const Tarefas = () => {
     <div className={`min-h-screen p-6 ${isDark ? 'bg-neutral-950 text-white' : 'bg-neutral-50 text-black'}`}>
       <div className="max-w-[95%] mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-black'}`}>
-            Tarefas
-          </h1>
-          <button
-            onClick={handleAddBoard}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-all"
-          >
-            <Plus size={16} /> Adicionar Quadro
-          </button>
-        </div>
-
-        {boards.map(board => (
-          <Board
-            key={board.id}
-            board={board}
-            allBoards={boards}
-            onUpdateBoard={handleUpdateBoard}
-            onDeleteBoard={() => handleDeleteBoard(board.id)}
-            onMoveRow={handleMoveRow}
-          />
-        ))}
-
-        {boards.length === 0 && (
-          <div className="text-center py-20">
-            <p className={`text-lg ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              Nenhum quadro ainda
-            </p>
+          <div className="flex items-center gap-4">
+            <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-black'}`}>
+              Tarefas
+            </h1>
+            <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1">
+              <button
+                onClick={() => setCurrentView('board')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  currentView === 'board'
+                    ? 'bg-white dark:bg-neutral-700 text-black dark:text-white'
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white'
+                }`}
+              >
+                <LayoutGrid size={14} />
+                Quadros
+              </button>
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  currentView === 'dashboard'
+                    ? 'bg-white dark:bg-neutral-700 text-black dark:text-white'
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white'
+                }`}
+              >
+                <BarChart3 size={14} />
+                Painéis
+              </button>
+            </div>
+          </div>
+          {currentView === 'board' && (
             <button
               onClick={handleAddBoard}
-              className="mt-4 flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-all mx-auto"
+              className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-all"
             >
-              <Plus size={16} /> Criar Primeiro Quadro
+              <Plus size={16} /> Adicionar Quadro
             </button>
-          </div>
+          )}
+        </div>
+
+        {currentView === 'dashboard' ? (
+          <Dashboard boards={boards} />
+        ) : (
+          <>
+            {boards.map(board => (
+              <Board
+                key={board.id}
+                board={board}
+                allBoards={boards}
+                onUpdateBoard={handleUpdateBoard}
+                onDeleteBoard={() => handleDeleteBoard(board.id)}
+                onMoveRow={handleMoveRow}
+              />
+            ))}
+
+            {boards.length === 0 && (
+              <div className="text-center py-20">
+                <p className={`text-lg ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                  Nenhum quadro ainda
+                </p>
+                <button
+                  onClick={handleAddBoard}
+                  className="mt-4 flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-all mx-auto"
+                >
+                  <Plus size={16} /> Criar Primeiro Quadro
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
