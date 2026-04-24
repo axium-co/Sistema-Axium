@@ -32,23 +32,13 @@ const STAGES = [
   'Perdido'
 ];
 
-const ORIGINS = [
+const STAGE_ORIGINS = [
   'Instagram',
   'Indicação',
   'WhatsApp',
   'Facebook',
   'Google',
   'Site',
-  'Evento',
-  'Outros'
-];
-
-const STAGE_ORIGINS = [
-  'Instagram',
-  'Indicação', 
-  'Website',
-  'Facebook',
-  'Google Ads',
   'Evento',
   'Outros'
 ];
@@ -107,7 +97,7 @@ const inputCls =
 
 const CRMLeads = () => {
   const { leads, addLead, updateLead, deleteLead, searchTerm } = useCRM();
-  const { filters, setFilter, setStagesFilter, setNichesFilter, setOriginsFilter, setDateFilter, clearFilters, hasActiveFilters } = useFilters();
+  const { filters, setStagesFilter, setNichesFilter, setOriginsFilter, setDateFilter, clearFilters, hasActiveFilters } = useFilters();
 
   const [isOpen, setIsOpen] = useState(false);
   const [current, setCurrent] = useState<Partial<Lead>>(EMPTY_LEAD);
@@ -116,6 +106,31 @@ const CRMLeads = () => {
   const [nicheSearch, setNicheSearch] = useState('');
   const [nicheSuggestions, setNicheSuggestions] = useState<string[]>([]);
   const [showNicheSuggestions, setShowNicheSuggestions] = useState(false);
+
+  const uniqueNiches = useMemo(() => {
+    if (!leads || !Array.isArray(leads)) return [];
+    try {
+      const niches = new Set(leads.map(l => l.niche).filter(Boolean));
+      return Array.from(niches).sort();
+    } catch {
+      return [];
+    }
+  }, [leads]);
+
+  const handleNicheSelect = (niche: string) => {
+    const currentNiches = filters?.niches || [];
+    if (!currentNiches.includes(niche)) {
+      setNichesFilter([...currentNiches, niche]);
+    }
+    setNicheSearch('');
+    setShowNicheSuggestions(false);
+  };
+
+  const handleAddNiche = () => {
+    if (nicheSearch.trim()) {
+      handleNicheSelect(nicheSearch.trim());
+    }
+  };
 
   useEffect(() => {
     if (!nicheSearch.trim()) {
@@ -133,34 +148,62 @@ const CRMLeads = () => {
     }
   }, [nicheSearch, uniqueNiches]);
 
-  const handleNicheSelect = (niche: string) => {
-    const currentNiches = filters?.niches || [];
-    if (!currentNiches.includes(niche)) {
-      setNichesFilter([...currentNiches, niche]);
+  const openAdd = () => { setMode('add'); setCurrent(EMPTY_LEAD); setIsOpen(true); };
+  const openEdit = (lead: Lead) => { setMode('edit'); setCurrent({ ...lead }); setIsOpen(true); };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mode === 'add') {
+      addLead(current as Omit<Lead, 'id'>);
+    } else {
+      updateLead(current.id!, current);
     }
-    setNicheSearch('');
-    setShowNicheSuggestions(false);
+    setIsOpen(false);
   };
 
-  const handleAddNiche = () => {
-    if (nicheSearch.trim()) {
-      handleNicheSelect(nicheSearch.trim());
-    }
+  const handleDelete = (id: string | undefined) => {
+    if (!id) return;
+    if (confirm('Excluir este lead?')) deleteLead(id);
   };
 
-  const stageCheckboxes = useRef(new Set<string>());
-  const originCheckboxes = useRef(new Set<string>());
-  const nicheCheckboxes = useRef(new Set<string>());
+  const updateField = (field: keyof Lead, val: string) =>
+    setCurrent(prev => ({ ...prev, [field]: val }));
 
-  const uniqueNiches = useMemo(() => {
-    if (!leads || !Array.isArray(leads)) return [];
+  const toggleStageFilter = (stage: string) => {
     try {
-      const niches = new Set(leads.map(l => l.niche).filter(Boolean));
-      return Array.from(niches).sort();
-    } catch {
-      return [];
+      const currentStages = filters?.stages || [];
+      const newStages = currentStages.includes(stage)
+        ? currentStages.filter(s => s !== stage)
+        : [...currentStages, stage];
+      setStagesFilter(newStages);
+    } catch (err) {
+      console.error('Erro ao filtrar por etapa:', err);
     }
-  }, [leads]);
+  };
+
+  const toggleOriginFilter = (origin: string) => {
+    try {
+      const currentOrigins = filters?.origins || [];
+      const newOrigins = currentOrigins.includes(origin)
+        ? currentOrigins.filter((o: string) => o !== origin)
+        : [...currentOrigins, origin];
+      setOriginsFilter(newOrigins);
+    } catch (err) {
+      console.error('Erro ao filtrar por origem:', err);
+    }
+  };
+
+  const toggleNicheFilter = (niche: string) => {
+    try {
+      const currentNiches = filters?.niches || [];
+      const newNiches = currentNiches.includes(niche)
+        ? currentNiches.filter(n => n !== niche)
+        : [...currentNiches, niche];
+      setNichesFilter(newNiches);
+    } catch (err) {
+      console.error('Erro ao filtrar por nicho:', err);
+    }
+  };
 
   const filteredLeads = useMemo(() => {
     if (!leads || !Array.isArray(leads)) return [];
@@ -218,62 +261,6 @@ const CRMLeads = () => {
     return result;
   }, [leads, searchTerm, filters]);
 
-  const openAdd = () => { setMode('add'); setCurrent(EMPTY_LEAD); setIsOpen(true); };
-  const openEdit = (lead: Lead) => { setMode('edit'); setCurrent({ ...lead }); setIsOpen(true); };
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mode === 'add') {
-      addLead(current as Omit<Lead, 'id'>);
-    } else {
-      updateLead(current.id!, current);
-    }
-    setIsOpen(false);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Excluir este lead?')) deleteLead(id);
-  };
-
-  const set = (field: keyof Lead, val: string) =>
-    setCurrent(prev => ({ ...prev, [field]: val }));
-
-  const toggleStageFilter = (stage: string) => {
-    try {
-      const currentStages = filters?.stages || [];
-      const newStages = currentStages.includes(stage)
-        ? currentStages.filter(s => s !== stage)
-        : [...currentStages, stage];
-      setStagesFilter(newStages);
-    } catch (err) {
-      console.error('Erro ao filtrar por etapa:', err);
-    }
-  };
-
-  const toggleOriginFilter = (origin: string) => {
-    try {
-      const currentOrigins = (filters as any)?.origins || [];
-      const newOrigins = currentOrigins.includes(origin)
-        ? currentOrigins.filter((o: string) => o !== origin)
-        : [...currentOrigins, origin];
-      setOriginsFilter(newOrigins);
-    } catch (err) {
-      console.error('Erro ao filtrar por origem:', err);
-    }
-  };
-
-  const toggleNicheFilter = (niche: string) => {
-    try {
-      const currentNiches = filters?.niches || [];
-      const newNiches = currentNiches.includes(niche)
-        ? currentNiches.filter(n => n !== niche)
-        : [...currentNiches, niche];
-      setNichesFilter(newNiches);
-    } catch (err) {
-      console.error('Erro ao filtrar por nicho:', err);
-    }
-  };
-
   return (
     <div className="relative min-h-screen">
       {isSidebarOpen && (
@@ -318,7 +305,7 @@ const CRMLeads = () => {
                 <CheckboxFilter
                   key={origin}
                   label={origin}
-                  checked={((filters as any)?.origins || []).includes(origin)}
+                  checked={(filters?.origins || []).includes(origin)}
                   onChange={() => toggleOriginFilter(origin)}
                 />
               ))}
@@ -509,33 +496,33 @@ const CRMLeads = () => {
               <div className="px-4 md:px-7 py-4 md:py-6 space-y-3 md:space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Nome" required>
-                    <input type="text" value={current.name} onChange={e => set('name', e.target.value)}
+                    <input type="text" value={current.name} onChange={e => updateField('name', e.target.value)}
                       required className={inputCls} placeholder="Ex: João Silva" />
                   </Field>
                   <Field label="Nicho">
-                    <input type="text" value={current.niche} onChange={e => set('niche', e.target.value)}
+                    <input type="text" value={current.niche} onChange={e => updateField('niche', e.target.value)}
                       className={inputCls} placeholder="Ex: Odontologia" />
                   </Field>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="WhatsApp">
-                    <input type="text" value={current.whatsapp} onChange={e => set('whatsapp', e.target.value)}
+                    <input type="text" value={current.whatsapp} onChange={e => updateField('whatsapp', e.target.value)}
                       className={inputCls} placeholder="(11) 99999-9999" />
                   </Field>
                   <Field label="Email">
-                    <input type="email" value={current.email} onChange={e => set('email', e.target.value)}
+                    <input type="email" value={current.email} onChange={e => updateField('email', e.target.value)}
                       className={inputCls} placeholder="email@dominio.com" />
                   </Field>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Instagram">
-                    <input type="text" value={current.instagram} onChange={e => set('instagram', e.target.value)}
+                    <input type="text" value={current.instagram} onChange={e => updateField('instagram', e.target.value)}
                       className={inputCls} placeholder="@usuario" />
                   </Field>
                   <Field label="Etapa do Pipeline">
-                    <select value={current.stage} onChange={e => set('stage', e.target.value)}
+                    <select value={current.stage} onChange={e => updateField('stage', e.target.value)}
                       className={`${inputCls} appearance-none cursor-pointer`}>
                       {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -544,25 +531,25 @@ const CRMLeads = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Primeiro Contato">
-                    <input type="date" value={current.firstContact} onChange={e => set('firstContact', e.target.value)}
+                    <input type="date" value={current.firstContact} onChange={e => updateField('firstContact', e.target.value)}
                       className={`${inputCls} [color-scheme:light]`} />
                   </Field>
                   <Field label="Data de Fechamento">
-                    <input type="date" value={current.closingDate} onChange={e => set('closingDate', e.target.value)}
+                    <input type="date" value={current.closingDate} onChange={e => updateField('closingDate', e.target.value)}
                       className={`${inputCls} [color-scheme:light]`} />
                   </Field>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Lembrete de Follow-up">
-                    <input type="date" value={current.followUpReminder} onChange={e => set('followUpReminder', e.target.value)}
+                    <input type="date" value={current.followUpReminder} onChange={e => updateField('followUpReminder', e.target.value)}
                       className={`${inputCls} [color-scheme:light]`} />
                   </Field>
                   <Field label="Valor do Contrato">
                     <input 
                       type="text" 
                       value={current.value} 
-                      onChange={e => set('value', formatBRL(e.target.value))}
+                      onChange={e => updateField('value', formatBRL(e.target.value))}
                       className={inputCls} 
                       placeholder="R$ 0,00" 
                     />
@@ -570,23 +557,23 @@ const CRMLeads = () => {
                 </div>
 
                 <Field label="Endereço / Localização">
-                  <input type="text" value={current.address} onChange={e => set('address', e.target.value)}
+                  <input type="text" value={current.address} onChange={e => updateField('address', e.target.value)}
                     className={inputCls} placeholder="Ex: São Paulo - SP" />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <Field label="Quantidade de Avaliações GMN">
-                    <input type="number" min="0" value={current.gmnReviews} onChange={e => set('gmnReviews', e.target.value)}
+                    <input type="number" min="0" value={current.gmnReviews} onChange={e => updateField('gmnReviews', e.target.value)}
                       className={inputCls} placeholder="Ex: 248" />
                   </Field>
                   <Field label="Média de Estrelas GMN">
-                    <input type="number" min="0" max="5" step="0.1" value={current.gmnStars} onChange={e => set('gmnStars', e.target.value)}
+                    <input type="number" min="0" max="5" step="0.1" value={current.gmnStars} onChange={e => updateField('gmnStars', e.target.value)}
                       className={inputCls} placeholder="Ex: 4.7" />
                   </Field>
                 </div>
 
                 <Field label="Observações">
-                  <textarea value={current.notes} onChange={e => set('notes', e.target.value)}
+                  <textarea value={current.notes} onChange={e => updateField('notes', e.target.value)}
                     rows={4} className={`${inputCls} resize-none`}
                     placeholder="Notas internas, contexto do lead..." />
                 </Field>
