@@ -1,43 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import ReactDOM from 'react-dom';
-import { Plus, Check, Trash2, X, Tag, Palette, Calendar, Hash, Text, AlignLeft, Calculator, Paperclip, Users, ListFilter, LayoutGrid, BarChart3, Flag } from 'lucide-react';
+import { Plus, Check, Trash2, X, Calendar, Hash, Text, AlignLeft, Calculator, Paperclip, Users, ListFilter, LayoutGrid, BarChart3, Flag } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface ColumnOption {
-  id: string;
-  label: string;
-  color: string;
-}
-
-interface Column {
-  id: string;
-  title: string;
-  type: 'text' | 'number' | 'status' | 'priority' | 'people' | 'date' | 'tags' | 'notes' | 'files' | 'formula';
-  width: number;
-  options?: ColumnOption[];
-  formula?: string;
-  tags?: Tag[];
-}
-
-interface Row {
-  id: string;
-  values: Record<string, any>;
-}
-
-interface Board {
-  id: string;
-  title: string;
-  color: string;
-  columns: Column[];
-  rows: Row[];
-}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { Tag, ColumnOption, Column, Row, Board } from '../../lib/taskHelpers';
+import { 
+  DEFAULT_STATUS_COLUMNS, 
+  DEFAULT_PRIORITY_COLUMNS,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  isOverdue,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  isDueToday,
+  parseDate,
+  getTaskStats
+} from '../../lib/taskHelpers';
 
 const COLUMN_TYPES = [
   { id: 'text', label: 'Texto', icon: Text },
@@ -57,6 +35,8 @@ const PRESET_COLORS = [
   '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e',
 ];
 
+type ColumnType = Column['type'];
+
 const DEFAULT_BOARD: Board = {
   id: 'board-1',
   title: 'Quadro Principal',
@@ -64,42 +44,21 @@ const DEFAULT_BOARD: Board = {
   columns: [
     { id: 'col-1', title: 'Tarefa', type: 'text', width: 250 },
     { id: 'col-2', title: 'Responsável', type: 'people', width: 150 },
-    { id: 'col-3', title: 'Status', type: 'status', width: 140, options: [
-      { id: 'Não iniciado', label: 'Não iniciado', color: '#6b7280' },
-      { id: 'Em andamento', label: 'Em andamento', color: '#3b82f6' },
-      { id: 'Concluído', label: 'Concluído', color: '#22c55e' },
-      { id: 'Pausado', label: 'Pausado', color: '#f97316' },
-    ]},
-    { id: 'col-4', title: 'Prioridade', type: 'priority', width: 120, options: [
-      { id: 'Baixa', label: 'Baixa', color: '#22c55e' },
-      { id: 'Média', label: 'Média', color: '#eab308' },
-      { id: 'Alta', label: 'Alta', color: '#ef4444' },
-    ]},
+    { id: 'col-3', title: 'Status', type: 'status', width: 140, options: DEFAULT_STATUS_COLUMNS },
+    { id: 'col-4', title: 'Prioridade', type: 'priority', width: 120, options: DEFAULT_PRIORITY_COLUMNS },
     { id: 'col-5', title: 'Notas', type: 'notes', width: 200 },
     { id: 'col-6', title: 'Prazo', type: 'date', width: 130 },
   ],
   rows: [],
 };
 
-const normalizeText = (text: string) => {
+const normalizeText = (text: string): string => {
   return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 };
 
-const getDefaultOptions = (type: string): ColumnOption[] => {
-  if (type === 'status') {
-    return [
-      { id: 'Não iniciado', label: 'Não iniciado', color: '#6b7280' },
-      { id: 'Em andamento', label: 'Em andamento', color: '#3b82f6' },
-      { id: 'Feito', label: 'Feito', color: '#22c55e' },
-    ];
-  }
-  if (type === 'priority') {
-    return [
-      { id: 'Baixa', label: 'Baixa', color: '#22c55e' },
-      { id: 'Média', label: 'Média', color: '#eab308' },
-      { id: 'Alta', label: 'Alta', color: '#ef4444' },
-    ];
-  }
+const getDefaultOptions = (type: ColumnType): ColumnOption[] => {
+  if (type === 'status') return DEFAULT_STATUS_COLUMNS;
+  if (type === 'priority') return DEFAULT_PRIORITY_COLUMNS;
   return [];
 };
 
@@ -123,8 +82,6 @@ const ColumnTypeDropdown = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
-
-  const existingTypes = COLUMN_TYPES.map(ct => ct.id);
   
   return ReactDOM.createPortal(
     <div
@@ -247,11 +204,12 @@ const Board = ({
     onUpdateBoard({ ...board, rows: board.rows.filter(r => r.id !== rowId) });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleUpdateRow = (updatedRows: Row[]) => {
     onUpdateBoard({ ...board, rows: updatedRows });
   };
 
-  const handleCellChange = (rowId: string, colId: string, value: any, prevValue?: any) => {
+  const handleCellChange = (rowId: string, colId: string, value: string | number | Date | string[] | null, prevValue?: string) => {
     const updated = board.rows.map(r => 
       r.id === rowId ? { ...r, values: { ...r.values, [colId]: value } } : r
     );
@@ -259,7 +217,7 @@ const Board = ({
 
     const col = board.columns.find(c => c.id === colId);
     if (col?.type === 'status' && prevValue !== value) {
-      const targetBoardTitle = normalizeText(value);
+      const targetBoardTitle = normalizeText(String(value));
       const targetBoard = allBoards.find(b => normalizeText(b.title) === targetBoardTitle && b.id !== board.id);
       if (targetBoard) {
         onMoveRow(rowId, board.id, targetBoard.id);
@@ -347,30 +305,31 @@ const Board = ({
     return col.options.find(o => o.id === value)?.color || '#6b7280';
   };
 
-  const renderCell = (row: Row, col: Column, rowIndex: number) => {
+  const renderCell = (row: Row, col: Column) => {
     const value = row.values[col.id] || '';
     const prevValue = row.values[col.id];
 
     switch (col.type) {
       case 'text':
-      case 'people':
+      case 'people': {
         return (
           <input
             type="text"
             autoFocus
-            value={value}
+            value={value as string || ''}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             placeholder={col.type === 'people' ? 'Nome...' : 'Texto...'}
-            className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white placeholder-neutral-500' : 'text-black placeholder-neutral-400'}`}
+            className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white placeholder-zinc-500' : 'text-black placeholder-neutral-400'}`}
           />
         );
+      }
       
-      case 'number':
+      case 'number': {
         return (
           <input
             type="number"
             autoFocus
-            value={value}
+            value={value as string || ''}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white' : 'text-black'}`}
           />
@@ -484,21 +443,21 @@ const Board = ({
           onChange={(e) => onUpdateBoard({ ...board, title: e.target.value })}
           className={`text-xl font-black bg-transparent border-none outline-none ${isDark ? 'text-white' : 'text-black'}`}
         />
-        <span className="text-xs text-neutral-400 font-medium">{board.rows.length} itens</span>
-        <button onClick={onDeleteBoard} className="ml-auto text-neutral-400 hover:text-red-500">
+        <span className="text-xs text-zinc-400 font-medium">{board.rows.length} itens</span>
+        <button onClick={onDeleteBoard} className="ml-auto text-zinc-400 hover:text-red-500">
           <Trash2 size={16} />
         </button>
       </div>
 
-      <div className={`border rounded-2xl ${isDark ? 'border-neutral-200 bg-neutral-100' : 'border-neutral-200 bg-white'} overflow-visible`}>
+      <div className={`border rounded-2xl ${isDark ? 'border-zinc-700 bg-zinc-900' : 'border-neutral-200 bg-white'} overflow-visible`}>
         <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
           <table className="w-full border-collapse min-w-[800px]">
             <thead>
-              <tr className={`border-b ${isDark ? 'border-neutral-700 bg-neutral-800' : 'border-neutral-200 bg-neutral-50'} sticky top-0 z-10`}>
-                <th className={`w-10 p-3 border-r ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-800' : 'bg-neutral-50'} sticky left-0 z-20`}>
+              <tr className={`border-b ${isDark ? 'border-zinc-700 bg-zinc-800' : 'border-neutral-200 bg-neutral-50'} sticky top-0 z-10`}>
+                <th className={`w-10 p-3 border-r ${isDark ? 'border-zinc-700' : 'border-neutral-200'} ${isDark ? 'bg-zinc-800' : 'bg-neutral-50'} sticky left-0 z-20`}>
                   <button 
                     onClick={toggleAll}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isDark ? 'border-neutral-600 hover:border-white' : 'border-neutral-300 hover:border-black'}`}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isDark ? 'border-zinc-600 hover:border-white' : 'border-neutral-300 hover:border-black'}`}
                   >
                     {selectedRows.size === board.rows.length && board.rows.length > 0 && <Check size={12} className={isDark ? 'text-white' : 'text-black'} />}
                   </button>
@@ -506,7 +465,7 @@ const Board = ({
                 {board.columns.map((col, idx) => (
                   <th 
                     key={col.id} 
-                    className={`p-3 border-l ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-800' : 'bg-neutral-50'}`}
+                    className={`p-3 border-l ${isDark ? 'border-zinc-700' : 'border-neutral-200'} ${isDark ? 'bg-zinc-800' : 'bg-neutral-50'}`}
                     style={{ minWidth: col.width }}
                   >
                     <div className="flex items-center justify-start gap-1 relative">
@@ -514,7 +473,7 @@ const Board = ({
                         type="text"
                         value={col.title}
                         onChange={(e) => handleColumnRename(col.id, e.target.value)}
-                        className={`w-24 text-left text-[10px] font-black uppercase tracking-widest bg-transparent border-none outline-none ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}
+                        className={`w-24 text-left text-[10px] font-black uppercase tracking-widest bg-transparent border-none outline-none ${isDark ? 'text-zinc-300' : 'text-neutral-600'}`}
                       />
                       {idx > 0 && (
                         <button
@@ -546,18 +505,18 @@ const Board = ({
             </thead>
             <tbody>
               {board.rows.map(row => (
-                <tr key={row.id} className={`border-b ${isDark ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-100 hover:bg-neutral-50'}`}>
-                  <td className={`p-3 border-r ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-900' : 'bg-white'} sticky left-0`}>
+                <tr key={row.id} className={`border-b ${isDark ? 'border-zinc-700 hover:bg-zinc-800' : 'border-neutral-100 hover:bg-neutral-50'}`}>
+                  <td className={`p-3 border-r ${isDark ? 'border-zinc-700' : 'border-neutral-200'} ${isDark ? 'bg-zinc-900' : 'bg-white'} sticky left-0`}>
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={() => toggleRowSelection(row.id)}
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                          selectedRows.has(row.id) ? 'bg-black border-black' : isDark ? 'border-neutral-600' : 'border-neutral-300'
+                          selectedRows.has(row.id) ? 'bg-black border-black' : isDark ? 'border-zinc-600' : 'border-neutral-300'
                         }`}
                       >
                         {selectedRows.has(row.id) && <Check size={12} className="text-white" />}
                       </button>
-                      <button onClick={() => handleDeleteRow(row.id)} className="text-neutral-400 hover:text-red-500">
+                      <button onClick={() => handleDeleteRow(row.id)} className="text-zinc-400 hover:text-red-500">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -565,7 +524,7 @@ const Board = ({
                   {board.columns.map(col => (
                     <td 
                       key={col.id} 
-                      className={`p-2 border-l ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-900' : 'bg-white'}`}
+                      className={`p-2 border-l ${isDark ? 'border-zinc-700' : 'border-neutral-200'} ${isDark ? 'bg-zinc-900' : 'bg-white'}`}
                     >
                       {renderCell(row, col, board.rows.indexOf(row))}
                     </td>
@@ -577,12 +536,12 @@ const Board = ({
           </table>
         </div>
 
-        <div className="p-3 border-t border-neutral-200 dark:border-neutral-700">
+        <div className="p-3 border-t border-zinc-700">
           <button
             onClick={handleAddRow}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
               isDark 
-                ? 'text-neutral-400 hover:text-white hover:bg-neutral-800' 
+                ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' 
                 : 'text-neutral-400 hover:text-black hover:bg-neutral-100'
             }`}
           >
@@ -606,49 +565,74 @@ const Dashboard = ({ boards }: { boards: Board[] }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const allRows = boards.flatMap(b => b.rows);
-  const statusCol = boards[0]?.columns.find(c => c.type === 'status');
-  const ownerCol = boards[0]?.columns.find(c => c.type === 'people');
-  const deadlineCol = boards[0]?.columns.find(c => c.type === 'date' && c.title.includes('Prazo'));
+  const allRows = useMemo(() => boards.flatMap(b => b.rows), [boards]);
+  
+  const columnMap = useMemo(() => ({
+    statusCol: boards[0]?.columns.find(c => c.type === 'status'),
+    ownerCol: boards[0]?.columns.find(c => c.type === 'people'),
+    deadlineCol: boards[0]?.columns.find(c => c.type === 'date' && c.title.includes('Prazo')),
+  }), [boards]);
 
-  const statusCounts: Record<string, number> = {};
-  const ownerCounts: Record<string, number> = {};
-  const overdueCounts: Record<string, number> = {};
-  const deadlineCounts: Record<string, number> = {};
-  const uniqueStatuses = new Set<string>();
+  const stats = useMemo(() => getTaskStats(allRows, columnMap), [allRows, columnMap]);
 
-  allRows.forEach(row => {
-    const status = statusCol ? (row.values[statusCol.id] as string) || 'Sem status' : 'Sem status';
-    const owner = ownerCol ? (row.values[ownerCol.id] as string) || 'Não atribuído' : 'Não atribuído';
-    const deadline = deadlineCol ? (row.values[deadlineCol.id] as string) : null;
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allRows.forEach(row => {
+      const status = columnMap.statusCol ? (row.values[columnMap.statusCol.id] as string) || 'Sem status' : 'Sem status';
+      counts[status] = (counts[status] || 0) + 1;
+    });
+    return counts;
+  }, [allRows, columnMap]);
 
-    statusCounts[status] = (statusCounts[status] || 0) + 1;
-    ownerCounts[owner] = (ownerCounts[owner] || 0) + 1;
-    uniqueStatuses.add(status);
+  const ownerCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allRows.forEach(row => {
+      const owner = columnMap.ownerCol ? (row.values[columnMap.ownerCol.id] as string) || 'Não atribuído' : 'Não atribuído';
+      counts[owner] = (counts[owner] || 0) + 1;
+    });
+    return counts;
+  }, [allRows, columnMap]);
 
-    if (deadline && new Date(deadline) < new Date()) {
-      overdueCounts[status] = (overdueCounts[status] || 0) + 1;
-    }
+  const overdueCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allRows.forEach(row => {
+      const deadline = columnMap.deadlineCol ? (row.values[columnMap.deadlineCol.id] as string) : null;
+      const status = columnMap.statusCol ? (row.values[columnMap.statusCol.id] as string) : '';
+      
+      if (deadline && isOverdue(parseDate(deadline))) {
+        counts[status] = (counts[status] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allRows, columnMap]);
 
-    if (deadline) {
-      const dateKey = new Date(deadline).toLocaleDateString('pt-BR');
-      deadlineCounts[dateKey] = (deadlineCounts[dateKey] || 0) + 1;
-    }
-  });
+  const deadlineCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allRows.forEach(row => {
+      const deadline = columnMap.deadlineCol ? (row.values[columnMap.deadlineCol.id] as string) : null;
+      if (deadline) {
+        const dateKey = new Date(deadline).toLocaleDateString('pt-BR');
+        counts[dateKey] = (counts[dateKey] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allRows, columnMap]);
 
-  const total = allRows.length;
-  const statusData = Object.entries(statusCounts).map(([name, value]) => ({
+  const total = stats.total;
+  
+  const statusData = useMemo(() => Object.entries(statusCounts).map(([name, value]) => ({
     name,
     value,
     percent: total > 0 ? Math.round((value / total) * 100) : 0,
-  }));
+  })), [statusCounts, total]);
 
-  const ownerData = Object.entries(ownerCounts).map(([name, value]) => ({ name, value }));
-  const overdueData = Object.entries(overdueCounts).map(([name, value]) => ({ name, value }));
-  const deadlineData = Object.entries(deadlineCounts)
-    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-    .slice(-7)
-    .map(([name, value]) => ({ name, value }));
+  const ownerData = useMemo(() => Object.entries(ownerCounts).map(([name, value]) => ({ name, value })), [ownerCounts]);
+  const overdueData = useMemo(() => Object.entries(overdueCounts).map(([name, value]) => ({ name, value })), [overdueCounts]);
+  const deadlineData = useMemo(() => 
+    Object.entries(deadlineCounts)
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .slice(-7)
+      .map(([name, value]) => ({ name, value })), [deadlineCounts]);
 
   const COLORS = ['#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
 
