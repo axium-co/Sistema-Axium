@@ -63,6 +63,20 @@ const DEFAULT_BOARD: Board = {
   color: '#3b82f6',
   columns: [
     { id: 'col-1', title: 'Tarefa', type: 'text', width: 250 },
+    { id: 'col-2', title: 'Responsável', type: 'people', width: 150 },
+    { id: 'col-3', title: 'Status', type: 'status', width: 140, options: [
+      { id: 'Não iniciado', label: 'Não iniciado', color: '#6b7280' },
+      { id: 'Em andamento', label: 'Em andamento', color: '#3b82f6' },
+      { id: 'Concluído', label: 'Concluído', color: '#22c55e' },
+      { id: 'Pausado', label: 'Pausado', color: '#f97316' },
+    ]},
+    { id: 'col-4', title: 'Prioridade', type: 'priority', width: 120, options: [
+      { id: 'Baixa', label: 'Baixa', color: '#22c55e' },
+      { id: 'Média', label: 'Média', color: '#eab308' },
+      { id: 'Alta', label: 'Alta', color: '#ef4444' },
+    ]},
+    { id: 'col-5', title: 'Notas', type: 'notes', width: 200 },
+    { id: 'col-6', title: 'Prazo', type: 'date', width: 130 },
   ],
   rows: [],
 };
@@ -470,7 +484,7 @@ const Board = ({
         </button>
       </div>
 
-      <div className={`border rounded-2xl ${isDark ? 'border-neutral-700 bg-neutral-900' : 'border-neutral-200 bg-white'} overflow-visible`}>
+      <div className={`border rounded-2xl ${isDark ? 'border-neutral-200 bg-neutral-100' : 'border-neutral-200 bg-white'} overflow-visible`}>
         <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
           <table className="w-full border-collapse min-w-[800px]">
             <thead>
@@ -486,15 +500,15 @@ const Board = ({
                 {board.columns.map((col, idx) => (
                   <th 
                     key={col.id} 
-                    className={`p-3 border-l ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-800' : 'bg-neutral-50'} text-center`}
+                    className={`p-3 border-l ${isDark ? 'border-neutral-700' : 'border-neutral-200'} ${isDark ? 'bg-neutral-800' : 'bg-neutral-50'}`}
                     style={{ minWidth: col.width }}
                   >
-                    <div className="flex items-center justify-center gap-1 relative">
+                    <div className="flex items-center justify-start gap-1 relative">
                       <input
                         type="text"
                         value={col.title}
                         onChange={(e) => handleColumnRename(col.id, e.target.value)}
-                        className={`w-24 text-center text-[10px] font-black uppercase tracking-widest bg-transparent border-none outline-none ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}
+                        className={`w-24 text-left text-[10px] font-black uppercase tracking-widest bg-transparent border-none outline-none ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}
                       />
                       {idx > 0 && (
                         <button
