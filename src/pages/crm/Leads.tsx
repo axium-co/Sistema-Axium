@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, Component, ReactNode } from 'react';
-import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import type { Lead } from '../../contexts/CRMContext';

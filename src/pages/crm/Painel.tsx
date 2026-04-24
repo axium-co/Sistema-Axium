@@ -30,7 +30,11 @@ const CRMDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    fetchActivityLogs(15);
+    try {
+      fetchActivityLogs(15);
+    } catch (err) {
+      console.error('Error fetching activity logs:', err);
+    }
   }, [fetchActivityLogs]);
 
   const filteredLeads = (filters.stages?.length > 0 || filters.niches?.length > 0 || filters.dateFilter !== '')
