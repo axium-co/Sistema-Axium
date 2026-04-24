@@ -7,7 +7,8 @@ import {
   Sun, Moon, Check, Server,
   Key, Hash, Send, Bold, Italic, Link as LinkIcon,
   RefreshCw, Users, Copy, CheckCircle,
-  AlertCircle, CheckCircle as CheckCircleIcon
+  AlertCircle, CheckCircle as CheckCircleIcon,
+  Globe, Palette, Monitor
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, PROFILES_TABLE } from '../../lib/supabase';
@@ -50,6 +51,11 @@ const Configuracoes = () => {
   const [emailSuccess, setEmailSuccess] = useState('');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+
+  const [theme, setTheme] = useState(() => localStorage.getItem('axium_theme_mode') || 'light');
+  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('axium_accent_color') || 'black');
+  const [themeError, setThemeError] = useState('');
+  const [themeSuccess, setThemeSuccess] = useState('');
 
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'Socio' | 'Funcionario'>('Funcionario');
