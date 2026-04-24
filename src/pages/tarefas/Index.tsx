@@ -336,17 +336,18 @@ const Board = ({
             className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white' : 'text-black'}`}
           />
         );
+      }
       
       case 'status':
-      case 'priority':
+      case 'priority': {
         const options = col.options || [];
         return (
           <select
             autoFocus
-            value={value}
-            onChange={(e) => handleCellChange(row.id, col.id, e.target.value, prevValue)}
+            value={value as string}
+            onChange={(e) => handleCellChange(row.id, col.id, e.target.value, prevValue as string)}
             className={`w-full min-h-[36px] px-2 py-1 text-sm border-none outline-none cursor-pointer text-white font-medium`}
-            style={{ backgroundColor: value ? getOptionColor(col.id, value) : '#6b7280' }}
+            style={{ backgroundColor: value ? getOptionColor(col.id, value as string) : '#6b7280' }}
           >
             <option value="" className="bg-neutral-500 text-white">—</option>
             {options.map(opt => (
@@ -356,22 +357,84 @@ const Board = ({
             ))}
           </select>
         );
+      }
       
-      case 'date':
+      case 'date': {
         return (
           <input
             type="date"
             autoFocus
-            value={value}
+            value={value as string || ''}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white' : 'text-black'}`}
           />
         );
+      }
       
-      case 'notes':
+      case 'notes': {
         return (
           <textarea
             autoFocus
+            value={value as string || ''}
+            onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
+            rows={1}
+            className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm resize-none px-3 py-2 ${isDark ? 'text-white' : 'text-black'}`}
+          />
+        );
+      }
+      
+      case 'files': {
+        return (
+          <input
+            type="text"
+            autoFocus
+            value={value as string || ''}
+            onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
+            placeholder="Link ou arquivo..."
+            className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white placeholder-neutral-500' : 'text-black placeholder-neutral-400'}`}
+          />
+        );
+      }
+      
+      case 'tags': {
+        const tags = col.tags || [];
+        const rowTags = Array.isArray(value) ? value : [];
+        return (
+          <div className="flex flex-wrap gap-1 px-2 py-1">
+            {rowTags.map((tagId: string) => {
+              const tag = tags.find(t => t.id === tagId);
+              if (!tag) return null;
+              return (
+                <span
+                  key={tag.id}
+                  className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                  style={{ backgroundColor: tag.color }}
+                >
+                  {tag.name}
+                </span>
+              );
+            })}
+          </div>
+        );
+      }
+      
+      case 'formula': {
+        return (
+          <div className={`text-sm px-2 py-1 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Fórmula
+          </div>
+        );
+      }
+      
+      default: {
+        return (
+          <div className={`text-sm px-2 py-1 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            {value || '—'}
+          </div>
+        );
+      }
+    }
+  };
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             rows={1}
