@@ -357,10 +357,11 @@ const Board = ({
         return (
           <input
             type="text"
+            autoFocus
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             placeholder={col.type === 'people' ? 'Nome...' : 'Texto...'}
-            className={`w-full min-w-[100px] bg-transparent border-none outline-none text-sm px-2 py-1 ${isDark ? 'text-white placeholder-neutral-500' : 'text-black placeholder-neutral-400'}`}
+            className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white placeholder-neutral-500' : 'text-black placeholder-neutral-400'}`}
           />
         );
       
@@ -368,9 +369,10 @@ const Board = ({
         return (
           <input
             type="number"
+            autoFocus
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
-            className={`w-full min-w-[80px] bg-transparent border-none outline-none text-sm px-2 py-1 ${isDark ? 'text-white' : 'text-black'}`}
+            className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white' : 'text-black'}`}
           />
         );
       
@@ -379,9 +381,10 @@ const Board = ({
         const options = col.options || [];
         return (
           <select
+            autoFocus
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value, prevValue)}
-            className={`w-full min-w-[100px] px-2 py-1 text-sm border-none outline-none cursor-pointer text-white font-medium`}
+            className={`w-full min-h-[36px] px-2 py-1 text-sm border-none outline-none cursor-pointer text-white font-medium`}
             style={{ backgroundColor: value ? getOptionColor(col.id, value) : '#6b7280' }}
           >
             <option value="" className="bg-neutral-500 text-white">—</option>
@@ -397,19 +400,21 @@ const Board = ({
         return (
           <input
             type="date"
+            autoFocus
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
-            className={`w-full min-w-[120px] bg-transparent border-none outline-none text-sm px-2 py-1 ${isDark ? 'text-white' : 'text-black'}`}
+            className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white' : 'text-black'}`}
           />
         );
       
       case 'notes':
         return (
           <textarea
+            autoFocus
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             rows={1}
-            className={`w-full min-w-[150px] bg-transparent border-none outline-none text-sm resize-none px-2 py-1 ${isDark ? 'text-white' : 'text-black'}`}
+            className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm resize-none px-3 py-2 ${isDark ? 'text-white' : 'text-black'}`}
           />
         );
       
@@ -417,10 +422,11 @@ const Board = ({
         return (
           <input
             type="text"
+            autoFocus
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             placeholder="Link ou arquivo..."
-            className={`w-full min-w-[100px] bg-transparent border-none outline-none text-sm px-2 py-1 ${isDark ? 'text-white placeholder-neutral-500' : 'text-black placeholder-neutral-400'}`}
+            className={`w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 ${isDark ? 'text-white placeholder-neutral-500' : 'text-black placeholder-neutral-400'}`}
           />
         );
       
@@ -802,7 +808,7 @@ const Tarefas = () => {
   };
 
   return (
-    <div className={`min-h-screen p-6 ${isDark ? 'bg-neutral-950 text-white' : 'bg-neutral-50 text-black'}`}>
+    <div className={`relative p-6 ${isDark ? 'bg-neutral-950 text-white' : 'bg-neutral-50 text-black'}`}>
       <div className="max-w-[95%] mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
