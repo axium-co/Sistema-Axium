@@ -155,9 +155,9 @@ const CRMDashboard = () => {
           <p className="text-slate-400 text-[10px] md:text-xs uppercase font-bold tracking-widest">Distribuição de leads por etapa</p>
         </div>
         
-        <div className="h-[280px] md:h-[400px] w-full">
-          {chartData && chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
+        <div className="min-h-[280px] md:min-h-[400px]">
+          {chartData && chartData.length > 0 && filteredLeads.length > 0 ? (
+            <ResponsiveContainer width="100%" height={350}>
               <BarChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis 
