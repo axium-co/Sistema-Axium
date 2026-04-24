@@ -193,7 +193,10 @@ const Board = ({
   const handleAddRow = () => {
     const newRow: Row = {
       id: `row-${Date.now()}`,
-      values: {},
+      values: board.columns.reduce((acc, col) => {
+        acc[col.id] = col.type === 'number' ? 0 : '';
+        return acc;
+      }, {} as Row['values']),
     };
     onUpdateBoard({ ...board, rows: [...board.rows, newRow] });
   };
