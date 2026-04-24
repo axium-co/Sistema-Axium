@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
+import { STAGES, STAGE_CONFIG, parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
 
 export interface Lead {
   id: string;
@@ -9,6 +10,7 @@ export interface Lead {
   email: string;
   instagram: string;
   stage: string;
+  origin?: string;
   firstContact: string;
   closingDate: string;
   followUpReminder: string;
@@ -38,6 +40,9 @@ export interface Notification {
   type: 'lead' | 'meeting' | 'system';
 }
 
+type LeadInput = Omit<Lead, 'id'>;
+type LeadUpdate = Partial<Omit<Lead, 'id'>>;
+
 interface CRMContextType {
   leads: Lead[];
   events: CalendarEvent[];
@@ -45,14 +50,17 @@ interface CRMContextType {
   notifications: Notification[];
   setSearchTerm: (term: string) => void;
   markNotificationsAsRead: () => void;
-  addLead: (lead: Omit<Lead, 'id'>) => void;
-  updateLead: (id: string, lead: Partial<Lead>) => void;
+  addLead: (lead: LeadInput) => void;
+  updateLead: (id: string, fields: LeadUpdate) => void;
+  updateLeadStage: (id: string, stage: string) => void;
   deleteLead: (id: string) => void;
   getLeadsByStage: (stage: string) => Lead[];
   getTotalValueByStage: (stage: string) => number;
   addEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   updateEvent: (id: string, event: Partial<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
+  leadsByStage: Record<Stage, Lead[]>;
+  totalPipelineValue: number;
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
@@ -122,33 +130,30 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
   { id: '3', title: 'Follow-up pendente', description: 'Você tem 3 follow-ups agendados para hoje.', time: '1 hora atrás', isRead: true, type: 'system' },
 ];
 
+function loadFromStorage<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  
+  try {
+    const stored = localStorage.getItem(key);
+    if (!stored) return fallback;
+    
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).substring(2, 9);
+}
+
 export const CRMProvider = ({ children }: { children: ReactNode }) => {
-  const [leads, setLeads] = useState<Lead[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('axium_leads_v2');
-      try {
-        const parsed = stored ? JSON.parse(stored) : INITIAL_LEADS;
-        return Array.isArray(parsed) ? parsed : INITIAL_LEADS;
-      } catch (e) {
-        return INITIAL_LEADS;
-      }
-    }
-    return INITIAL_LEADS;
-  });
-
-  const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('axium_events_v2');
-      try {
-        const parsed = stored ? JSON.parse(stored) : INITIAL_EVENTS;
-        return Array.isArray(parsed) ? parsed : INITIAL_EVENTS;
-      } catch (e) {
-        return INITIAL_EVENTS;
-      }
-    }
-    return INITIAL_EVENTS;
-  });
-
+  const [leads, setLeads] = useState<Lead[]>(() => loadFromStorage('axium_leads_v2', INITIAL_LEADS));
+  const [events, setEvents] = useState<CalendarEvent[]>(() => loadFromStorage('axium_events_v2', INITIAL_EVENTS));
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
 
@@ -160,50 +165,54 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('axium_events_v2', JSON.stringify(events));
   }, [events]);
 
-  const markNotificationsAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-  };
+  const leadsByStage = useMemo(() => groupLeadsByStage(leads), [leads]);
+  
+  const totalPipelineValue = useMemo(() => calculateTotalValue(leads), [leads]);
 
-  const addLead = (lead: Omit<Lead, 'id'>) => {
-    const id = typeof crypto !== 'undefined' && crypto.randomUUID 
-      ? crypto.randomUUID() 
-      : Math.random().toString(36).substring(2, 9);
-    setLeads(prev => [...prev, { ...lead, id }]);
+  const markNotificationsAsRead = useCallback(() => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  }, []);
+
+  const addLead = useCallback((lead: LeadInput) => {
+    const id = generateId();
+    const newLead: Lead = { ...lead, id };
     
-    // Add notification
-    const newNotification: Notification = {
-      id: Math.random().toString(),
+    setLeads(prev => [...prev, newLead]);
+    
+    setNotifications(prev => [{
+      id: generateId(),
       title: 'Novo Lead',
       description: `${lead.name} foi adicionado ao sistema.`,
       time: 'Agora',
       isRead: false,
       type: 'lead'
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-  };
+    } as Notification, ...prev]);
+  }, []);
 
-  const updateLead = (id: string, updatedFields: Partial<Lead>) => {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedFields } : l));
-  };
+  const updateLead = useCallback((id: string, fields: LeadUpdate) => {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...fields } : l));
+  }, []);
 
-  const deleteLead = (id: string) => {
+  const updateLeadStage = useCallback((id: string, stage: string) => {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, stage } : l));
+  }, []);
+
+  const deleteLead = useCallback((id: string) => {
     setLeads(prev => prev.filter(l => l.id !== id));
-  };
+  }, []);
 
-  const addEvent = (event: Omit<CalendarEvent, 'id'>) => {
-    const id = typeof crypto !== 'undefined' && crypto.randomUUID 
-      ? crypto.randomUUID() 
-      : Math.random().toString(36).substring(2, 9);
+  const addEvent = useCallback((event: Omit<CalendarEvent, 'id'>) => {
+    const id = generateId();
     setEvents(prev => [...prev, { ...event, id }]);
-  };
+  }, []);
 
-  const updateEvent = (id: string, updatedFields: Partial<CalendarEvent>) => {
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updatedFields } : e));
-  };
+  const updateEvent = useCallback((id: string, fields: Partial<CalendarEvent>) => {
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+  }, []);
 
-  const deleteEvent = (id: string) => {
+  const deleteEvent = useCallback((id: string) => {
     setEvents(prev => prev.filter(e => e.id !== id));
-  };
+  }, []);
 
   const getLeadsByStage = useCallback((stage: string) => {
     return leads.filter(l => l.stage === stage);
@@ -212,32 +221,48 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   const getTotalValueByStage = useCallback((stage: string) => {
     return leads
       .filter(l => l.stage === stage)
-      .reduce((acc, lead) => {
-        const val = lead.value || '';
-        if (!val) return acc;
-        const cleanValue = val.replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
-        const num = parseFloat(cleanValue);
-        return acc + (!isNaN(num) ? num : 0);
-      }, 0);
+      .reduce((acc, lead) => acc + parseMonetaryValue(lead.value), 0);
   }, [leads]);
 
+  const value = useMemo(() => ({
+    leads,
+    events,
+    searchTerm,
+    notifications,
+    setSearchTerm,
+    markNotificationsAsRead,
+    addLead,
+    updateLead,
+    updateLeadStage,
+    deleteLead,
+    getLeadsByStage,
+    getTotalValueByStage,
+    addEvent,
+    updateEvent,
+    deleteEvent,
+    leadsByStage,
+    totalPipelineValue,
+  }), [
+    leads,
+    events,
+    searchTerm,
+    notifications,
+    markNotificationsAsRead,
+    addLead,
+    updateLead,
+    updateLeadStage,
+    deleteLead,
+    getLeadsByStage,
+    getTotalValueByStage,
+    addEvent,
+    updateEvent,
+    deleteEvent,
+    leadsByStage,
+    totalPipelineValue,
+  ]);
+
   return (
-    <CRMContext.Provider value={{ 
-      leads, 
-      events, 
-      searchTerm,
-      notifications,
-      setSearchTerm,
-      markNotificationsAsRead,
-      addLead, 
-      updateLead, 
-      deleteLead, 
-      getLeadsByStage, 
-      getTotalValueByStage,
-      addEvent,
-      updateEvent,
-      deleteEvent
-    }}>
+    <CRMContext.Provider value={value}>
       {children}
     </CRMContext.Provider>
   );
@@ -245,6 +270,8 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
 
 export const useCRM = () => {
   const context = useContext(CRMContext);
-  if (!context) throw new Error('useCRM must be used within a CRMProvider');
+  if (!context) {
+    throw new Error('useCRM must be used within a CRMProvider');
+  }
   return context;
 };

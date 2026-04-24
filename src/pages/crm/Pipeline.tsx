@@ -8,34 +8,28 @@ import {
   DragOverlay,
   closestCorners
 } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
-import { useState } from 'react';
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import type { Lead } from '../../contexts/CRMContext';
 import { Filter, XCircle } from 'lucide-react';
-
-const formatCurrency = (val: number) => {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
-};
-
-const STAGES = [
-  'Novos Leads',
-  'Primeiro Contato',
-  'Contato Ativo',
-  'Reunião Agendada',
-  'Follow Up',
-  'Proposta Enviada',
-  'Contrato Fechado',
-  'Perdido'
-];
+import { 
+  STAGES, 
+  type Stage, 
+  STAGE_CONFIG, 
+  formatCurrency, 
+  parseMonetaryValue,
+  isValidStage,
+  calculateTotalValue
+} from '../../lib/crmHelpers';
 
 interface LeadCardProps {
   lead: Lead;
   isClosed: boolean;
 }
 
-const DraggableLeadCard = ({ lead, isClosed }: LeadCardProps) => {
+const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
     data: { lead }
@@ -80,10 +74,11 @@ const DraggableLeadCard = ({ lead, isClosed }: LeadCardProps) => {
       )}
     </div>
   );
-};
+});
 
-// Static card for DragOverlay
-const StaticLeadCard = ({ lead, isClosed }: LeadCardProps) => (
+DraggableLeadCard.displayName = 'DraggableLeadCard';
+
+const StaticLeadCard = memo<LeadCardProps>(({ lead, isClosed }) => (
   <div className="bg-white p-4 rounded-md border border-black shadow-xl rotate-3 scale-105 pointer-events-none">
     <div className="font-bold text-[13px] text-black mb-0.5">{lead.name}</div>
     <div className="text-[10px] text-neutral-500 font-semibold mb-3">{lead.niche}</div>
@@ -101,14 +96,20 @@ const StaticLeadCard = ({ lead, isClosed }: LeadCardProps) => (
       </div>
     )}
   </div>
-);
+));
 
-const DroppableColumn = ({ stage, children, count, totalValue, formatCurrency }: any) => {
-  const { setNodeRef, isOver } = useDroppable({
-    id: stage,
-  });
+StaticLeadCard.displayName = 'StaticLeadCard';
 
-  const isClosed = stage === 'Contrato Fechado';
+interface DroppableColumnProps {
+  stage: Stage;
+  children: React.ReactNode;
+  count: number;
+  totalValue: number;
+}
+
+const DroppableColumn = memo<DroppableColumnProps>(({ stage, children, count, totalValue }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: stage });
+  const config = STAGE_CONFIG[stage];
 
   return (
     <div 
@@ -116,7 +117,6 @@ const DroppableColumn = ({ stage, children, count, totalValue, formatCurrency }:
       className={`bg-neutral-50/50 border-2 rounded-md w-[300px] shrink-0 flex flex-col max-h-full transition-colors ${isOver ? 'border-black bg-neutral-100/50' : 'border-transparent'}`}
     >
       <div className="bg-neutral-50 border-b border-neutral-200 rounded-t-xl">
-        {/* Column Header */}
         <div className="p-5 border-b border-neutral-200 bg-white rounded-t-xl">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[11px] font-black text-black uppercase tracking-widest">{stage}</h3>
@@ -125,7 +125,7 @@ const DroppableColumn = ({ stage, children, count, totalValue, formatCurrency }:
             </span>
           </div>
           
-          {isClosed ? (
+          {config.isClosed ? (
             <div className="flex flex-col">
               <span className="text-lg font-black text-black tracking-tight">{formatCurrency(totalValue)}</span>
               <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">Faturamento Real</span>
@@ -137,7 +137,6 @@ const DroppableColumn = ({ stage, children, count, totalValue, formatCurrency }:
           )}
         </div>
 
-        {/* Lead Cards List */}
         <div className="p-3 space-y-3 overflow-y-auto min-h-[200px]">
           {children}
           {count === 0 && !isOver && (
@@ -150,35 +149,81 @@ const DroppableColumn = ({ stage, children, count, totalValue, formatCurrency }:
       </div>
     </div>
   );
-};
+});
+
+DroppableColumn.displayName = 'DroppableColumn';
+
+interface DateFilterParams {
+  dateFilter?: string;
+  firstContact?: string;
+}
+
+function isDateInRange(lead: Lead, dateFilter: string | undefined): boolean {
+  if (!dateFilter) return true;
+  if (!lead.firstContact) return false;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const leadDate = new Date(lead.firstContact);
+
+  switch (dateFilter) {
+    case 'today':
+      return leadDate.toDateString() === today.toDateString();
+    case 'week': {
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return leadDate >= weekAgo;
+    }
+    case 'month': {
+      const monthAgo = new Date(today);
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      return leadDate >= monthAgo;
+    }
+    default:
+      return true;
+  }
+}
+
+function applyFilters(leads: Lead[], filters: { stages?: string[]; niches?: string[]; dateFilter?: string }, searchTerm: string): Lead[] {
+  const { stages, niches, dateFilter } = filters;
+  
+  return leads.filter(lead => {
+    if (stages?.length > 0 && !stages.includes(lead.stage)) return false;
+    if (niches?.length > 0 && !niches.includes(lead.niche)) return false;
+    if (!isDateInRange(lead, dateFilter)) return false;
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      return (
+        lead.name?.toLowerCase().includes(term) ||
+        lead.niche?.toLowerCase().includes(term) ||
+        lead.email?.toLowerCase().includes(term)
+      );
+    }
+    
+    return true;
+  });
+}
+
+function searchLeads(leads: Lead[], stage: Stage, searchTerm: string): Lead[] {
+  if (!searchTerm) return leads.filter(l => l.stage === stage);
+  
+  const term = searchTerm.toLowerCase();
+  return leads.filter(l => 
+    l.stage === stage && (
+      l.name?.toLowerCase().includes(term) ||
+      l.niche?.toLowerCase().includes(term) ||
+      l.email?.toLowerCase().includes(term)
+    )
+  );
+}
 
 const CRMPipeline = () => {
-  const { leads, getTotalValueByStage, updateLead } = useCRM();
+  const { leads, updateLead } = useCRM();
   const { filters, hasActiveFilters } = useFilters();
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
-
-  const handleDragStart = (event: any) => {
-    const { active } = event;
-    const lead = leads?.find(l => l.id === active.id);
-    setActiveLead(lead || null);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveLead(null);
-    
-    if (!over) return;
-    
-    const leadId = active.id as string;
-    const newStage = over.id as string;
-    
-    const lead = leads?.find(l => l.id === leadId);
-    if (lead && lead.stage !== newStage) {
-      await updateLead(leadId, { ...lead, stage: newStage });
-    }
-  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -188,55 +233,50 @@ const CRMPipeline = () => {
     })
   );
 
-  const filteredLeadsBase = (filters.stages?.length > 0 || filters.niches?.length > 0 || filters.dateFilter !== '')
-    ? (leads || []).filter(lead => {
-        if (filters.stages?.length > 0 && !filters.stages.includes(lead.stage)) return false;
-        if (filters.niches?.length > 0 && !filters.niches.includes(lead.niche)) return false;
-        if (filters.dateFilter) {
-          const now = new Date();
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          if (filters.dateFilter === 'today') {
-            if (!lead.firstContact) return false;
-            const leadDate = new Date(lead.firstContact);
-            return leadDate.toDateString() === today.toDateString();
-          } else if (filters.dateFilter === 'week') {
-            const weekAgo = new Date(today);
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            if (!lead.firstContact) return false;
-            const leadDate = new Date(lead.firstContact);
-            return leadDate >= weekAgo;
-          } else if (filters.dateFilter === 'month') {
-            const monthAgo = new Date(today);
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            if (!lead.firstContact) return false;
-            const leadDate = new Date(lead.firstContact);
-            return leadDate >= monthAgo;
-          }
-        }
-        return true;
-      })
-    : leads;
+  const filteredLeads = useMemo(() => {
+    return applyFilters(leads || [], filters, '');
+  }, [leads, filters]);
 
-  // Helper to filter leads by search term
-  const getFilteredLeads = (stage: string) => {
-    return (filteredLeadsBase || []).filter(l => 
-      l.stage === stage && (
-        l.name?.toLowerCase().includes(searchTerm?.toLowerCase() || '') ||
-        l.niche?.toLowerCase().includes(searchTerm?.toLowerCase() || '') ||
-        l.email?.toLowerCase().includes(searchTerm?.toLowerCase() || '')
-      )
-    );
-  };
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const { active } = event;
+    const lead = leads?.find(l => l.id === active.id);
+    setActiveLead(lead ?? null);
+  }, [leads]);
 
-  const getFilteredTotalValue = (filteredLeads: Lead[]) => {
-    return filteredLeads.reduce((acc, lead) => {
-      const val = lead.value || '';
-      if (!val) return acc;
-      const cleanValue = val.replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
-      const num = parseFloat(cleanValue);
-      return acc + (!isNaN(num) ? num : 0);
-    }, 0);
-  };
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveLead(null);
+    
+    if (!over) return;
+    
+    const leadId = active.id as string;
+    const newStage = over.id as string;
+    
+    if (!isValidStage(newStage)) {
+      console.error('Estágio inválido:', newStage);
+      return;
+    }
+    
+    const lead = leads?.find(l => l.id === leadId);
+    if (!lead) return;
+    
+    if (lead.stage !== newStage) {
+      updateLead(leadId, { stage: newStage });
+    }
+  }, [leads, updateLead]);
+
+  const columnData = useMemo(() => {
+    return STAGES.map(stage => {
+      const stageLeads = searchLeads(filteredLeads, stage, searchTerm);
+      const totalValue = calculateTotalValue(stageLeads);
+      return {
+        stage,
+        leads: stageLeads,
+        count: stageLeads.length,
+        totalValue,
+      };
+    });
+  }, [filteredLeads, searchTerm]);
 
   return (
     <div className="relative flex flex-col h-full">
@@ -284,28 +324,22 @@ const CRMPipeline = () => {
       >
         <div className="flex-1 overflow-x-auto pb-6">
           <div className="flex gap-5 min-w-max h-full items-start">
-            {STAGES.map((stage) => {
-              const columnLeads = getFilteredLeads(stage);
-              const totalValue = getFilteredTotalValue(columnLeads);
-
-              return (
-                <DroppableColumn 
-                  key={stage} 
-                  stage={stage} 
-                  count={columnLeads.length}
-                  totalValue={totalValue}
-                  formatCurrency={formatCurrency}
-                >
-                  {columnLeads.map(lead => (
-                    <DraggableLeadCard 
-                      key={lead.id} 
-                      lead={lead} 
-                      isClosed={stage === 'Contrato Fechado'} 
-                    />
-                  ))}
-                </DroppableColumn>
-              );
-            })}
+            {columnData.map(({ stage, leads: columnLeads, count, totalValue }) => (
+              <DroppableColumn 
+                key={stage} 
+                stage={stage}
+                count={count}
+                totalValue={totalValue}
+              >
+                {columnLeads.map(lead => (
+                  <DraggableLeadCard 
+                    key={lead.id} 
+                    lead={lead} 
+                    isClosed={STAGE_CONFIG[stage].isClosed}
+                  />
+                ))}
+              </DroppableColumn>
+            ))}
           </div>
         </div>
 
