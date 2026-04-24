@@ -30,6 +30,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const fetchUserProfile = async (userId: string): Promise<{ nome?: string } | null> => {
+  // Skip profile fetch if no userId or if profiles table is known to not exist
+  if (!userId) return { nome: 'Usuário' };
+  
   try {
     const { data, error } = await supabase
       .from(PROFILES_TABLE)
@@ -38,16 +41,11 @@ const fetchUserProfile = async (userId: string): Promise<{ nome?: string } | nul
       .single();
     
     if (error) {
-      if (error.code === '404' || error.message?.includes('not found') || error.message?.includes('no rows')) {
-        console.warn('Profiles table not found or empty, using fallback');
-        return { nome: 'Usuário' };
-      }
-      console.warn('Profile fetch error:', error.message);
+      // Silently fall back for any error (including 404)
       return { nome: 'Usuário' };
     }
     return data || { nome: 'Usuário' };
-  } catch (err) {
-    console.warn('Profile fetch exception:', err);
+  } catch {
     return { nome: 'Usuário' };
   }
 };
