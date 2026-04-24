@@ -1,18 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
-  Mail, Lock, Bell, Palette, User, 
+  Mail, Lock, Bell, User, 
   AlertTriangle, X, ShieldAlert, Trash2, 
   Save, CheckCircle2, ShieldCheck, 
-  Settings as SettingsIcon, Globe, 
   UserCircle, Smartphone, Eye, EyeOff,
-  Sun, Moon, Monitor, Check, Server,
+  Sun, Moon, Check, Server,
   Key, Hash, Send, Bold, Italic, Link as LinkIcon,
   RefreshCw, Users, Copy, CheckCircle,
   AlertCircle, CheckCircle as CheckCircleIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, PROFILES_TABLE } from '../../lib/supabase';
-import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 
 type ModalType = 'perfil' | 'seguranca' | 'notificacoes' | 'tema' | 'email' | 'delete' | 'equipe' | null;
@@ -26,7 +24,6 @@ interface NotificationSettings {
 
 const Configuracoes = () => {
   const { user, logout } = useAuth();
-  const { theme, accentColor, setTheme, setAccentColor } = useTheme();
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   
@@ -49,8 +46,6 @@ const Configuracoes = () => {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [notificationsError, setNotificationsError] = useState('');
   const [notificationsSuccess, setNotificationsSuccess] = useState('');
-  const [themeError, setThemeError] = useState('');
-  const [themeSuccess, setThemeSuccess] = useState('');
   const [emailError, setEmailError] = useState('');
   const [emailSuccess, setEmailSuccess] = useState('');
   const [isTestingConnection, setIsTestingConnection] = useState(false);

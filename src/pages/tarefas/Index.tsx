@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import ReactDOM from 'react-dom';
 import { Plus, Check, Trash2, X, Calendar, Hash, Text, AlignLeft, Calculator, Paperclip, Users, ListFilter, LayoutGrid, BarChart3, Flag } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Tag, ColumnOption, Column, Row, Board } from '../../lib/taskHelpers';
@@ -160,8 +159,8 @@ const Board = ({
   onDeleteBoard: () => void;
   onMoveRow: (rowId: string, fromBoardId: string, toBoardId: string) => void;
 }) => {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  // Tema fixo escuro
+  const isDark = true;
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showAddColumn, setShowAddColumn] = useState(false);
   const [addColumnPosition, setAddColumnPosition] = useState({ top: 0, left: 0 });

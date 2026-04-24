@@ -3,7 +3,6 @@ import './App.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CRMProvider } from './contexts/CRMContext';
 import { ActivityLogsProvider } from './contexts/ActivityContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import { FilterProvider } from './contexts/FilterContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -152,15 +151,13 @@ function App() {
     <Router>
       <ErrorBoundary>
         <AuthProvider>
-          <ThemeProvider>
-            <ActivityLogsProvider>
-              <CRMProvider>
-                <FilterProvider>
-                  <AppRoutes />
-                </FilterProvider>
-              </CRMProvider>
-            </ActivityLogsProvider>
-          </ThemeProvider>
+          <ActivityLogsProvider>
+            <CRMProvider>
+              <FilterProvider>
+                <AppRoutes />
+              </FilterProvider>
+            </CRMProvider>
+          </ActivityLogsProvider>
         </AuthProvider>
       </ErrorBoundary>
     </Router>
