@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, X, Edit3 } from 'lucide-react';
 
 interface ColumnOption {
   id: string;
@@ -42,6 +42,17 @@ const DEFAULT_PRIORITY_COLUMNS: ColumnOption[] = [
 
 const PRESET_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#3b82f6', '#6366f1', '#8b5cf6'];
 
+const COLUMN_TYPES = [
+  { type: 'text', label: 'Texto', icon: 'Aa' },
+  { type: 'number', label: 'Número', icon: '#' },
+  { type: 'status', label: 'Status', icon: '●●' },
+  { type: 'priority', label: 'Prioridade', icon: '!' },
+  { type: 'people', label: 'Pessoa', icon: '👤' },
+  { type: 'date', label: 'Data', icon: '📅' },
+  { type: 'notes', label: 'Notas', icon: '📝' },
+  { type: 'tags', label: 'Tags', icon: '🏷' },
+] as const;
+
 const DEFAULT_BOARD: BoardType = {
   id: 'board-1',
   title: 'Quadro Principal',
@@ -63,12 +74,14 @@ const Board = ({
   onUpdateBoard,
   onDeleteBoard,
   onMoveRow,
+  onAddColumn,
 }: {
   board: BoardType;
   allBoards: BoardType[];
   onUpdateBoard: (board: BoardType) => void;
   onDeleteBoard: () => void;
   onMoveRow: (rowId: string, fromBoardId: string, toBoardId: string) => void;
+  onAddColumn: (boardId: string) => void;
 }) => {
   const handleAddRow = () => {
     const newRow: Row = {
@@ -158,13 +171,22 @@ const Board = ({
         );
       case 'notes':
         return (
-          <textarea
-            value={String(value)}
-            onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
-            onKeyDown={(e) => e.stopPropagation()}
-            rows={1}
-            className="w-full min-h-[36px] bg-transparent border-none outline-none text-sm resize-none px-3 py-2 text-black hover:bg-neutral-100 focus:bg-neutral-50 transition-colors"
-          />
+          <div className="relative group cursor-pointer" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full min-h-[36px] px-3 py-2 text-sm text-neutral-600 truncate">
+              {String(value) || 'Clique para editar...'}
+            </div>
+            <button
+              onClick={() => {
+                const event = new CustomEvent('openNoteEditor', {
+                  detail: { rowId: row.id, colId: col.id, value: String(value), boardId: board.id }
+                });
+                window.dispatchEvent(event);
+              }}
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/20 flex items-center justify-center transition-opacity"
+            >
+              <Edit3 size={14} className="text-white" />
+            </button>
+          </div>
         );
       default:
         return <div className="text-sm px-3 py-2 text-neutral-400">{String(value) || '—'}</div>;
@@ -176,16 +198,19 @@ const Board = ({
       <div className="flex items-center gap-3 mb-3">
         <div className="w-3 h-8 rounded-full" style={{ backgroundColor: board.color }} />
         <h2 className="text-xl font-black text-black">{board.title}</h2>
+        <button onClick={onAddColumn} className="px-3 py-1 text-xs font-bold text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-md transition-colors">
+          + Coluna
+        </button>
         <button onClick={onDeleteBoard} className="ml-auto text-neutral-400 hover:text-red-500"><Trash2 size={16} /></button>
       </div>
-      <div className="border rounded-2xl border-neutral-200 bg-white overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="border rounded-2xl border-neutral-200 bg-white overflow-hidden flex flex-col">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
           <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-neutral-200 bg-neutral-50">
+            <thead className="sticky top-0 z-10">
+              <tr className="border-b border-neutral-200 bg-neutral-100">
                 <th className="w-10 p-3 border-r border-neutral-200 text-black">#</th>
                 {board.columns.map(col => (
-                  <th key={col.id} className="p-3 border-l border-neutral-200 text-left text-[10px] font-black uppercase tracking-widest text-neutral-600" style={{ minWidth: col.width }}>
+                  <th key={col.id} className="p-3 border-l border-neutral-200 text-left text-[10px] font-black uppercase tracking-widest text-neutral-600 whitespace-nowrap" style={{ minWidth: col.width }}>
                     {col.title}
                   </th>
                 ))}
@@ -207,8 +232,8 @@ const Board = ({
             </tbody>
           </table>
         </div>
-        <div className="p-3 border-t border-neutral-200">
-          <button onClick={handleAddRow} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-lg">
+        <div className="p-3 border-t border-neutral-200 bg-neutral-50">
+          <button onClick={handleAddRow} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-lg transition-colors">
             <Plus size={16} /> Nova Linha
           </button>
         </div>
@@ -225,8 +250,30 @@ const Tarefas = () => {
 
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [showNewBoardModal, setShowNewBoardModal] = useState(false);
+  const [showAddColumnModal, setShowAddColumnModal] = useState(false);
+  const [selectedBoardForColumn, setSelectedBoardForColumn] = useState<string | null>(null);
   const [newBoardTitle, setNewBoardTitle] = useState('');
   const [newBoardColor, setNewBoardColor] = useState('#3b82f6');
+
+  const [editingNote, setEditingNote] = useState<{ rowId: string; colId: string; boardId: string } | null>(null);
+  const [noteContent, setNoteContent] = useState('');
+
+  const [newColumnData, setNewColumnData] = useState({
+    title: '',
+    type: 'text' as Column['type'],
+    width: 150,
+  });
+
+  useEffect(() => {
+    const handleOpenNoteEditor = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setEditingNote({ rowId: detail.rowId, colId: detail.colId, boardId: detail.boardId });
+      setNoteContent(detail.value || '');
+    };
+
+    window.addEventListener('openNoteEditor', handleOpenNoteEditor);
+    return () => window.removeEventListener('openNoteEditor', handleOpenNoteEditor);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('axium_boards_v3', JSON.stringify(boards));
@@ -275,6 +322,44 @@ const Tarefas = () => {
     setShowNewBoardModal(false);
   };
 
+  const handleAddColumn = (boardId: string) => {
+    setSelectedBoardForColumn(boardId);
+    setShowAddColumnModal(true);
+  };
+
+  const handleConfirmAddColumn = () => {
+    if (!newColumnData.title.trim() || !selectedBoardForColumn) return;
+
+    const board = boards.find(b => b.id === selectedBoardForColumn);
+    if (!board) return;
+
+    const newColumn: Column = {
+      id: `col-${Date.now()}`,
+      title: newColumnData.title,
+      type: newColumnData.type,
+      width: newColumnData.width,
+    };
+
+    handleUpdateBoard({ ...board, columns: [...board.columns, newColumn] });
+    setShowAddColumnModal(false);
+    setSelectedBoardForColumn(null);
+    setNewColumnData({ title: '', type: 'text', width: 150 });
+  };
+
+  const handleSaveNote = () => {
+    if (!editingNote) return;
+
+    const board = boards.find(b => b.id === editingNote.boardId);
+    if (!board) return;
+
+    const updated = board.rows.map(r => 
+      r.id === editingNote.rowId ? { ...r, values: { ...r.values, [editingNote.colId]: noteContent } } : r
+    );
+    handleUpdateBoard({ ...board, rows: updated });
+    setEditingNote(null);
+    setNoteContent('');
+  };
+
   return (
     <div className="p-6 space-y-8 min-h-screen">
       <div className="flex flex-wrap gap-3 mb-6">
@@ -300,6 +385,7 @@ const Tarefas = () => {
           onUpdateBoard={handleUpdateBoard}
           onDeleteBoard={() => handleDeleteBoard(board.id)}
           onMoveRow={() => {}}
+          onAddColumn={() => handleAddColumn(board.id)}
         />
       ))}
 
@@ -371,6 +457,105 @@ const Tarefas = () => {
                 className="flex-1 p-3 bg-black text-white rounded-lg font-bold hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Criar Quadro
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddColumnModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white border border-neutral-200 rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-black">Adicionar Coluna</h3>
+              <button onClick={() => setShowAddColumnModal(false)} className="text-neutral-400 hover:text-black">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-5">
+              <div>
+                <label className="block text-xs font-black text-neutral-500 uppercase tracking-widest mb-2">Nome da Coluna</label>
+                <input
+                  type="text"
+                  value={newColumnData.title}
+                  onChange={(e) => setNewColumnData({ ...newColumnData, title: e.target.value })}
+                  placeholder="Ex: Descrição, Valor, Data..."
+                  className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg font-bold text-black focus:border-black outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-neutral-500 uppercase tracking-widest mb-2">Tipo da Coluna</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {COLUMN_TYPES.map(ct => (
+                    <button
+                      key={ct.type}
+                      onClick={() => setNewColumnData({ ...newColumnData, type: ct.type })}
+                      className={`p-3 rounded-lg border-2 text-left transition-colors ${newColumnData.type === ct.type ? 'border-black bg-black text-white' : 'border-neutral-200 hover:border-neutral-300'}`}
+                    >
+                      <span className="text-sm">{ct.icon}</span>
+                      <span className="ml-2 text-xs font-bold">{ct.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-black text-neutral-500 uppercase tracking-widest mb-2">Largura (px)</label>
+                <input
+                  type="number"
+                  value={newColumnData.width}
+                  onChange={(e) => setNewColumnData({ ...newColumnData, width: Number(e.target.value) })}
+                  className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg font-bold text-black focus:border-black outline-none transition-colors"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setShowAddColumnModal(false)}
+                className="flex-1 p-3 border border-neutral-200 rounded-lg text-neutral-600 hover:text-black hover:bg-neutral-50 transition-colors font-bold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmAddColumn}
+                disabled={!newColumnData.title.trim()}
+                className="flex-1 p-3 bg-black text-white rounded-lg font-bold hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Adicionar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingNote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white border border-neutral-200 rounded-2xl p-8 max-w-2xl w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-black">Editar Notas</h3>
+              <button onClick={() => { setEditingNote(null); setNoteContent(''); }} className="text-neutral-400 hover:text-black">
+                <X size={20} />
+              </button>
+            </div>
+            <textarea
+              value={noteContent}
+              onChange={(e) => setNoteContent(e.target.value)}
+              rows={16}
+              autoFocus
+              className="w-full px-4 py-3 border-2 border-neutral-200 rounded-xl font-medium text-black focus:border-black outline-none transition-colors resize-none leading-relaxed"
+              placeholder="Digite suas notas aqui..."
+            />
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setEditingNote(null); setNoteContent(''); }}
+                className="flex-1 p-3 border border-neutral-200 rounded-lg text-neutral-600 hover:text-black hover:bg-neutral-50 transition-colors font-bold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveNote}
+                className="flex-1 p-3 bg-black text-white rounded-lg font-bold hover:bg-neutral-800 transition-colors"
+              >
+                Salvar Nota
               </button>
             </div>
           </div>
