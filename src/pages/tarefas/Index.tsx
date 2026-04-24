@@ -193,6 +193,29 @@ const Board = ({
     }
   };
 
+  const handleDeleteColumn = (colId: string) => {
+    if (colId === 'col-1') {
+      alert('Não é possível excluir a coluna "Tarefa"');
+      return;
+    }
+    
+    if (!confirm('Tem certeza que deseja excluir esta coluna?')) {
+      return;
+    }
+    
+    const updatedBoard = {
+      ...board,
+      columns: board.columns.filter(c => c.id !== colId),
+      rows: board.rows.map(row => {
+        const newValues = { ...row.values };
+        delete newValues[colId];
+        return { ...row, values: newValues };
+      }),
+    };
+    
+    onUpdateBoard(updatedBoard);
+  };
+
   return (
     <div className="mb-8">
       <div className="flex items-center gap-3 mb-3">
@@ -210,8 +233,23 @@ const Board = ({
               <tr className="border-b border-neutral-200 bg-neutral-100">
                 <th className="w-10 p-3 border-r border-neutral-200 text-black">#</th>
                 {board.columns.map(col => (
-                  <th key={col.id} className="p-3 border-l border-neutral-200 text-left text-[10px] font-black uppercase tracking-widest text-neutral-600 whitespace-nowrap" style={{ minWidth: col.width }}>
-                    {col.title}
+                  <th 
+                    key={col.id} 
+                    className="p-3 border-l border-neutral-200 text-left text-[10px] font-black uppercase tracking-widest text-neutral-600 whitespace-nowrap group hover:bg-neutral-50 transition-colors" 
+                    style={{ minWidth: col.width }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{col.title}</span>
+                      {col.id !== 'col-1' && (
+                        <button
+                          onClick={() => handleDeleteColumn(col.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-neutral-400 hover:text-red-500 ml-2 cursor-pointer"
+                          title="Excluir coluna"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </th>
                 ))}
               </tr>
