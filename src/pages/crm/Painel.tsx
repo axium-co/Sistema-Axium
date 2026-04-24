@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle, FileText, Filter, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useCRM, type Lead } from '../../contexts/CRMContext';
-import { useActivityLogs, type ActivityLog } from '../../contexts/ActivityContext';
+import { useActivityLogs } from '../../contexts/ActivityContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFilters } from '../../contexts/FilterContext';
 
@@ -144,17 +144,10 @@ const CRMDashboard = () => {
   // Fallback defensivo: usar dados locais se contexto estiver vazio
   const leads = useMemo(() => {
     if (contextLeads && Array.isArray(contextLeads) && contextLeads.length > 0) {
-      console.log('[DEBUG Painel] Usando leads do contexto:', contextLeads.length);
       return contextLeads;
     }
-    console.log('[DEBUG Painel] Usando fallback local:', INITIAL_LEADS.length);
     return INITIAL_LEADS;
   }, [contextLeads]);
-
-  // DEBUG: Log dos dados recebidos
-  console.log('[DEBUG Painel] leads recebidos:', leads?.length ?? 0, leads);
-  console.log('[DEBUG Painel] filters:', filters);
-  console.log('[DEBUG Painel] hasActiveFilters:', hasActiveFilters);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape' && isSidebarOpen) {
@@ -179,9 +172,6 @@ const CRMDashboard = () => {
     dateFilter: filters.dateFilter,
   }), [leads, filters]);
 
-  // DEBUG: Log dos dados filtrados
-  console.log('[DEBUG Painel] filteredLeads:', filteredLeads?.length ?? 0, filteredLeads);
-
   const chartData = useMemo((): ChartDataPoint[] => {
     return STAGES.map(stage => ({
       name: stage,
@@ -189,13 +179,7 @@ const CRMDashboard = () => {
     }));
   }, [filteredLeads]);
 
-  // DEBUG: Log do chartData
-  console.log('[DEBUG Painel] chartData:', chartData);
-
   const stats = useMemo(() => calculateStats(filteredLeads, CHART_ICONS), [filteredLeads]);
-
-  // DEBUG: Log dos stats
-  console.log('[DEBUG Painel] stats:', stats);
 
   const displayLogs = useMemo(() => {
     return activityLogs.slice(0, 10).filter(log => log?.id && log?.acao);
