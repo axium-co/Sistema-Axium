@@ -98,16 +98,7 @@ function FilterProvider({ children }: { children: ReactNode }) {
 function useFilters() {
   const context = useContext(FilterContext);
   if (!context) {
-return {
-    filters,
-    setFilter,
-    setStagesFilter,
-    setNichesFilter,
-    setOriginsFilter: (origins: string[]) => setFilters(prev => ({ ...prev, origins })),
-    setDateFilter,
-    clearFilters,
-    hasActiveFilters,
-  };
+    throw new Error('useFilters must be used within a FilterProvider');
   }
   return context;
 }

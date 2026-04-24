@@ -238,7 +238,7 @@ const CRMLeads = () => {
   const set = (field: keyof Lead, val: string) =>
     setCurrent(prev => ({ ...prev, [field]: val }));
 
-const toggleStageFilter = (stage: string) => {
+  const toggleStageFilter = (stage: string) => {
     try {
       const currentStages = filters?.stages || [];
       const newStages = currentStages.includes(stage)
