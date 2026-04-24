@@ -152,7 +152,29 @@ function generateId(): string {
 }
 
 export const CRMProvider = ({ children }: { children: ReactNode }) => {
-  const [leads, setLeads] = useState<Lead[]>(() => loadFromStorage('axium_leads_v2', INITIAL_LEADS));
+  const [leads, setLeads] = useState<Lead[]>(() => {
+    const storageKey = 'axium_leads_v2';
+    let loaded: Lead[] = [];
+    
+    // Debug localStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(storageKey);
+      console.log('[DEBUG CRMProvider] raw localStorage:', stored);
+    }
+    
+    loaded = loadFromStorage(storageKey, INITIAL_LEADS);
+    console.log('[DEBUG CRMProvider] Carregando leads do localStorage:', loaded?.length ?? 0, loaded);
+    
+    // Fallback: se vazio ou undefined, usa dados iniciais
+    if (!loaded || !Array.isArray(loaded) || loaded.length === 0) {
+      console.log('[DEBUG CRMProvider] Usando INITIAL_LEADS como fallback');
+      loaded = INITIAL_LEADS;
+    }
+    
+    // Debug final
+    console.log('[DEBUG CRMProvider] Leads finais:', loaded?.length ?? 0);
+    return loaded;
+  });
   const [events, setEvents] = useState<CalendarEvent[]>(() => loadFromStorage('axium_events_v2', INITIAL_EVENTS));
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
