@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Check, Trash2, Users, CheckCircle2, Flag, StickyNote, FileText, Calendar, LayoutGrid, BarChart3 } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface Task {
   id: string;
@@ -24,6 +25,24 @@ interface Column {
 
 const STATUS_OPTIONS = ['Não iniciado', 'Em andamento', 'Feito', 'Parado'];
 const PRIORITY_OPTIONS = ['Baixa', 'Média', 'Alta'];
+
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'Baixa': return 'bg-green-500';
+    case 'Média': return 'bg-yellow-500';
+    case 'Alta': return 'bg-red-500';
+    default: return 'bg-neutral-200';
+  }
+};
+
+const getPriorityTextColor = (priority: string) => {
+  switch (priority) {
+    case 'Baixa': return 'text-green-700';
+    case 'Média': return 'text-yellow-700';
+    case 'Alta': return 'text-red-700';
+    default: return 'text-neutral-600';
+  }
+};
 
 const DEFAULT_COLUMNS: Column[] = [
   { id: 'col-tarefa', title: 'Tarefa', type: 'text', width: 200 },
@@ -108,6 +127,8 @@ const Board = ({
   onUpdateTasks: (tasks: Task[]) => void;
   onDeleteGroup?: () => void;
 }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
 
   const handleStatusChange = (taskId: string, newStatus: string) => {
@@ -192,8 +213,8 @@ const Board = ({
             </thead>
             <tbody>
               {group.tasks.map(task => (
-                <tr key={task.id} className="border-b border-neutral-100 hover:bg-neutral-50">
-                  <td className="p-3 border-r border-neutral-200 bg-white sticky left-0">
+                <tr key={task.id} className={`border-b ${isDark ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-100 hover:bg-neutral-50'}`}>
+                  <td className={`p-3 border-r border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'} sticky left-0`}>
                     <button 
                       onClick={() => toggleTaskSelection(task.id)}
                       className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
@@ -203,7 +224,7 @@ const Board = ({
                       {selectedTasks.has(task.id) && <Check size={12} className="text-white" />}
                     </button>
                   </td>
-                  <td className="p-2 border-l border-neutral-200">
+                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
                     <input
                       value={task.title}
                       onChange={(e) => {
@@ -212,10 +233,10 @@ const Board = ({
                         );
                         onUpdateTasks(updated);
                       }}
-                      className="w-full bg-transparent border-none outline-none font-medium text-sm"
+                      className={`w-full bg-transparent border-none outline-none font-medium text-sm ${isDark ? 'text-white' : 'text-black'}`}
                     />
                   </td>
-                  <td className="p-2 border-l border-neutral-200">
+                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
                     <input
                       type="text"
                       value={task.values['col-responsavel'] || ''}
@@ -226,37 +247,40 @@ const Board = ({
                         onUpdateTasks(updated);
                       }}
                       placeholder="Nome..."
-                      className="w-full bg-transparent border-none outline-none text-sm"
+                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
                     />
                   </td>
-                  <td className="p-2 border-l border-neutral-200">
+                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
                     <select
                       value={task.values['col-status'] || ''}
                       onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                      className="w-full bg-transparent border-none outline-none text-sm"
+                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
                     >
                       {STATUS_OPTIONS.map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
                   </td>
-                  <td className="p-2 border-l border-neutral-200">
-                    <select
-                      value={task.values['col-prioridade'] || ''}
-                      onChange={(e) => {
-                        const updated = group.tasks.map(t => 
-                          t.id === task.id ? { ...t, values: { ...t.values, 'col-prioridade': e.target.value } } : t
-                        );
-                        onUpdateTasks(updated);
-                      }}
-                      className="w-full bg-transparent border-none outline-none text-sm"
-                    >
-                      {PRIORITY_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
+                    <div className="relative">
+                      <select
+                        value={task.values['col-prioridade'] || ''}
+                        onChange={(e) => {
+                          const updated = group.tasks.map(t => 
+                            t.id === task.id ? { ...t, values: { ...t.values, 'col-prioridade': e.target.value } } : t
+                          );
+                          onUpdateTasks(updated);
+                        }}
+                        className={`w-full px-2 py-1 rounded text-sm border-none outline-none cursor-pointer ${getPriorityColor(task.values['col-prioridade'])} ${task.values['col-prioridade'] ? 'text-white font-medium' : 'bg-transparent text-neutral-600'}`}
+                      >
+                        <option value="" className="bg-white text-neutral-600">—</option>
+                        {PRIORITY_OPTIONS.map(opt => (
+                          <option key={opt} value={opt} className={`${getPriorityColor(opt)} text-white font-medium`}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
-                  <td className="p-2 border-l border-neutral-200">
+                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
                     <textarea
                       value={task.values['col-notas'] || ''}
                       onChange={(e) => {
@@ -266,11 +290,11 @@ const Board = ({
                         onUpdateTasks(updated);
                       }}
                       placeholder="Notas..."
-                      className="w-full bg-transparent border-none outline-none text-sm resize-none"
+                      className={`w-full bg-transparent border-none outline-none text-sm resize-none ${isDark ? 'text-white' : 'text-black'}`}
                       rows={1}
                     />
                   </td>
-                  <td className="p-2 border-l border-neutral-200">
+                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
                     <input
                       type="text"
                       value={task.values['col-arquivos'] || ''}
@@ -281,10 +305,10 @@ const Board = ({
                         onUpdateTasks(updated);
                       }}
                       placeholder="Arquivos..."
-                      className="w-full bg-transparent border-none outline-none text-sm"
+                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
                     />
                   </td>
-                  <td className="p-2 border-l border-neutral-200">
+                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
                     <input
                       type="date"
                       value={task.values['col-data-inicio'] || ''}
@@ -294,10 +318,10 @@ const Board = ({
                         );
                         onUpdateTasks(updated);
                       }}
-                      className="w-full bg-transparent border-none outline-none text-sm"
+                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
                     />
                   </td>
-                  <td className="p-2 border-l border-neutral-200">
+                  <td className={`p-2 border-l border-neutral-200 ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
                     <input
                       type="date"
                       value={task.values['col-prazo'] || ''}
@@ -307,7 +331,7 @@ const Board = ({
                         );
                         onUpdateTasks(updated);
                       }}
-                      className="w-full bg-transparent border-none outline-none text-sm"
+                      className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
                     />
                   </td>
                 </tr>
