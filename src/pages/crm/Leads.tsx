@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, Component, ReactNode } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
@@ -52,44 +52,6 @@ const STAGE_ORIGINS = [
   'Evento',
   'Outros'
 ];
-
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('CRMLeads Error:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-red-200 rounded-2xl p-8 max-w-md text-center">
-            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <XCircle size={32} className="text-red-500" />
-            </div>
-            <h2 className="text-xl font-black text-black mb-2">Algo deu errado</h2>
-            <p className="text-neutral-500 text-sm mb-4">Recarregue a página ou tente novamente.</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-6 py-2 bg-black text-white rounded-lg font-bold text-sm"
-            >
-              Recarregar Página
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 const stageStyle: Record<string, string> = {
   'Novos Leads':      'bg-neutral-100 text-neutral-600',
@@ -651,9 +613,37 @@ const toggleStageFilter = (stage: string) => {
 };
 
 export default function LeadsPage() {
-  return (
-    <ErrorBoundary>
-      <CRMLeads />
-    </ErrorBoundary>
-  );
+  const [hasError, setHasError] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const handleError = (e: ErrorEvent) => {
+      console.error('CRMLeads Error:', e);
+      setHasError(true);
+    };
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (hasError || error) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+        <div className="bg-white border border-red-200 rounded-2xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <XCircle size={32} className="text-red-500" />
+          </div>
+          <h2 className="text-xl font-black text-black mb-2">Algo deu errado</h2>
+          <p className="text-neutral-500 text-sm mb-4">Recarregue a página ou tente novamente.</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-black text-white rounded-lg font-bold text-sm"
+          >
+            Recarregar Página
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <CRMLeads />;
 }

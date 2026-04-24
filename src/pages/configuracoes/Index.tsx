@@ -87,6 +87,17 @@ const Configuracoes = () => {
           .eq('user_id', user.id)
           .single();
         
+        if (error) {
+          if (error.code === '404' || error.message?.includes('not found') || error.message?.includes('no rows')) {
+            console.warn('Profiles table not found, using defaults');
+            setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
+            return;
+          }
+          console.warn('Profile load error:', error.message);
+          setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
+          return;
+        }
+        
         if (data) {
           setProfileData({
             name: data.nome || '',
@@ -100,6 +111,7 @@ const Configuracoes = () => {
         }
       } catch (err) {
         console.error('[CONFIG] Erro ao carregar perfil:', err);
+        setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
       }
 
       try {

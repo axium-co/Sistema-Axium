@@ -37,12 +37,18 @@ const fetchUserProfile = async (userId: string): Promise<{ nome?: string } | nul
       .eq('user_id', userId)
       .single();
     
-    if (error || !data) {
-      return null;
+    if (error) {
+      if (error.code === '404' || error.message?.includes('not found') || error.message?.includes('no rows')) {
+        console.warn('Profiles table not found or empty, using fallback');
+        return { nome: 'Usuário' };
+      }
+      console.warn('Profile fetch error:', error.message);
+      return { nome: 'Usuário' };
     }
-    return data;
-  } catch {
-    return null;
+    return data || { nome: 'Usuário' };
+  } catch (err) {
+    console.warn('Profile fetch exception:', err);
+    return { nome: 'Usuário' };
   }
 };
 
