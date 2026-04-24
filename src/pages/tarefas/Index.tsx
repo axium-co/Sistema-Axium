@@ -346,7 +346,7 @@ const Board = ({
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             placeholder={col.type === 'people' ? 'Nome...' : 'Texto...'}
-            className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
+            className={`w-full min-w-[100px] bg-transparent border-none outline-none text-sm px-2 py-1 ${isDark ? 'text-white placeholder-neutral-500' : 'text-black placeholder-neutral-400'}`}
           />
         );
       
@@ -356,7 +356,7 @@ const Board = ({
             type="number"
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
-            className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
+            className={`w-full min-w-[80px] bg-transparent border-none outline-none text-sm px-2 py-1 ${isDark ? 'text-white' : 'text-black'}`}
           />
         );
       
@@ -367,7 +367,7 @@ const Board = ({
           <select
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value, prevValue)}
-            className={`w-full px-2 py-1 rounded text-sm border-none outline-none cursor-pointer text-white font-medium`}
+            className={`w-full min-w-[100px] px-2 py-1 text-sm border-none outline-none cursor-pointer text-white font-medium`}
             style={{ backgroundColor: value ? getOptionColor(col.id, value) : '#6b7280' }}
           >
             <option value="" className="bg-neutral-500 text-white">—</option>
@@ -385,7 +385,7 @@ const Board = ({
             type="date"
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
-            className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
+            className={`w-full min-w-[120px] bg-transparent border-none outline-none text-sm px-2 py-1 ${isDark ? 'text-white' : 'text-black'}`}
           />
         );
       
@@ -395,7 +395,7 @@ const Board = ({
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             rows={1}
-            className={`w-full bg-transparent border-none outline-none text-sm resize-none ${isDark ? 'text-white' : 'text-black'}`}
+            className={`w-full min-w-[150px] bg-transparent border-none outline-none text-sm resize-none px-2 py-1 ${isDark ? 'text-white' : 'text-black'}`}
           />
         );
       
@@ -406,7 +406,7 @@ const Board = ({
             value={value}
             onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
             placeholder="Link ou arquivo..."
-            className={`w-full bg-transparent border-none outline-none text-sm ${isDark ? 'text-white' : 'text-black'}`}
+            className={`w-full min-w-[100px] bg-transparent border-none outline-none text-sm px-2 py-1 ${isDark ? 'text-white placeholder-neutral-500' : 'text-black placeholder-neutral-400'}`}
           />
         );
       
@@ -414,7 +414,7 @@ const Board = ({
         const tags = col.tags || [];
         const rowTags = Array.isArray(value) ? value : [];
         return (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 px-2 py-1">
             {rowTags.map((tagId: string) => {
               const tag = tags.find(t => t.id === tagId);
               if (!tag) return null;
@@ -433,13 +433,17 @@ const Board = ({
       
       case 'formula':
         return (
-          <div className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          <div className={`text-sm px-2 py-1 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
             Fórmula
           </div>
         );
       
       default:
-        return null;
+        return (
+          <div className={`text-sm px-2 py-1 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            {value || '—'}
+          </div>
+        );
     }
   };
 
