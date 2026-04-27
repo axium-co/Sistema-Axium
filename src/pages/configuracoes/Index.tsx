@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   AlertTriangle, X, ShieldAlert, Trash2,
   Save, CheckCircle2,
-  UserCircle,
+  User, UserCircle,
   RefreshCw, Users,
   AlertCircle
 } from 'lucide-react';
@@ -19,12 +19,14 @@ interface Employee {
   createdAt: string;
 }
 
+type ModalType = 'perfil' | 'equipe';
+
 const Configuracoes = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   
-  const [activeModal, setActiveModal] = useState<'perfil' | 'delete' | 'equipe' | null>(null);
+  const [activeModal, setActiveModal] = useState<ModalType | 'delete' | null>(null);
   const [confirmationText, setConfirmationText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -303,7 +305,7 @@ const Configuracoes = () => {
       <div className="mb-10 flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-black text-black tracking-tighter mb-1">Configurações</h1>
-          <p className="text-neutral-500 text-sm font-medium">Controle central de segurança, perfil e preferências.</p>
+          <p className="text-neutral-500 text-sm font-medium">Controle central de perfil e preferências.</p>
         </div>
       </div>
 
