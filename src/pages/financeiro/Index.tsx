@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { generateUUID } from '../../lib/uuid';
 import { Plus, Pencil, Save, X, TrendingUp, TrendingDown, DollarSign, PieChart, CreditCard, User, Calendar, CheckCircle2, Clock, AlertTriangle, RefreshCw, ExternalLink, Receipt, Wallet, Filter, XCircle, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 
 interface Invoice {
@@ -332,7 +333,7 @@ const Financeiro = () => {
       setIsNewInvoice(false);
     } else {
       setEditingInvoice({
-        id: Math.random().toString(36).substring(2, 9),
+        id: generateUUID(),
         client: '',
         amount: 'R$ 0,00',
         date: new Date().toISOString().split('T')[0],
@@ -385,7 +386,7 @@ const Financeiro = () => {
       setIsNewExpense(false);
     } else {
       setEditingExpense({
-        id: Math.random().toString(36).substring(2, 9),
+        id: generateUUID(),
         category: 'outros',
         description: '',
         amount: 'R$ 0,00',

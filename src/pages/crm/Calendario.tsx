@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import type { CalendarEvent } from '../../contexts/CRMContext';
+import { generateUUID } from '../../lib/uuid';
 import { X, ExternalLink, Clock, User, MessageSquare, Plus, Trash2, Calendar as CalendarIcon, Link as LinkIcon, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const CRMCalendario = () => {
@@ -206,7 +207,7 @@ const CRMCalendario = () => {
                     <div className="space-y-1">
                       {dayEvents.map(event => (
                         <button
-                          key={event?.id || Math.random().toString()}
+                          key={event?.id || generateUUID()}
                           onClick={() => handleOpenEdit(event)}
                           className="w-full text-left p-1.5 rounded-md bg-neutral-50 border border-neutral-100 hover:border-black transition-all group overflow-hidden"
                         >
@@ -236,7 +237,7 @@ const CRMCalendario = () => {
             <div className="space-y-5">
               {safeEvents.slice(0, 5).map((event) => (
                 <div 
-                  key={event?.id || Math.random().toString()} 
+                  key={event?.id || generateUUID()} 
                   className="group cursor-pointer"
                   onClick={() => handleOpenEdit(event)}
                 >

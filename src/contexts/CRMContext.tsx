@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { STAGES, STAGE_CONFIG, parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
+import { generateUUID } from '../lib/uuid';
 
 export interface Lead {
   id: string;
@@ -145,12 +146,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   }
 }
 
-function generateId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return Math.random().toString(36).substring(2, 9);
-}
+// Função removida - usar generateUUID de ../lib/uuid
 
 export const CRMProvider = ({ children }: { children: ReactNode }) => {
   const [leads, setLeads] = useState<Lead[]>(() => {
@@ -197,13 +193,13 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addLead = useCallback((lead: LeadInput) => {
-    const id = generateId();
+    const id = generateUUID();
     const newLead: Lead = { ...lead, id };
     
     setLeads(prev => [...prev, newLead]);
     
     setNotifications(prev => [{
-      id: generateId(),
+      id: generateUUID(),
       title: 'Novo Lead',
       description: `${lead.name} foi adicionado ao sistema.`,
       time: 'Agora',
@@ -225,7 +221,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addEvent = useCallback((event: Omit<CalendarEvent, 'id'>) => {
-    const id = generateId();
+    const id = generateUUID();
     setEvents(prev => [...prev, { ...event, id }]);
   }, []);
 
