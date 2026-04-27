@@ -48,25 +48,25 @@ const ORIGINS = [
 const INVOICE_STATUSES = ['Pago', 'Pendente', 'Vencida', 'Cancelado'];
 const EXPENSE_STATUSES = ['Pago', 'Pendente', 'Cancelado'];
 
-const FilterSection = ({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  return (
-    <div className="border-b border-neutral-100 pb-3 mb-3">
-      <button 
-        type="button"
-        onClick={() => setIsOpen(!isOpen)} 
-        className="flex items-center justify-between w-full text-left py-1"
-      >
-        <span className="text-[10px] font-black text-black uppercase tracking-widest">{title}</span>
-        {isOpen ? <ChevronUp size={14} className="text-neutral-400" /> : <ChevronDown size={14} className="text-neutral-400" />}
-      </button>
-      {isOpen && <div className="mt-2 space-y-2">{children}</div>}
-    </div>
-  );
-};
+  const FilterSection = ({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+    return (
+      <div className="border-b border-neutral-100 pb-4 mb-4 last:border-b-0 last:mb-0 last:pb-0">
+        <button 
+          type="button"
+          onClick={() => setIsOpen(!isOpen)} 
+          className="flex items-center justify-between w-full text-left py-1"
+        >
+          <span className="text-[10px] font-black text-black uppercase tracking-widest pl-1">{title}</span>
+          {isOpen ? <ChevronUp size={14} className="text-neutral-400" /> : <ChevronDown size={14} className="text-neutral-400" />}
+        </button>
+        {isOpen && <div className="mt-3 space-y-2.5 pl-1">{children}</div>}
+      </div>
+    );
+  };
 
 const CheckboxFilter = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) => (
-  <label className="flex items-center gap-2 cursor-pointer group">
+  <label className="flex items-center gap-2.5 cursor-pointer group pl-1">
     <div className={`w-4 h-4 border rounded flex items-center justify-center transition-all ${checked ? 'bg-black border-black' : 'border-neutral-300 group-hover:border-black'}`}>
       {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -78,7 +78,7 @@ const CheckboxFilter = ({ label, checked, onChange }: { label: string; checked: 
 );
 
 const RadioFilter = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) => (
-  <label className="flex items-center gap-2 cursor-pointer group">
+  <label className="flex items-center gap-2.5 cursor-pointer group pl-1">
     <div className={`w-4 h-4 border rounded-full flex items-center justify-center transition-all ${checked ? 'bg-black border-black' : 'border-neutral-300 group-hover:border-black'}`}>
       {checked && <div className="w-2 h-2 bg-white rounded-full" />}
     </div>
@@ -462,33 +462,34 @@ const Financeiro = () => {
 
   return (
     <div className="relative min-h-screen">
-      {isSidebarOpen && (
-        <>
-          <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setIsSidebarOpen(false)} />
-          <div className="absolute top-14 left-4 w-[280px] max-h-[70vh] bg-white border border-neutral-200 rounded-xl shadow-xl overflow-y-auto z-50">
-            <div className="p-3 sticky top-0 bg-white border-b border-neutral-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Filter size={12} className="text-black" />
-                <span className="text-[10px] font-black text-black uppercase tracking-widest">Filtros</span>
-              </div>
-              <button 
-                onClick={() => setIsSidebarOpen(false)}
-                className="p-1 hover:bg-neutral-100 rounded-md transition-colors"
-              >
-                <X size={14} className="text-neutral-400" />
-              </button>
-            </div>
-            {hasActiveFilters && (
-              <button 
-                onClick={clearFilters}
-                className="text-[10px] font-bold text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1 px-3 py-2 border-b border-neutral-100 w-full"
-              >
-                <XCircle size={10} />
-                Limpar filtros
-              </button>
-            )}
+       {isSidebarOpen && (
+         <>
+           <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setIsSidebarOpen(false)} />
+           <div className="absolute top-14 left-4 w-[320px] max-h-[70vh] bg-white border border-neutral-200 rounded-xl shadow-xl overflow-y-auto z-50">
+             <div className="px-5 py-3 sticky top-0 bg-white border-b border-neutral-100 flex items-center justify-between">
+               <div className="flex items-center gap-2">
+                 <Filter size={12} className="text-black" />
+                 <span className="text-[10px] font-black text-black uppercase tracking-widest">Filtros</span>
+               </div>
+               <button 
+                 onClick={() => setIsSidebarOpen(false)}
+                 className="p-1 hover:bg-neutral-100 rounded-md transition-colors"
+               >
+                 <X size={14} className="text-neutral-400" />
+               </button>
+             </div>
+             {hasActiveFilters && (
+                <button 
+                  onClick={clearFilters}
+                  className="text-[10px] font-bold text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1 px-5 py-2 border-b border-neutral-100 w-full"
+                >
+                  <XCircle size={10} />
+                  Limpar filtros
+                </button>
+             )}
 
-            <FilterSection title="Período">
+             <div className="px-5 py-4 max-w-[300px] mx-auto">
+             <FilterSection title="Período">
               <div className="space-y-2">
                 {[
                   { value: '', label: 'Todos os períodos' },
@@ -506,23 +507,23 @@ const Financeiro = () => {
                 ))}
               </div>
               {filtersState.period === 'custom' && (
-                <div className="space-y-2 mt-2 pt-2 border-t border-neutral-100">
-                  <input
-                    type="date"
-                    value={filtersState.customDateStart}
-                    onChange={(e) => setFiltersState(prev => ({ ...prev, customDateStart: e.target.value }))}
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none"
-                    placeholder="Data inicial"
-                  />
-                  <input
-                    type="date"
-                    value={filtersState.customDateEnd}
-                    onChange={(e) => setFiltersState(prev => ({ ...prev, customDateEnd: e.target.value }))}
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none"
-                    placeholder="Data final"
-                  />
-                </div>
-              )}
+                 <div className="space-y-3 mt-3 pt-3 border-t border-neutral-100">
+                   <input
+                     type="date"
+                     value={filtersState.customDateStart}
+                     onChange={(e) => setFiltersState(prev => ({ ...prev, customDateStart: e.target.value }))}
+                     className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2.5 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
+                     placeholder="Data inicial"
+                   />
+                   <input
+                     type="date"
+                     value={filtersState.customDateEnd}
+                     onChange={(e) => setFiltersState(prev => ({ ...prev, customDateEnd: e.target.value }))}
+                     className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2.5 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
+                     placeholder="Data final"
+                   />
+                 </div>
+               )}
             </FilterSection>
 
             <FilterSection title="Status">
@@ -563,24 +564,25 @@ const Financeiro = () => {
             )}
 
             <FilterSection title="Faixa de Valor">
-              <div className="space-y-2">
-                <input
-                  type="number"
-                  value={filtersState.minValue}
-                  onChange={(e) => setFiltersState(prev => ({ ...prev, minValue: e.target.value }))}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none"
-                  placeholder="Mínimo (R$)"
-                />
-                <input
-                  type="number"
-                  value={filtersState.maxValue}
-                  onChange={(e) => setFiltersState(prev => ({ ...prev, maxValue: e.target.value }))}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-3 py-2 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none"
-                  placeholder="Máximo (R$)"
-                />
-              </div>
-            </FilterSection>
-          </div>
+               <div className="space-y-3">
+                 <input
+                   type="number"
+                   value={filtersState.minValue}
+                   onChange={(e) => setFiltersState(prev => ({ ...prev, minValue: e.target.value }))}
+                   className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2.5 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
+                   placeholder="Mínimo (R$)"
+                 />
+                 <input
+                   type="number"
+                   value={filtersState.maxValue}
+                   onChange={(e) => setFiltersState(prev => ({ ...prev, maxValue: e.target.value }))}
+                   className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2.5 text-xs font-black text-black focus:ring-1 focus:ring-black outline-none transition-all"
+                   placeholder="Máximo (R$)"
+                 />
+               </div>
+             </FilterSection>
+             </div>
+           </div>
         </>
       )}
 
