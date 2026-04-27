@@ -3,14 +3,11 @@ import {
   Lock, Bell, User, 
   AlertTriangle, X, ShieldAlert, Trash2, 
   Save, CheckCircle2, ShieldCheck, 
-  UserCircle, Eye, EyeOff,
+  UserCircle, Smartphone, Eye, EyeOff,
   Key,
-  RefreshCw,
+  RefreshCw, Users,
   AlertCircle,
-  Mail,
-  Globe,
-  Smartphone,
-  Users
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, PROFILES_TABLE } from '../../lib/supabase';
@@ -220,9 +217,9 @@ const Configuracoes = () => {
         setProfileSuccess('');
         setActiveModal(null);
       }, 1500);
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('[CONFIG] Erro ao salvar perfil:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar perfil. Tente novamente.';
+      const errorMessage = err.message || 'Erro ao salvar perfil. Tente novamente.';
       setProfileError(errorMessage);
     } finally {
       console.log('[CONFIG] Finalizando, isSavingProfile:', false);
@@ -260,7 +257,7 @@ const Configuracoes = () => {
       setAvatarPreview(publicUrl);
       setProfileSuccess('Avatar atualizado! Clique em Salvar para confirmar.');
       setTimeout(() => setProfileSuccess(''), 3000);
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('[CONFIG] Erro ao fazer upload:', err);
       setProfileError('Erro ao fazer upload. Tente novamente.');
     } finally {
@@ -313,10 +310,9 @@ const Configuracoes = () => {
       setPasswordSuccess('Senha alterada com sucesso!');
       setPasswordData({ current: '', newPassword: '', confirm: '' });
       setTimeout(() => setPasswordSuccess(''), 3000);
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('[CONFIG] Erro ao alterar senha:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao alterar senha. Tente novamente.';
-      setPasswordError(errorMessage);
+      setPasswordError(err.message || 'Erro ao alterar senha. Tente novamente.');
     } finally {
       setIsSavingPassword(false);
     }
@@ -331,7 +327,7 @@ const Configuracoes = () => {
       localStorage.setItem('axium_notifications', JSON.stringify(notifications));
       setNotificationsSuccess('Notificações salvas com sucesso!');
       setTimeout(() => setNotificationsSuccess(''), 3000);
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('[CONFIG] Erro ao salvar notificações:', err);
       setNotificationsError('Erro ao salvar preferências');
     } finally {
@@ -600,7 +596,7 @@ const Configuracoes = () => {
                     </div>
                     <div onClick={() => toggleNotification('sms')} className={`p-6 rounded-3xl border-2 cursor-pointer transition-all flex items-center justify-between ${notifications.sms ? 'border-black bg-black/5' : 'border-neutral-100 hover:border-neutral-200'}`}>
                       <div className="flex items-center gap-4">
-                        <Globe size={24} className={notifications.sms ? 'text-black' : 'text-neutral-300'} />
+                        <Smartphone size={24} className={notifications.sms ? 'text-black' : 'text-neutral-300'} />
                         <div>
                           <p className="font-black text-black">Notificações SMS</p>
                           <p className="text-xs text-neutral-400 font-medium">Receba alertas por SMS (em breve)</p>
