@@ -1,27 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Lock, Bell, User, 
-  AlertTriangle, X, ShieldAlert, Trash2, 
-  Save, CheckCircle2, ShieldCheck, 
-  UserCircle, Smartphone, Eye, EyeOff,
-  Key,
+import {
+  AlertTriangle, X, ShieldAlert, Trash2,
+  Save, CheckCircle2,
+  UserCircle,
   RefreshCw, Users,
-  AlertCircle,
-  Mail
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, PROFILES_TABLE } from '../../lib/supabase';
 import { isValidUUID } from '../../lib/uuid';
 import { useNavigate } from 'react-router-dom';
-
-type ModalType = 'perfil' | 'seguranca' | 'notificacoes' | 'delete' | 'equipe' | null;
-type NotificationType = 'email' | 'push' | 'sms';
-
-interface NotificationSettings {
-  email: boolean;
-  push: boolean;
-  sms: boolean;
-}
 
 interface Employee {
   id: string;
@@ -36,30 +24,20 @@ const Configuracoes = () => {
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   
-  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [activeModal, setActiveModal] = useState<'perfil' | 'delete' | 'equipe' | null>(null);
   const [confirmationText, setConfirmationText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
 
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
-  const [notificationsError, setNotificationsError] = useState('');
-  const [notificationsSuccess, setNotificationsSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
 
   const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', avatar: '' });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [passwordData, setPasswordData] = useState({ current: '', newPassword: '', confirm: '' });
-  const [notifications, setNotifications] = useState<NotificationSettings>({ email: true, push: true, sms: false });
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
@@ -105,15 +83,6 @@ const Configuracoes = () => {
       } catch (err) {
         console.error('[CONFIG] Erro ao carregar perfil:', err);
         setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
-      }
-
-      try {
-        const stored = localStorage.getItem('axium_notifications');
-        if (stored) {
-          setNotifications(JSON.parse(stored));
-        }
-      } catch {
-        // Ignore errors
       }
     };
     loadData();
@@ -314,76 +283,6 @@ const Configuracoes = () => {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess('');
-    
-    if (!passwordData.current) {
-      setPasswordError('Digite a senha atual');
-      return;
-    }
-    if (!passwordData.newPassword) {
-      setPasswordError('Digite a nova senha');
-      return;
-    }
-    if (passwordData.newPassword.length < 8) {
-      setPasswordError('A senha deve ter pelo menos 8 caracteres');
-      return;
-    }
-    if (passwordData.newPassword !== passwordData.confirm) {
-      setPasswordError('As senhas não conferem');
-      return;
-    }
-
-    setIsSavingPassword(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: user?.email || '',
-        password: passwordData.current
-      });
-      
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          throw new Error('Senha atual incorreta');
-        }
-        throw error;
-      }
-
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: passwordData.newPassword
-      });
-      
-      if (updateError) throw updateError;
-      
-      setPasswordSuccess('Senha alterada com sucesso!');
-      setPasswordData({ current: '', newPassword: '', confirm: '' });
-      setTimeout(() => setPasswordSuccess(''), 3000);
-    } catch (err: any) {
-      console.error('[CONFIG] Erro ao alterar senha:', err);
-      setPasswordError(err.message || 'Erro ao alterar senha. Tente novamente.');
-    } finally {
-      setIsSavingPassword(false);
-    }
-  };
-
-  const handleSaveNotifications = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSavingNotifications(true);
-    setNotificationsError('');
-    setNotificationsSuccess('');
-    try {
-      localStorage.setItem('axium_notifications', JSON.stringify(notifications));
-      setNotificationsSuccess('Notificações salvas com sucesso!');
-      setTimeout(() => setNotificationsSuccess(''), 3000);
-    } catch (err: any) {
-      console.error('[CONFIG] Erro ao salvar notificações:', err);
-      setNotificationsError('Erro ao salvar preferências');
-    } finally {
-      setIsSavingNotifications(false);
-    }
-  };
-
   const handleDeleteAccount = async () => {
     if (confirmationText !== 'DELETE') return;
     setIsDeleting(true);
@@ -394,14 +293,8 @@ const Configuracoes = () => {
     navigate('/login');
   };
 
-  const toggleNotification = (type: NotificationType) => {
-    setNotifications(prev => ({ ...prev, [type]: !prev[type] }));
-  };
-
   const sections = [
     { id: 'perfil' as ModalType, icon: User, title: 'Perfil', description: 'Gerencie nome, email e foto de perfil', items: ['Nome', 'Email', 'Foto de perfil'] },
-    { id: 'seguranca' as ModalType, icon: Lock, title: 'Segurança', description: 'Altere a senha e configure autenticação', items: ['Alterar senha', 'Autenticação 2FA', 'Sessões ativas'] },
-    { id: 'notificacoes' as ModalType, icon: Bell, title: 'Notificações', description: 'Configure alertas por email, push ou SMS', items: ['Email', 'Push', 'SMS'] },
     { id: 'equipe' as ModalType, icon: Users, title: 'Equipe', description: 'Convidar membros e gerenciar acessos', items: ['Convidar', 'Permissões', 'Membros'] },
   ];
 
@@ -530,140 +423,7 @@ const Configuracoes = () => {
                     {isSavingProfile ? <><RefreshCw size={18} className="animate-spin" /> Salvando...</> : <><Save size={18} /> Salvar Perfil</>}
                   </button>
                 </div>
-              </form>
-            ) : activeModal === 'seguranca' ? (
-              <form onSubmit={handleChangePassword}>
-                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
-                  <div>
-                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
-                    <h2 className="text-4xl font-black text-black tracking-tighter">Segurança da Conta</h2>
-                  </div>
-                  <button type="button" onClick={() => { setActiveModal(null); setPasswordError(''); setPasswordSuccess(''); }} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
-                    <X size={24} />
-                  </button>
-                </div>
-                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                  {passwordError && (
-                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
-                      <AlertCircle size={20} />
-                      {passwordError}
-                    </div>
-                  )}
-                  {passwordSuccess && (
-                    <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3 text-green-600 text-sm font-medium">
-                      <CheckCircle2 size={20} />
-                      {passwordSuccess}
-                    </div>
-                  )}
-                  <div className="space-y-8">
-                    <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 flex items-center gap-4">
-                      <ShieldCheck className="text-emerald-500" size={32} />
-                      <div>
-                        <p className="text-sm font-black text-emerald-900">Sua conta está segura</p>
-                        <p className="text-xs text-emerald-600 font-medium italic">Proteção em tempo real ativada.</p>
-                      </div>
-                    </div>
-                    <div className="space-y-6">
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Senha Atual</label>
-                        <div className="relative">
-                          <input type={showPassword ? "text" : "password"} value={passwordData.current} onChange={(e) => setPasswordData({...passwordData, current: e.target.value})} placeholder="••••••••" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
-                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-neutral-300 hover:text-black">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-8">
-                        <div className="space-y-3">
-                          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Nova Senha</label>
-                          <div className="relative">
-                            <input type={showNewPassword ? "text" : "password"} value={passwordData.newPassword} onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})} placeholder="Mínimo 8 caracteres" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
-                            <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-neutral-300 hover:text-black">{showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
-                          <input type="password" value={passwordData.confirm} onChange={(e) => setPasswordData({...passwordData, confirm: e.target.value})} placeholder="Repita a nova senha" className="w-full bg-neutral-50 border-2 border-neutral-100 rounded-2xl px-6 py-4 font-bold text-black focus:border-black outline-none transition-all" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-12 py-10 bg-neutral-50 flex gap-4">
-                  <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Cancelar</button>
-                  <button type="submit" disabled={isSavingPassword} className="flex-[2] text-white py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest hover:brightness-90 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--primary)' }}>
-                    {isSavingPassword ? <><RefreshCw size={18} className="animate-spin" /> Alterando...</> : <><Key size={18} /> Alterar Senha</>}
-                  </button>
-                </div>
-              </form>
-            ) : activeModal === 'notificacoes' ? (
-              <form onSubmit={handleSaveNotifications}>
-                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
-                  <div>
-                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
-                    <h2 className="text-4xl font-black text-black tracking-tighter">Alertas & Avisos</h2>
-                  </div>
-                  <button type="button" onClick={() => { setActiveModal(null); setNotificationsError(''); setNotificationsSuccess(''); }} className="p-3 hover:bg-white rounded-2xl transition-colors text-neutral-300 hover:text-black border border-transparent hover:border-neutral-200 shadow-sm">
-                    <X size={24} />
-                  </button>
-                </div>
-                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                  {notificationsError && (
-                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
-                      <AlertCircle size={20} />
-                      {notificationsError}
-                    </div>
-                  )}
-                  {notificationsSuccess && (
-                    <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3 text-green-600 text-sm font-medium">
-                      <CheckCircle2 size={20} />
-                      {notificationsSuccess}
-                    </div>
-                  )}
-                  <div className="space-y-6">
-                    <div onClick={() => toggleNotification('email')} className={`p-6 rounded-3xl border-2 cursor-pointer transition-all flex items-center justify-between ${notifications.email ? 'border-black bg-black/5' : 'border-neutral-100 hover:border-neutral-200'}`}>
-                      <div className="flex items-center gap-4">
-                        <Mail size={24} className={notifications.email ? 'text-black' : 'text-neutral-300'} />
-                        <div>
-                          <p className="font-black text-black">Notificações por Email</p>
-                          <p className="text-xs text-neutral-400 font-medium">Receba alertas sobre novos leads e tarefas</p>
-                        </div>
-                      </div>
-                      <div className={`w-14 h-8 rounded-full transition-all flex items-center ${notifications.email ? 'bg-black justify-end' : 'bg-neutral-200 justify-start'}`}>
-                        <div className="w-6 h-6 bg-white rounded-full m-1" />
-                      </div>
-                    </div>
-                    <div onClick={() => toggleNotification('push')} className={`p-6 rounded-3xl border-2 cursor-pointer transition-all flex items-center justify-between ${notifications.push ? 'border-black bg-black/5' : 'border-neutral-100 hover:border-neutral-200'}`}>
-                      <div className="flex items-center gap-4">
-                        <Smartphone size={24} className={notifications.push ? 'text-black' : 'text-neutral-300'} />
-                        <div>
-                          <p className="font-black text-black">Notificações Push</p>
-                          <p className="text-xs text-neutral-400 font-medium">Receba alertas no navegador</p>
-                        </div>
-                      </div>
-                      <div className={`w-14 h-8 rounded-full transition-all flex items-center ${notifications.push ? 'bg-black justify-end' : 'bg-neutral-200 justify-start'}`}>
-                        <div className="w-6 h-6 bg-white rounded-full m-1" />
-                      </div>
-                    </div>
-                    <div onClick={() => toggleNotification('sms')} className={`p-6 rounded-3xl border-2 cursor-pointer transition-all flex items-center justify-between ${notifications.sms ? 'border-black bg-black/5' : 'border-neutral-100 hover:border-neutral-200'}`}>
-                      <div className="flex items-center gap-4">
-                        <Smartphone size={24} className={notifications.sms ? 'text-black' : 'text-neutral-300'} />
-                        <div>
-                          <p className="font-black text-black">Notificações SMS</p>
-                          <p className="text-xs text-neutral-400 font-medium">Receba alertas por SMS (em breve)</p>
-                        </div>
-                      </div>
-                      <div className={`w-14 h-8 rounded-full transition-all flex items-center ${notifications.sms ? 'bg-black justify-end' : 'bg-neutral-200 justify-start'}`}>
-                        <div className="w-6 h-6 bg-white rounded-full m-1" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-12 py-10 bg-neutral-50 flex gap-4">
-                  <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Cancelar</button>
-                  <button type="submit" disabled={isSavingNotifications} className="flex-[2] text-white py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest hover:brightness-90 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--primary)' }}>
-                    {isSavingNotifications ? <><RefreshCw size={18} className="animate-spin" /> Salvando...</> : <><Save size={18} /> Salvar Preferências</>}
-                  </button>
-                </div>
-              </form>
+                </form>
             ) : activeModal === 'equipe' ? (
               <div>
                 <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
