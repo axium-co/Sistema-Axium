@@ -1,13 +1,17 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 
-export type UserRole = 'admin' | 'employee';
+export type UserRole = 'admin' | 'manager' | 'user';
 
-export interface AuthUser {
+export interface User {
   id: string;
   email: string;
+  name: string;
   role: UserRole;
-  employeeName?: string;
+}
+
+export interface AuthUser extends User {
+  createdAt?: string;
 }
 
 interface AuthContextType {
@@ -17,6 +21,7 @@ interface AuthContextType {
   role: UserRole | null;
   employeeName: string | null;
   availableEmployees: string[];
+  hasPermission: (allowedRoles: UserRole[]) => boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   selectEmployee: (name: string) => void;
   logout: () => Promise<void>;
@@ -28,9 +33,12 @@ const STORAGE_KEY = 'auth_user';
 
 const EMPLOYEES = ['Maria', 'João', 'Pedro', 'Ana'];
 
-const VALID_CREDENTIALS = {
-  email: 'axium.contato@gmail.com',
-  password: 'axium@26'
+const CREDENTIALS: Record<string, { password: string; role: UserRole; name: string }> = {
+  'axium.contato@gmail.com': {
+    password: 'axium@26',
+    role: 'admin',
+    name: 'Administrador'
+  }
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -40,6 +48,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [employeeName, setEmployeeName] = useState<string | null>(null);
 
+  const hasPermission = useCallback((allowedRoles: UserRole[]): boolean => {
+    if (!isAuthenticated || !user) return false;
+    return allowedRoles.includes(user.role);
+  }, [isAuthenticated, user]);
+
   useEffect(() => {
     const loadStoredAuth = () => {
       try {
@@ -47,15 +60,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (stored) {
           const authData = JSON.parse(stored);
           if (authData?.email && authData?.id) {
-            const userRole = authData.role || 'admin';
+            const userRole = authData.role || 'user';
             setUser({
               id: authData.id,
               email: authData.email,
+              name: authData.name || 'Usuário',
               role: userRole,
-              employeeName: authData.employeeName || 'Administrador'
+              createdAt: authData.createdAt
             });
             setRole(userRole);
-            setEmployeeName(authData.employeeName || 'Administrador');
+            setEmployeeName(authData.name || authData.employeeName || 'Usuário');
             setIsAuthenticated(true);
           }
         }
@@ -73,30 +87,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const normalizedEmail = email.trim().toLowerCase();
       const normalizedPassword = password.trim();
 
-      if (normalizedEmail !== VALID_CREDENTIALS.email || normalizedPassword !== VALID_CREDENTIALS.password) {
+      const credential = CREDENTIALS[normalizedEmail];
+      
+      if (!credential || credential.password !== normalizedPassword) {
         return { success: false, error: 'E-mail ou senha incorretos' };
       }
 
-      const userRole: UserRole = 'admin';
-      const name = 'Administrador';
-      
       const authUser: AuthUser = {
-        id: 'admin-user-id',
+        id: `user-${Date.now()}`,
         email: normalizedEmail,
-        role: userRole,
-        employeeName: name
+        name: credential.name,
+        role: credential.role,
+        createdAt: new Date().toISOString()
       };
 
       setUser(authUser);
-      setRole(userRole);
-      setEmployeeName(name);
+      setRole(credential.role);
+      setEmployeeName(credential.name);
       setIsAuthenticated(true);
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         id: authUser.id,
         email: authUser.email,
+        name: authUser.name,
         role: authUser.role,
-        employeeName: authUser.employeeName
+        employeeName: authUser.name,
+        createdAt: authUser.createdAt
       }));
 
       return { success: true };
@@ -110,13 +126,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!EMPLOYEES.includes(name)) return;
     
     setEmployeeName(name);
-    setUser(prev => prev ? { ...prev, employeeName: name } : null);
+    setUser(prev => prev ? { ...prev, name: name } : null);
 
     const currentRole = role;
     if (currentRole) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         id: user?.id,
         email: user?.email,
+        name: name,
         role: currentRole,
         employeeName: name
       }));
@@ -143,6 +160,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       role,
       employeeName,
       availableEmployees: EMPLOYEES,
+      hasPermission,
       login,
       selectEmployee,
       logout
@@ -158,4 +176,9 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+export const usePermission = (allowedRoles: UserRole[]) => {
+  const { hasPermission, isAuthenticated } = useAuth();
+  return isAuthenticated && hasPermission(allowedRoles);
 };

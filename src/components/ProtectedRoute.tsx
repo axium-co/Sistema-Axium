@@ -1,14 +1,15 @@
 import { Navigate } from 'react-router-dom';
+import type { UserRole } from '../contexts/AuthContext';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  allowedRoles?: UserRole[];
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading } = useAuth();
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+  const { isAuthenticated, isLoading, user, hasPermission } = useAuth();
 
-  // If still checking localStorage, show nothing or a loader
   if (isLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-white">
@@ -19,6 +20,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && allowedRoles.length > 0) {
+    if (!hasPermission(allowedRoles)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   return <>{children}</>;

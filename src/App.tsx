@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth, UserRole } from './contexts/AuthContext';
 import { CRMProvider } from './contexts/CRMContext';
 import { ActivityLogsProvider } from './contexts/ActivityContext';
 import { FilterProvider } from './contexts/FilterContext';
@@ -30,17 +30,31 @@ function AppRoutes() {
         element={isAuthenticated ? <Navigate to="/crm/painel" replace /> : <Login />}
       />
 
+      {/* Unauthorized Route */}
+      <Route
+        path="/unauthorized"
+        element={
+          <div className="h-screen flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="text-2xl font-black text-black mb-2">Acesso Negado</h1>
+              <p className="text-neutral-500">Você não tem permissão para acessar esta página.</p>
+              <a href="/crm/painel" className="text-black underline mt-4 block">Voltar ao início</a>
+            </div>
+          </div>
+        }
+      />
+
       {/* Update Password Route */}
       <Route
         path="/update-password"
         element={<UpdatePassword />}
       />
 
-      {/* Protected Routes - CRM */}
+      {/* Protected Routes - CRM - All authenticated users */}
       <Route
         path="/crm/painel"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
             <MainLayout>
               <CRMPainel />
             </MainLayout>
@@ -50,7 +64,7 @@ function AppRoutes() {
       <Route
         path="/crm/leads"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
             <MainLayout>
               <CRMLeads />
             </MainLayout>
@@ -60,7 +74,7 @@ function AppRoutes() {
       <Route
         path="/crm/pipeline"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
             <MainLayout>
               <CRMPipeline />
             </MainLayout>
@@ -70,7 +84,7 @@ function AppRoutes() {
       <Route
         path="/crm/calendario"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
             <MainLayout>
               <CRMCalendario />
             </MainLayout>
@@ -80,7 +94,7 @@ function AppRoutes() {
       <Route
         path="/crm/importar"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
             <MainLayout>
               <CRMImportar />
             </MainLayout>
@@ -90,7 +104,7 @@ function AppRoutes() {
       <Route
         path="/crm/integracoes"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin']}>
             <MainLayout>
               <CRMIntegracoes />
             </MainLayout>
@@ -101,11 +115,11 @@ function AppRoutes() {
       {/* Redirect /crm to /crm/painel */}
       <Route path="/crm" element={<Navigate to="/crm/painel" replace />} />
 
-      {/* Protected Routes - Financeiro */}
+      {/* Protected Routes - Financeiro - Only admin/manager */}
       <Route
         path="/financeiro"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
             <MainLayout>
               <Financeiro />
             </MainLayout>
@@ -113,11 +127,11 @@ function AppRoutes() {
         }
       />
 
-      {/* Protected Routes - Tarefas */}
+      {/* Protected Routes - Tarefas - All authenticated users */}
       <Route
         path="/tarefas"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
             <MainLayout>
               <Tarefas />
             </MainLayout>
@@ -125,11 +139,11 @@ function AppRoutes() {
         }
       />
 
-      {/* Protected Routes - Configurações */}
+      {/* Protected Routes - Configurações - Only admin */}
       <Route
         path="/configuracoes"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin']}>
             <MainLayout>
               <Configuracoes />
             </MainLayout>
