@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-import { AuthProvider, useAuth, UserRole } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import type { UserRole } from './contexts/AuthContext';
 import { CRMProvider } from './contexts/CRMContext';
 import { ActivityLogsProvider } from './contexts/ActivityContext';
 import { FilterProvider } from './contexts/FilterContext';

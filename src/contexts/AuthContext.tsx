@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 
-export type UserRole = 'admin' | 'manager' | 'user';
+// Exportar como typeonly e como const para compatibilidade
+type UserRole = 'admin' | 'manager' | 'user';
+export type { UserRole };
 
 export interface User {
   id: string;
