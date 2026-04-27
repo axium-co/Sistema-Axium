@@ -60,10 +60,8 @@ const Configuracoes = () => {
   const [passwordData, setPasswordData] = useState({ current: '', newPassword: '', confirm: '' });
   const [notifications, setNotifications] = useState<NotificationSettings>({ email: true, push: true, sms: false });
 
-  const [employees, setEmployees] = useState<Employee[]>(() => {
-    const stored = localStorage.getItem('axium_employees');
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
 
   const [newEmployee, setNewEmployee] = useState({
     email: '',
@@ -120,7 +118,32 @@ const Configuracoes = () => {
     loadData();
   }, [user?.id]);
 
-  const handleAddEmployee = () => {
+  const loadEmployees = async () => {
+    if (!user?.id) return;
+    setIsLoadingEmployees(true);
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (err) {
+      console.error('[CONFIG] Erro ao carregar funcionários:', err);
+    } finally {
+      setIsLoadingEmployees(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      loadEmployees();
+    }
+  }, [user?.id]);
+
+  const handleAddEmployee = async () => {
     if (!newEmployee.email.trim() || !newEmployee.name.trim()) {
       setInviteError('Preencha todos os campos');
       return;
@@ -131,30 +154,48 @@ const Configuracoes = () => {
       return;
     }
 
-    const employee: Employee = {
-      id: `emp-${Date.now()}`,
-      email: newEmployee.email,
-      name: newEmployee.name,
-      role: newEmployee.role,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .insert([{
+          user_id: user?.id,
+          email: newEmployee.email.trim(),
+          name: newEmployee.name.trim(),
+          role: newEmployee.role,
+        }])
+        .select()
+        .single();
 
-    setEmployees([...employees, employee]);
-    setNewEmployee({ email: '', name: '', role: 'funcionario' });
-    setInviteSuccess('Funcionário adicionado!');
-    setInviteError('');
-    setTimeout(() => setInviteSuccess(''), 3000);
-  };
+      if (error) throw error;
 
-  const handleRemoveEmployee = (id: string) => {
-    if (confirm('Remover funcionário?')) {
-      setEmployees(employees.filter(emp => emp.id !== id));
+      setEmployees([...employees, data]);
+      setNewEmployee({ email: '', name: '', role: 'funcionario' });
+      setInviteSuccess('Funcionário adicionado!');
+      setInviteError('');
+      setTimeout(() => setInviteSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('[CONFIG] Erro ao adicionar funcionário:', err);
+      setInviteError(err.message || 'Erro ao adicionar funcionário');
     }
   };
 
-  useEffect(() => {
-    localStorage.setItem('axium_employees', JSON.stringify(employees));
-  }, [employees]);
+  const handleRemoveEmployee = async (id: string) => {
+    if (!confirm('Remover funcionário?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setEmployees(employees.filter(emp => emp.id !== id));
+    } catch (err: any) {
+      console.error('[CONFIG] Erro ao remover funcionário:', err);
+      setInviteError(err.message || 'Erro ao remover funcionário');
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
