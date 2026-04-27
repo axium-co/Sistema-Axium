@@ -4,11 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-interface LoginProps {
-  onLogin?: () => void;
-}
-
-const Login = ({ onLogin }: LoginProps) => {
+const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   
@@ -22,22 +18,19 @@ const Login = ({ onLogin }: LoginProps) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-      const normalizedPassword = password;
+      const result = await login(email, password);
       
-      if (normalizedEmail !== 'axium.contato@gmail.com' || normalizedPassword !== 'axium@26') {
-        setError('E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.');
-        setIsLoading(false);
-        return;
+      if (result.success) {
+        navigate('/crm/painel');
+      } else {
+        setError(result.error || 'E-mail ou senha incorretos');
       }
-      
-      await login(normalizedEmail, normalizedPassword);
-      if (onLogin) onLogin();
-      navigate('/crm/painel');
-    } catch (err: any) {
-      console.error('[LOGIN] Erro:', err?.message || err);
-      setError('E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.');
+    } catch (err) {
+      console.error('[LOGIN] Error:', err);
+      setError('Erro ao fazer login. Tente novamente.');
+    } finally {
       setIsLoading(false);
     }
   };

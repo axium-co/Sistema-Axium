@@ -5,6 +5,7 @@ export type UserRole = 'admin' | 'employee';
 
 export interface AuthUser {
   id: string;
+  email: string;
   role: UserRole;
   employeeName?: string;
 }
@@ -16,72 +17,93 @@ interface AuthContextType {
   role: UserRole | null;
   employeeName: string | null;
   availableEmployees: string[];
-  login: (role: UserRole, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   selectEmployee: (name: string) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'auth_user';
+
 const EMPLOYEES = ['Maria', 'João', 'Pedro', 'Ana'];
 
-const ADMIN_PASSWORD = 'admin123';
-const EMPLOYEE_PASSWORD = 'func123';
+const VALID_CREDENTIALS = {
+  email: 'axium.contato@gmail.com',
+  password: 'axium@26'
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [role, setRole] = useState<UserRole>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [employeeName, setEmployeeName] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('axium_auth');
-    if (stored) {
+    const loadStoredAuth = () => {
       try {
-        const authData = JSON.parse(stored);
-        if (authData.role && authData.employeeName) {
-          setRole(authData.role);
-          setEmployeeName(authData.employeeName);
-          setUser({
-            id: authData.role === 'admin' ? 'admin-id' : 'employee-id',
-            role: authData.role,
-            employeeName: authData.employeeName
-          });
-          setIsAuthenticated(true);
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const authData = JSON.parse(stored);
+          if (authData?.email && authData?.id) {
+            const userRole = authData.role || 'admin';
+            setUser({
+              id: authData.id,
+              email: authData.email,
+              role: userRole,
+              employeeName: authData.employeeName || 'Administrador'
+            });
+            setRole(userRole);
+            setEmployeeName(authData.employeeName || 'Administrador');
+            setIsAuthenticated(true);
+          }
         }
-      } catch {
-        // Invalid data
+      } catch (err) {
+        console.error('[AUTH] Error loading stored auth:', err);
+        localStorage.removeItem(STORAGE_KEY);
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+    loadStoredAuth();
   }, []);
 
-  const login = async (loginRole: UserRole, password: string) => {
-    if (!loginRole) {
-      throw new Error('Selecione o tipo de acesso');
-    }
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedPassword = password.trim();
 
-    const correctPassword = loginRole === 'admin' ? ADMIN_PASSWORD : EMPLOYEE_PASSWORD;
-    
-    if (password !== correctPassword) {
-      if (loginRole === 'admin') {
-        throw new Error('Senha de admin incorreta');
+      if (normalizedEmail !== VALID_CREDENTIALS.email || normalizedPassword !== VALID_CREDENTIALS.password) {
+        return { success: false, error: 'E-mail ou senha incorretos' };
       }
-      throw new Error('Senha de funcionário incorreta');
+
+      const userRole: UserRole = 'admin';
+      const name = 'Administrador';
+      
+      const authUser: AuthUser = {
+        id: 'admin-user-id',
+        email: normalizedEmail,
+        role: userRole,
+        employeeName: name
+      };
+
+      setUser(authUser);
+      setRole(userRole);
+      setEmployeeName(name);
+      setIsAuthenticated(true);
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        id: authUser.id,
+        email: authUser.email,
+        role: authUser.role,
+        employeeName: authUser.employeeName
+      }));
+
+      return { success: true };
+    } catch (err) {
+      console.error('[AUTH] Login error:', err);
+      return { success: false, error: 'Erro ao fazer login' };
     }
-
-    const name = loginRole === 'admin' ? 'Administrador' : EMPLOYEES[0];
-    
-    setRole(loginRole);
-    setEmployeeName(name);
-    setUser({ id: loginRole === 'admin' ? 'admin-id' : 'employee-id', role: loginRole, employeeName: name });
-    setIsAuthenticated(true);
-
-    localStorage.setItem('axium_auth', JSON.stringify({
-      role: loginRole,
-      employeeName: name
-    }));
   };
 
   const selectEmployee = (name: string) => {
@@ -92,19 +114,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const currentRole = role;
     if (currentRole) {
-      localStorage.setItem('axium_auth', JSON.stringify({
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        id: user?.id,
+        email: user?.email,
         role: currentRole,
         employeeName: name
       }));
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setRole(null);
-    setEmployeeName(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('axium_auth');
+  const logout = async () => {
+    try {
+      setUser(null);
+      setRole(null);
+      setEmployeeName(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+      console.error('[AUTH] Logout error:', err);
+    }
   };
 
   return (

@@ -27,7 +27,7 @@ function AppRoutes() {
       {/* Login Route */}
       <Route
         path="/login"
-        element={isAuthenticated ? <Navigate to="/crm/painel" replace /> : <Login onLogin={() => {}} />}
+        element={isAuthenticated ? <Navigate to="/crm/painel" replace /> : <Login />}
       />
 
       {/* Update Password Route */}
