@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, X, Edit3 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ColumnOption {
   id: string;
@@ -18,6 +19,7 @@ interface Column {
 interface Row {
   id: string;
   values: Record<string, unknown>;
+  lastModifiedBy?: string;
 }
 
 interface BoardType {
@@ -83,6 +85,8 @@ const Board = ({
   onMoveRow: (rowId: string, fromBoardId: string, toBoardId: string) => void;
   onAddColumn: (boardId: string) => void;
 }) => {
+  const { role, employeeName } = useAuth();
+
   const handleAddRow = () => {
     const newRow: Row = {
       id: `row-${Date.now()}`,
@@ -90,6 +94,7 @@ const Board = ({
         acc[col.id] = col.type === 'number' ? 0 : '';
         return acc;
       }, {} as Record<string, unknown>),
+      lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário'),
     };
     onUpdateBoard({ ...board, rows: [...board.rows, newRow] });
   };
@@ -101,7 +106,7 @@ const Board = ({
 
   const handleCellChange = (rowId: string, colId: string, value: unknown) => {
     const updated = board.rows.map(r => 
-      r.id === rowId ? { ...r, values: { ...r.values, [colId]: value } } : r
+      r.id === rowId ? { ...r, values: { ...r.values, [colId]: value }, lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário') } : r
     );
     onUpdateBoard({ ...board, rows: updated });
   };
@@ -252,6 +257,11 @@ const Board = ({
                     </div>
                   </th>
                 ))}
+                {role === 'admin' && (
+                  <th className="p-3 border-l border-neutral-200 text-left text-[10px] font-black uppercase tracking-widest text-neutral-600 whitespace-nowrap">
+                    Última Modificação
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -265,6 +275,11 @@ const Board = ({
                       {renderCell(row, col)}
                     </td>
                   ))}
+                  {role === 'admin' && (
+                    <td className="p-3 border-l border-neutral-200 text-sm text-neutral-500">
+                      {row.lastModifiedBy || '—'}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

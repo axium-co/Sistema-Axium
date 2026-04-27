@@ -19,6 +19,7 @@ export interface Lead {
   gmnStars: string;
   notes: string;
   value: string;
+  lastModifiedBy?: string;
 }
 
 export interface CalendarEvent {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Pencil, Save, X, TrendingUp, TrendingDown, DollarSign, PieChart, CreditCard, User, Calendar, CheckCircle2, Clock, AlertTriangle, RefreshCw, ExternalLink, Receipt, Wallet, Filter, XCircle, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 
 interface Invoice {
@@ -10,6 +11,7 @@ interface Invoice {
   date: string;
   status: 'Pago' | 'Pendente' | 'Cancelado' | 'Vencida';
   source?: 'manual' | 'lead' | 'asaas';
+  lastModifiedBy?: string;
 }
 
 interface Expense {
@@ -19,6 +21,7 @@ interface Expense {
   amount: string;
   date: string;
   status: 'Pago' | 'Pendente' | 'Cancelado';
+  lastModifiedBy?: string;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -86,6 +89,7 @@ const RadioFilter = ({ label, checked, onChange }: { label: string; checked: boo
 const Financeiro = () => {
   const { leads, getTotalValueByStage } = useCRM();
   const { filters } = useFilters();
+  const { role, employeeName } = useAuth();
 
   const STORAGE_KEY = 'axium_finance_v2';
   const EXPENSES_KEY = 'axium_expenses_v1';
@@ -344,15 +348,20 @@ const Financeiro = () => {
     e.preventDefault();
     if (!editingInvoice) return;
 
+    const modifiedInvoice = {
+      ...editingInvoice,
+      lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário')
+    };
+
     if (isNewInvoice) {
-      setManualInvoices(prev => [editingInvoice, ...prev]);
+      setManualInvoices(prev => [modifiedInvoice, ...prev]);
     } else {
       if (editingInvoice.source === 'lead') {
         alert('Faturas vinculadas a leads devem ser editadas no módulo de Leads.');
       } else if (editingInvoice.source === 'asaas') {
         alert('Faturas do Asaas são sincronizadas automaticamente e não podem ser editadas manualmente.');
       } else {
-        setManualInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? editingInvoice : inv));
+        setManualInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? modifiedInvoice : inv));
       }
     }
     setIsInvoiceModalOpen(false);
@@ -392,10 +401,15 @@ const Financeiro = () => {
     e.preventDefault();
     if (!editingExpense) return;
 
+    const modifiedExpense = {
+      ...editingExpense,
+      lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário')
+    };
+
     if (isNewExpense) {
-      setExpenses(prev => [editingExpense, ...prev]);
+      setExpenses(prev => [modifiedExpense, ...prev]);
     } else {
-      setExpenses(prev => prev.map(exp => exp.id === editingExpense.id ? editingExpense : exp));
+      setExpenses(prev => prev.map(exp => exp.id === editingExpense.id ? modifiedExpense : exp));
     }
     setIsExpenseModalOpen(false);
   };

@@ -1,238 +1,124 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { supabase, PROFILES_TABLE } from '../lib/supabase';
+
+export type UserRole = 'admin' | 'employee' | null;
 
 interface AuthUser {
   id: string;
-  email: string;
-  fullName?: string;
-}
-
-interface SignUpData {
-  nome: string;
-  sobrenome: string;
-  email: string;
-  password: string;
-  cargo?: 'Socio' | 'Funcionario';
+  role: UserRole;
+  employeeName?: string;
 }
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: AuthUser | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  signup: (data: SignUpData) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updatePassword: (password: string) => Promise<void>;
+  role: UserRole;
+  employeeName: string | null;
+  availableEmployees: string[];
+  login: (role: UserRole, password: string) => Promise<void>;
+  selectEmployee: (name: string) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const fetchUserProfile = async (userId: string): Promise<{ nome?: string } | null> => {
-  // Skip profile fetch if no userId or if profiles table is known to not exist
-  if (!userId) return { nome: 'Usuário' };
-  
-  try {
-    const { data, error } = await supabase
-      .from(PROFILES_TABLE)
-      .select('nome')
-      .eq('user_id', userId)
-      .single();
-    
-    if (error) {
-      // Silently fall back for any error (including 404)
-      return { nome: 'Usuário' };
-    }
-    return data || { nome: 'Usuário' };
-  } catch {
-    return { nome: 'Usuário' };
-  }
-};
+const EMPLOYEES = ['Maria', 'João', 'Pedro', 'Ana'];
+
+const ADMIN_PASSWORD = 'admin123';
+const EMPLOYEE_PASSWORD = 'func123';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [role, setRole] = useState<UserRole>(null);
+  const [employeeName, setEmployeeName] = useState<string | null>(null);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const stored = localStorage.getItem('axium_auth');
-      const storedAuth = stored ? JSON.parse(stored) : null;
-      
-      if (storedAuth?.user) {
-        setUser({ id: storedAuth.user.id, email: storedAuth.user.email || '', fullName: storedAuth.user.user_metadata?.nome });
-        setIsAuthenticated(true);
-      }
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id);
-        setUser({ id: session.user.id, email: session.user.email || '', fullName: profile?.nome });
-        setIsAuthenticated(true);
-      }
-      
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (session?.user) {
-          const profile = await fetchUserProfile(session.user.id);
-          setUser({ id: session.user.id, email: session.user.email || '', fullName: profile?.nome });
+    const stored = localStorage.getItem('axium_auth');
+    if (stored) {
+      try {
+        const authData = JSON.parse(stored);
+        if (authData.role && authData.employeeName) {
+          setRole(authData.role);
+          setEmployeeName(authData.employeeName);
+          setUser({
+            id: authData.role === 'admin' ? 'admin-id' : 'employee-id',
+            role: authData.role,
+            employeeName: authData.employeeName
+          });
           setIsAuthenticated(true);
-        } else {
-          setUser(null);
-          setIsAuthenticated(false);
         }
-      });
-
-      setIsLoading(false);
-      return () => subscription.unsubscribe();
-    };
-
-    initAuth();
+      } catch {
+        // Invalid data
+      }
+    }
+    setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedPassword = password;
-    
-    if (normalizedEmail === 'axium.contato@gmail.com' && normalizedPassword === 'axium@26') {
-      console.log('[AUTH] Login com credenciais fixas:', { email: normalizedEmail });
-      
-      const mockUser = {
-        id: 'fixed-user-001',
-        email: 'axium.contato@gmail.com',
-        user_metadata: { nome: 'Administrador' }
-      };
-      
-      setUser({ id: mockUser.id, email: mockUser.email, fullName: mockUser.user_metadata.nome });
-      setIsAuthenticated(true);
-      localStorage.setItem('axium_auth', JSON.stringify({ 
-        user: mockUser, 
-        session: { access_token: 'fixed-token', user: mockUser } 
-      }));
-      return;
+  const login = async (loginRole: UserRole, password: string) => {
+    if (!loginRole) {
+      throw new Error('Selecione o tipo de acesso');
     }
+
+    const correctPassword = loginRole === 'admin' ? ADMIN_PASSWORD : EMPLOYEE_PASSWORD;
     
-    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
-    
-    if (error) {
-      console.error('[AUTH] Erro no login:', error.message);
-      if (error.message.includes('Invalid login credentials') || error.message.includes('invalid credentials')) {
-        throw new Error('E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.');
+    if (password !== correctPassword) {
+      if (loginRole === 'admin') {
+        throw new Error('Senha de admin incorreta');
       }
-      throw new Error(error.message);
+      throw new Error('Senha de funcionário incorreta');
     }
+
+    const name = loginRole === 'admin' ? 'Administrador' : EMPLOYEES[0];
     
-    if (data.user) {
-      console.log('[AUTH] Login bem-sucedido:', { userId: data.user.id, email: data.user.email });
-      const profile = await fetchUserProfile(data.user.id);
-      setUser({ id: data.user.id, email: data.user.email || '', fullName: profile?.nome });
-      setIsAuthenticated(true);
-      localStorage.setItem('axium_auth', JSON.stringify({ user: data.user, session: data.session }));
+    setRole(loginRole);
+    setEmployeeName(name);
+    setUser({ id: loginRole === 'admin' ? 'admin-id' : 'employee-id', role: loginRole, employeeName: name });
+    setIsAuthenticated(true);
+
+    localStorage.setItem('axium_auth', JSON.stringify({
+      role: loginRole,
+      employeeName: name
+    }));
+  };
+
+  const selectEmployee = (name: string) => {
+    if (!EMPLOYEES.includes(name)) return;
+    
+    setEmployeeName(name);
+    setUser(prev => prev ? { ...prev, employeeName: name } : null);
+
+    const currentRole = role;
+    if (currentRole) {
+      localStorage.setItem('axium_auth', JSON.stringify({
+        role: currentRole,
+        employeeName: name
+      }));
     }
   };
 
-  const logout = async () => {
-    await supabase.auth.signOut();
+  const logout = () => {
     setUser(null);
+    setRole(null);
+    setEmployeeName(null);
     setIsAuthenticated(false);
     localStorage.removeItem('axium_auth');
   };
 
-  const signup = async ({ nome, sobrenome, email, password, cargo }: SignUpData) => {
-    const normalizedEmail = email.trim().toLowerCase();
-    console.log('[AUTH] Tentativa de cadastro:', { email: normalizedEmail, hasPassword: !!password });
-    
-    const { data, error } = await supabase.auth.signUp({ 
-      email: normalizedEmail, 
-      password,
-      options: {
-        data: {
-          nome,
-          sobrenome,
-        }
-      }
-    });
-    
-    if (error) {
-      console.error('[AUTH] Erro no cadastro:', error.message);
-      if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
-        throw new Error('Este e-mail já está cadastrado. Por favor, faça login.');
-      }
-      throw new Error(error.message);
-    }
-    
-    if (data.user) {
-      console.log('[AUTH] Cadastro bem-sucedido:', { userId: data.user.id, email: normalizedEmail });
-      const fullName = `${nome} ${sobrenome}`.trim();
-      const userCargo = cargo || 'Funcionario';
-      
-      await supabase
-        .from(PROFILES_TABLE)
-        .insert({
-          user_id: data.user.id,
-          nome: fullName,
-          cargo: userCargo,
-        })
-        .then(({ error: profileError }) => {
-          if (profileError) {
-            console.error('Erro ao criar perfil:', profileError);
-          }
-        });
-      
-      setUser({ id: data.user.id, email: data.user.email || '', fullName });
-      setIsAuthenticated(true);
-      localStorage.setItem('axium_auth', JSON.stringify({ user: data.user, session: data.session }));
-    }
-  };
-
-  const resetPassword = async (email: string) => {
-    const normalizedEmail = email.trim().toLowerCase();
-    console.log('[AUTH] Solicitação de reset de senha:', { email: normalizedEmail });
-    
-    const redirectTo = `${window.location.origin}/update-password`;
-    const { data, error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo,
-    });
-    
-    if (error) {
-      console.error('[AUTH] Erro ao solicitar reset:', error.message);
-      
-      if (error.message.includes('Email rate limit exceeded') || error.message.includes('rate limit')) {
-        throw new Error('Muitas tentativas. Por favor, aguarde alguns minutos e tente novamente.');
-      }
-      
-      if (error.message.includes('No eligible') || error.message.includes('not found') || error.message.includes('User not found')) {
-        throw new Error('E-mail não encontrado. Verifique se o e-mail está correto ou crie uma nova conta.');
-      }
-      
-      if (error.message.includes('Email provider') || error.message.includes('smtp')) {
-        throw new Error('Serviço de recuperação temporariamente indisponível. Por favor, contacte o administrador do sistema.');
-      }
-      
-      throw new Error(error.message);
-    }
-    
-    if (data) {
-      console.log('[AUTH] Reset email enviado:', data);
-    }
-  };
-
-  const updatePassword = async (password: string) => {
-    const { data, error } = await supabase.auth.updateUser({ password });
-    
-    if (error) {
-      throw new Error(error.message);
-    }
-    
-    if (data.user) {
-      const profile = await fetchUserProfile(data.user.id);
-      setUser({ id: data.user.id, email: data.user.email || '', fullName: profile?.nome });
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, signup, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      isLoading,
+      user,
+      role,
+      employeeName,
+      availableEmployees: EMPLOYEES,
+      login,
+      selectEmployee,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );

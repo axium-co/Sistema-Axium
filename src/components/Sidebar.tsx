@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, DollarSign, CheckCircle, Settings, LogOut, X, Menu } from 'lucide-react';
+import { BarChart3, DollarSign, CheckCircle, Settings, LogOut, X, ChevronDown, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
@@ -10,20 +10,26 @@ interface SidebarProps {
 const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { role, employeeName, availableEmployees, selectEmployee, logout } = useAuth();
 
   const mainMenuItems = [
-    { id: 'crm', label: 'CRM', icon: BarChart3, path: '/crm' },
-    { id: 'financeiro', label: 'Financeiro', icon: DollarSign, path: '/financeiro' },
-    { id: 'tarefas', label: 'Tarefas', icon: CheckCircle, path: '/tarefas' },
-    { id: 'configuracoes', label: 'Configurações', icon: Settings, path: '/configuracoes' },
+    { id: 'crm', label: 'CRM', icon: BarChart3, path: '/crm', adminOnly: false },
+    { id: 'financeiro', label: 'Financeiro', icon: DollarSign, path: '/financeiro', adminOnly: true },
+    { id: 'tarefas', label: 'Tarefas', icon: CheckCircle, path: '/tarefas', adminOnly: false },
+    { id: 'configuracoes', label: 'Configurações', icon: Settings, path: '/configuracoes', adminOnly: true },
   ];
+
+  const visibleMenuItems = mainMenuItems.filter(item => !item.adminOnly || role === 'admin');
 
   const isActive = (path: string) => location.pathname.startsWith(path);
 
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   return (
     <>
-      {/* Mobile Overlay */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
@@ -31,7 +37,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         />
       )}
       
-      {/* Mobile Sidebar - slides in from left */}
       <aside className={`fixed md:hidden left-0 top-0 h-screen w-[85%] max-w-80 bg-white border-r border-neutral-200 flex-col overflow-y-auto z-50 transform transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <button
           onClick={onClose}
@@ -50,7 +55,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1">
-          {mainMenuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
@@ -68,24 +73,34 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         </nav>
 
         <div className="px-4 pb-6 border-t border-neutral-100 pt-4">
-          {user && (
+          {role === 'employee' && employeeName && (
             <div className="mb-3 px-2">
-              <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider mb-0.5">Conectado como</p>
-              <p className="text-sm text-neutral-700 font-medium truncate">{user.email}</p>
+              <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider mb-0.5">Funcionário</p>
+              <div className="flex items-center gap-2">
+                <select
+                  value={employeeName}
+                  onChange={(e) => selectEmployee(e.target.value)}
+                  className="text-sm text-neutral-700 font-medium bg-transparent border-none focus:outline-none cursor-pointer"
+                >
+                  {availableEmployees.map(emp => (
+                    <option key={emp} value={emp}>{emp}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 text-neutral-400" />
+              </div>
             </div>
           )}
           <button
-            onClick={() => { logout(); navigate('/login'); }}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all duration-150 cursor-pointer text-neutral-500 hover:text-red-600 hover:bg-red-50 font-medium text-sm"
           >
             <LogOut className="w-4 h-4 shrink-0" strokeWidth={2} />
-            <span>Sair</span>
+            <span>Sair / Trocar Perfil</span>
           </button>
           <p className="text-[11px] text-neutral-300 text-center mt-4">© 2026 Universo Axium</p>
         </div>
       </aside>
 
-      {/* Desktop Sidebar - always visible */}
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-neutral-200 flex-col overflow-y-auto z-40 hidden md:flex">
         <div className="px-6 pt-8 pb-6 border-b border-neutral-100">
           <img
@@ -96,7 +111,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1">
-          {mainMenuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
@@ -113,18 +128,38 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         </nav>
 
         <div className="px-4 pb-6 border-t border-neutral-100 pt-4">
-          {user && (
+          {role === 'employee' && employeeName && (
             <div className="mb-3 px-2">
-              <p className="text-[11px] text-neutral-400 font-medium uppercase tracking-wider mb-0.5">Conectado como</p>
-              <p className="text-sm text-neutral-700 font-medium truncate">{user.email}</p>
+              <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider mb-0.5">Funcionário</p>
+              <div className="flex items-center gap-2">
+                <select
+                  value={employeeName || ''}
+                  onChange={(e) => selectEmployee(e.target.value)}
+                  className="text-sm text-neutral-700 font-medium bg-transparent border-none focus:outline-none cursor-pointer"
+                >
+                  {availableEmployees.map(emp => (
+                    <option key={emp} value={emp}>{emp}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 text-neutral-400" />
+              </div>
+            </div>
+          )}
+          {role === 'admin' && (
+            <div className="mb-3 px-2">
+              <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider mb-0.5">Conectado como</p>
+              <p className="text-sm text-neutral-700 font-medium truncate flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Administrador
+              </p>
             </div>
           )}
           <button
-            onClick={() => { logout(); navigate('/login'); }}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all duration-150 cursor-pointer text-neutral-500 hover:text-red-600 hover:bg-red-50 font-medium text-sm"
           >
             <LogOut className="w-4 h-4 shrink-0" strokeWidth={2} />
-            <span>Sair</span>
+            <span>Sair / Trocar Perfil</span>
           </button>
           <p className="text-[11px] text-neutral-300 text-center mt-4">© 2026 Universo Axium</p>
         </div>

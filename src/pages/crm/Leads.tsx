@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const formatBRL = (val: string) => {
   const numeric = val.replace(/\D/g, '');
@@ -98,6 +99,7 @@ const inputCls =
 const CRMLeads = () => {
   const { leads, addLead, updateLead, deleteLead, searchTerm } = useCRM();
   const { filters, setStagesFilter, setNichesFilter, setOriginsFilter, setDateFilter, clearFilters, hasActiveFilters } = useFilters();
+  const { role, employeeName } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
   const [current, setCurrent] = useState<Partial<Lead>>(EMPTY_LEAD);
@@ -153,10 +155,15 @@ const CRMLeads = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const modifiedLead = {
+      ...current,
+      lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário')
+    };
+    
     if (mode === 'add') {
-      addLead(current as Omit<Lead, 'id'>);
+      addLead(modifiedLead as Omit<Lead, 'id'>);
     } else {
-      updateLead(current.id!, current);
+      updateLead(current.id!, modifiedLead);
     }
     setIsOpen(false);
   };
