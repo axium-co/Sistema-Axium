@@ -3,11 +3,14 @@ import {
   Lock, Bell, User, 
   AlertTriangle, X, ShieldAlert, Trash2, 
   Save, CheckCircle2, ShieldCheck, 
-  UserCircle, Smartphone, Eye, EyeOff,
+  UserCircle, Eye, EyeOff,
   Key,
-  RefreshCw, Users,
+  RefreshCw,
   AlertCircle,
-  Globe
+  Mail,
+  Globe,
+  Smartphone,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, PROFILES_TABLE } from '../../lib/supabase';
@@ -41,18 +44,18 @@ const Configuracoes = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
-  // Loading states
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isSavingNotifications, setIsSavingNotifications] = useState(false);
 
-  // Error/Success states
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [notificationsError, setNotificationsError] = useState('');
   const [notificationsSuccess, setNotificationsSuccess] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
 
   const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', avatar: '' });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -217,9 +220,9 @@ const Configuracoes = () => {
         setProfileSuccess('');
         setActiveModal(null);
       }, 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[CONFIG] Erro ao salvar perfil:', err);
-      const errorMessage = err.message || 'Erro ao salvar perfil. Tente novamente.';
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar perfil. Tente novamente.';
       setProfileError(errorMessage);
     } finally {
       console.log('[CONFIG] Finalizando, isSavingProfile:', false);
@@ -257,7 +260,7 @@ const Configuracoes = () => {
       setAvatarPreview(publicUrl);
       setProfileSuccess('Avatar atualizado! Clique em Salvar para confirmar.');
       setTimeout(() => setProfileSuccess(''), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[CONFIG] Erro ao fazer upload:', err);
       setProfileError('Erro ao fazer upload. Tente novamente.');
     } finally {
@@ -310,9 +313,10 @@ const Configuracoes = () => {
       setPasswordSuccess('Senha alterada com sucesso!');
       setPasswordData({ current: '', newPassword: '', confirm: '' });
       setTimeout(() => setPasswordSuccess(''), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[CONFIG] Erro ao alterar senha:', err);
-      setPasswordError(err.message || 'Erro ao alterar senha. Tente novamente.');
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao alterar senha. Tente novamente.';
+      setPasswordError(errorMessage);
     } finally {
       setIsSavingPassword(false);
     }
@@ -327,7 +331,7 @@ const Configuracoes = () => {
       localStorage.setItem('axium_notifications', JSON.stringify(notifications));
       setNotificationsSuccess('Notificações salvas com sucesso!');
       setTimeout(() => setNotificationsSuccess(''), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[CONFIG] Erro ao salvar notificações:', err);
       setNotificationsError('Erro ao salvar preferências');
     } finally {
