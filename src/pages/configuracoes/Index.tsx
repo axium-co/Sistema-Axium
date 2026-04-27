@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, PROFILES_TABLE } from '../../lib/supabase';
+import { isValidUUID } from '../../lib/uuid';
 import { useNavigate } from 'react-router-dom';
 
 type ModalType = 'perfil' | 'seguranca' | 'notificacoes' | 'delete' | 'equipe' | null;
@@ -154,11 +155,18 @@ const Configuracoes = () => {
       return;
     }
 
+    // Validar se user.id é um UUID válido
+    if (!user?.id || !isValidUUID(user.id)) {
+      setInviteError('ID de usuário inválido. Faça logout e login novamente.');
+      console.error('[CONFIG] user.id inválido:', user?.id);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('employees')
         .insert([{
-          user_id: user?.id,
+          user_id: user.id,
           email: newEmployee.email.trim(),
           name: newEmployee.name.trim(),
           role: newEmployee.role,

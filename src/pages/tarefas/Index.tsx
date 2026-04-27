@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, X, Edit3 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { generateUUID } from '../../lib/uuid';
 
 interface ColumnOption {
   id: string;
@@ -89,7 +90,7 @@ const Board = ({
 
   const handleAddRow = () => {
     const newRow: Row = {
-      id: `row-${Date.now()}`,
+      id: generateUUID(),
       values: board.columns.reduce((acc, col) => {
         acc[col.id] = col.type === 'number' ? 0 : '';
         return acc;
@@ -347,7 +348,7 @@ const Tarefas = () => {
     if (!board) return;
     
     const newRow: Row = {
-      id: `row-${Date.now()}`,
+      id: generateUUID(),
       values: board.columns.reduce((acc, col) => {
         acc[col.id] = col.type === 'number' ? 0 : '';
         return acc;
@@ -362,7 +363,7 @@ const Tarefas = () => {
     if (!newBoardTitle.trim()) return;
     
     const newBoard: BoardType = {
-      id: `board-${Date.now()}`,
+      id: generateUUID(),
       title: newBoardTitle,
       color: newBoardColor,
       columns: DEFAULT_BOARD.columns,
@@ -387,7 +388,7 @@ const Tarefas = () => {
     if (!board) return;
 
     const newColumn: Column = {
-      id: `col-${Date.now()}`,
+      id: generateUUID(),
       title: newColumnData.title,
       type: newColumnData.type,
       width: newColumnData.width,

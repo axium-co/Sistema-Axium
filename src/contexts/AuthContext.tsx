@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
+import { generateUUID, isValidUUID } from '../lib/uuid';
 
 // Exportar como typeonly e como const para compatibilidade
 type UserRole = 'admin' | 'manager' | 'user';
@@ -62,6 +63,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (stored) {
           const authData = JSON.parse(stored);
           if (authData?.email && authData?.id) {
+            // Corrigir ID inválido se não for UUID
+            if (!isValidUUID(authData.id)) {
+              authData.id = generateUUID();
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(authData));
+            }
+            
             const userRole = authData.role || 'user';
             setUser({
               id: authData.id,
@@ -96,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const authUser: AuthUser = {
-        id: `user-${Date.now()}`,
+        id: generateUUID(),
         email: normalizedEmail,
         name: credential.name,
         role: credential.role,
