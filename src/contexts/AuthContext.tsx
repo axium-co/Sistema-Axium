@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
-export type UserRole = 'admin' | 'employee' | null;
+export type UserRole = 'admin' | 'employee';
 
-interface AuthUser {
+export interface AuthUser {
   id: string;
   role: UserRole;
   employeeName?: string;
@@ -13,7 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: AuthUser | null;
-  role: UserRole;
+  role: UserRole | null;
   employeeName: string | null;
   availableEmployees: string[];
   login: (role: UserRole, password: string) => Promise<void>;

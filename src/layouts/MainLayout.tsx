@@ -4,8 +4,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import CRMSubmenu from '../components/CRMSubmenu';
 import TopHeader from '../components/TopHeader';
-import { useAuth, UserRole } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { BarChart3, Users, Lock } from 'lucide-react';
+
+type UserRole = 'admin' | 'employee';
 
 interface MainLayoutProps {
   children: ReactNode;
