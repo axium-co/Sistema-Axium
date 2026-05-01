@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useCRM, type DynamicColumn } from '../../contexts/CRMContext';
+import { useCRM } from '../../contexts/CRMContext';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Table, X, ArrowRight, ArrowLeft, Columns, Users, Check, ChevronDown, Settings2 } from 'lucide-react';
@@ -27,7 +27,7 @@ interface CRMImportarState {
 }
 
 const CRMImportar = () => {
-  const { addLead, setDynamicColumns } = useCRM();
+  const { addLead } = useCRM();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -241,16 +241,6 @@ const CRMImportar = () => {
     if (!importState) return;
 
     setIsImporting(true);
-
-    const selectedCols = importState.columns.filter(c => c.selected);
-    const dynamicCols: DynamicColumn[] = selectedCols.map(c => ({
-      originalName: c.originalName,
-      detectedType: c.mappedTo !== 'unknown' ? c.mappedTo : c.detectedType,
-      mappedTo: c.mappedTo !== 'unknown' ? c.mappedTo : c.originalName,
-      required: c.mappedTo === 'name',
-    }));
-    setDynamicColumns(dynamicCols);
-
     let count = 0;
 
     const sortedRows = Array.from(selectedRows).sort((a, b) => a - b);
