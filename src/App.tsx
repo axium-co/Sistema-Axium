@@ -5,6 +5,7 @@ import type { UserRole } from './contexts/AuthContext';
 import { CRMProvider } from './contexts/CRMContext';
 import { ActivityLogsProvider } from './contexts/ActivityContext';
 import { FilterProvider } from './contexts/FilterContext';
+import { TaskTableProvider } from './contexts/TaskTableContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
@@ -169,7 +170,9 @@ function App() {
           <ActivityLogsProvider>
             <CRMProvider>
               <FilterProvider>
-                <AppRoutes />
+                <TaskTableProvider>
+                  <AppRoutes />
+                </TaskTableProvider>
               </FilterProvider>
             </CRMProvider>
           </ActivityLogsProvider>
