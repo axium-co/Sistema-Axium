@@ -165,6 +165,44 @@ const Board = ({
           </select>
         );
       }
+      case 'tags': {
+        const options = col.options || [];
+        const currentTags = Array.isArray(value) ? value : (value ? String(value).split(',') : []);
+        return (
+          <div className="flex flex-wrap gap-1 px-2 py-1" onClick={(e) => e.stopPropagation()}>
+            {currentTags.filter(Boolean).map((tag: string, idx: number) => {
+              const opt = options.find(o => o.label === tag);
+              const color = opt?.color || '#6b7280';
+              return (
+                <span
+                  key={idx}
+                  className="inline-flex items-center px-2 py-0.5 text-xs text-white rounded-full"
+                  style={{ backgroundColor: color }}
+                >
+                  {tag}
+                </span>
+              );
+            })}
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  const newTags = currentTags.includes(e.target.value) ? currentTags : [...currentTags, e.target.value];
+                  handleCellChange(row.id, col.id, newTags);
+                }
+              }}
+              className="min-h-[24px] px-1 text-xs border-none outline-none cursor-pointer bg-neutral-100 rounded text-neutral-600 hover:bg-neutral-200"
+            >
+              <option value="">+ Tag</option>
+              {options
+                .filter(opt => !currentTags.includes(opt.label))
+                .map(opt => (
+                  <option key={opt.id} value={opt.label}>{opt.label}</option>
+                ))}
+            </select>
+          </div>
+        );
+      }
       case 'date':
         return (
           <input
@@ -392,6 +430,23 @@ const Tarefas = () => {
       title: newColumnData.title,
       type: newColumnData.type,
       width: newColumnData.width,
+      options:
+        newColumnData.type === 'status' ? [
+          { id: 'st-1', label: 'Pendente', color: '#6b7280' },
+          { id: 'st-2', label: 'Em Andamento', color: '#3b82f6' },
+          { id: 'st-3', label: 'Concluído', color: '#22c55e' },
+        ] :
+        newColumnData.type === 'priority' ? [
+          { id: 'pr-1', label: 'Baixa', color: '#94a3b8' },
+          { id: 'pr-2', label: 'Media', color: '#f59e0b' },
+          { id: 'pr-3', label: 'Alta', color: '#ef4444' },
+        ] :
+        newColumnData.type === 'tags' ? [
+          { id: 'tg-1', label: 'Urgente', color: '#ef4444' },
+          { id: 'tg-2', label: 'Importante', color: '#f59e0b' },
+          { id: 'tg-3', label: 'Normal', color: '#3b82f6' },
+        ] :
+        undefined,
     };
 
     handleUpdateBoard({ ...board, columns: [...board.columns, newColumn] });
