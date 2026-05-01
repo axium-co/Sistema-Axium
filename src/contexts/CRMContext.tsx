@@ -3,6 +3,31 @@ import type { ReactNode } from 'react';
 import { STAGES, STAGE_CONFIG, parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
 import { generateUUID } from '../lib/uuid';
 
+export interface DynamicColumn {
+  originalName: string;
+  detectedType: string;
+  mappedTo: string;
+  required: boolean;
+}
+
+export const DEFAULT_DYNAMIC_COLUMNS: DynamicColumn[] = [
+  { originalName: 'Nome', detectedType: 'name', mappedTo: 'name', required: true },
+  { originalName: 'Nicho', detectedType: 'niche', mappedTo: 'niche', required: false },
+  { originalName: 'WhatsApp', detectedType: 'whatsapp', mappedTo: 'whatsapp', required: false },
+  { originalName: 'Email', detectedType: 'email', mappedTo: 'email', required: false },
+  { originalName: 'Instagram', detectedType: 'instagram', mappedTo: 'instagram', required: false },
+  { originalName: 'Valor', detectedType: 'value', mappedTo: 'value', required: false },
+  { originalName: 'Etapa', detectedType: 'stage', mappedTo: 'stage', required: false },
+  { originalName: 'Endereco', detectedType: 'address', mappedTo: 'address', required: false },
+  { originalName: 'Origem', detectedType: 'origin', mappedTo: 'origin', required: false },
+  { originalName: 'Primeiro Contato', detectedType: 'firstContact', mappedTo: 'firstContact', required: false },
+  { originalName: 'Data de Fechamento', detectedType: 'closingDate', mappedTo: 'closingDate', required: false },
+  { originalName: 'Follow-up', detectedType: 'followUpReminder', mappedTo: 'followUpReminder', required: false },
+  { originalName: 'GMN Avaliacoes', detectedType: 'gmnReviews', mappedTo: 'gmnReviews', required: false },
+  { originalName: 'GMN Estrelas', detectedType: 'gmnStars', mappedTo: 'gmnStars', required: false },
+  { originalName: 'Notas', detectedType: 'notes', mappedTo: 'notes', required: false },
+];
+
 export interface Lead {
   id: string;
   name: string;
@@ -50,6 +75,8 @@ interface CRMContextType {
   events: CalendarEvent[];
   searchTerm: string;
   notifications: Notification[];
+  dynamicColumns: DynamicColumn[];
+  setDynamicColumns: (columns: DynamicColumn[]) => void;
   setSearchTerm: (term: string) => void;
   markNotificationsAsRead: () => void;
   addLead: (lead: LeadInput) => void;
@@ -153,7 +180,6 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     const storageKey = 'axium_leads_v2';
     let loaded: Lead[] = [];
     
-    // Debug localStorage
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(storageKey);
       console.log('[DEBUG CRMProvider] raw localStorage:', stored);
@@ -162,19 +188,28 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     loaded = loadFromStorage(storageKey, INITIAL_LEADS);
     console.log('[DEBUG CRMProvider] Carregando leads do localStorage:', loaded?.length ?? 0, loaded);
     
-    // Fallback: se vazio ou undefined, usa dados iniciais
     if (!loaded || !Array.isArray(loaded) || loaded.length === 0) {
       console.log('[DEBUG CRMProvider] Usando INITIAL_LEADS como fallback');
       loaded = INITIAL_LEADS;
     }
     
-    // Debug final
     console.log('[DEBUG CRMProvider] Leads finais:', loaded?.length ?? 0);
     return loaded;
   });
   const [events, setEvents] = useState<CalendarEvent[]>(() => loadFromStorage('axium_events_v2', INITIAL_EVENTS));
+  const [dynamicColumns, setDynamicColumnsState] = useState<DynamicColumn[]>(() =>
+    loadFromStorage('axium_dynamic_columns_v1', DEFAULT_DYNAMIC_COLUMNS)
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
+
+  useEffect(() => {
+    localStorage.setItem('axium_dynamic_columns_v1', JSON.stringify(dynamicColumns));
+  }, [dynamicColumns]);
+
+  const setDynamicColumns = useCallback((columns: DynamicColumn[]) => {
+    setDynamicColumnsState(columns);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('axium_leads_v2', JSON.stringify(leads));
@@ -248,6 +283,8 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     events,
     searchTerm,
     notifications,
+    dynamicColumns,
+    setDynamicColumns,
     setSearchTerm,
     markNotificationsAsRead,
     addLead,
@@ -266,6 +303,8 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     events,
     searchTerm,
     notifications,
+    dynamicColumns,
+    setDynamicColumns,
     markNotificationsAsRead,
     addLead,
     updateLead,

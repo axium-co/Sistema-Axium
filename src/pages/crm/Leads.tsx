@@ -5,23 +5,6 @@ import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import { useAuth } from '../../contexts/AuthContext';
 
-const formatBRL = (val: string) => {
-  const numeric = val.replace(/\D/g, '');
-  if (!numeric) return '';
-  const num = parseFloat(numeric) / 100;
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(num);
-};
-
-const EMPTY_LEAD: Partial<Lead> = {
-  name: '', niche: '', whatsapp: '', email: '', instagram: '',
-  stage: 'Novos Leads', firstContact: '', closingDate: '',
-  followUpReminder: '', address: '', gmnReviews: '', gmnStars: '',
-  notes: '', value: '',
-};
-
 const STAGES = [
   'Novos Leads',
   'Primeiro Contato',
@@ -43,6 +26,41 @@ const STAGE_ORIGINS = [
   'Evento',
   'Outros'
 ];
+
+const FIELD_CONFIG: Record<string, { label: string; inputType: string; placeholder: string }> = {
+  name: { label: 'Nome', inputType: 'text', placeholder: 'Ex: Joao Silva' },
+  niche: { label: 'Nicho', inputType: 'text', placeholder: 'Ex: Odontologia' },
+  whatsapp: { label: 'WhatsApp', inputType: 'tel', placeholder: '(11) 99999-9999' },
+  email: { label: 'Email', inputType: 'email', placeholder: 'email@dominio.com' },
+  instagram: { label: 'Instagram', inputType: 'text', placeholder: '@usuario' },
+  value: { label: 'Valor do Contrato', inputType: 'currency', placeholder: 'R$ 0,00' },
+  stage: { label: 'Etapa do Pipeline', inputType: 'select', placeholder: '' },
+  origin: { label: 'Origem', inputType: 'select', placeholder: '' },
+  address: { label: 'Endereco / Localizacao', inputType: 'text', placeholder: 'Ex: Sao Paulo - SP' },
+  firstContact: { label: 'Primeiro Contato', inputType: 'date', placeholder: '' },
+  closingDate: { label: 'Data de Fechamento', inputType: 'date', placeholder: '' },
+  followUpReminder: { label: 'Lembrete de Follow-up', inputType: 'date', placeholder: '' },
+  gmnReviews: { label: 'Qtd. Avaliacoes GMN', inputType: 'number', placeholder: 'Ex: 248' },
+  gmnStars: { label: 'Media de Estrelas GMN', inputType: 'number', placeholder: 'Ex: 4.7' },
+  notes: { label: 'Observacoes', inputType: 'textarea', placeholder: 'Notas internas, contexto do lead...' },
+};
+
+const formatBRL = (val: string) => {
+  const numeric = val.replace(/\D/g, '');
+  if (!numeric) return '';
+  const num = parseFloat(numeric) / 100;
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(num);
+};
+
+const EMPTY_LEAD: Partial<Lead> = {
+  name: '', niche: '', whatsapp: '', email: '', instagram: '',
+  stage: 'Novos Leads', origin: '', firstContact: '', closingDate: '',
+  followUpReminder: '', address: '', gmnReviews: '', gmnStars: '',
+  notes: '', value: '',
+};
 
 const stageStyle: Record<string, string> = {
   'Novos Leads':      'bg-neutral-100 text-neutral-600',
@@ -97,7 +115,7 @@ const inputCls =
   'w-full bg-white border border-slate-200 rounded-md py-2.5 px-3.5 text-black text-sm placeholder-slate-300 focus:outline-none focus:border-black transition-colors';
 
 const CRMLeads = () => {
-  const { leads, addLead, updateLead, deleteLead, searchTerm } = useCRM();
+  const { leads, addLead, updateLead, deleteLead, searchTerm, dynamicColumns } = useCRM();
   const { filters, setStagesFilter, setNichesFilter, setOriginsFilter, setDateFilter, clearFilters, hasActiveFilters } = useFilters();
   const { role, employeeName } = useAuth();
 
@@ -501,89 +519,128 @@ const CRMLeads = () => {
 
             <form onSubmit={handleSave} className="overflow-y-auto flex-1">
               <div className="px-4 md:px-7 py-4 md:py-6 space-y-3 md:space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <Field label="Nome" required>
-                    <input type="text" value={current.name} onChange={e => updateField('name', e.target.value)}
-                      required className={inputCls} placeholder="Ex: João Silva" />
-                  </Field>
-                  <Field label="Nicho">
-                    <input type="text" value={current.niche} onChange={e => updateField('niche', e.target.value)}
-                      className={inputCls} placeholder="Ex: Odontologia" />
-                  </Field>
-                </div>
+                {dynamicColumns.map((col) => {
+                  const fieldKey = col.mappedTo as keyof Lead;
+                  const fieldValue = current[fieldKey] as string ?? '';
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <Field label="WhatsApp">
-                    <input type="text" value={current.whatsapp} onChange={e => updateField('whatsapp', e.target.value)}
-                      className={inputCls} placeholder="(11) 99999-9999" />
-                  </Field>
-                  <Field label="Email">
-                    <input type="email" value={current.email} onChange={e => updateField('email', e.target.value)}
-                      className={inputCls} placeholder="email@dominio.com" />
-                  </Field>
-                </div>
+                  const isDateField = col.detectedType === 'firstContact' || col.detectedType === 'closingDate' || col.detectedType === 'followUpReminder';
+                  const isSelectField = col.detectedType === 'stage' || col.detectedType === 'origin';
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <Field label="Instagram">
-                    <input type="text" value={current.instagram} onChange={e => updateField('instagram', e.target.value)}
-                      className={inputCls} placeholder="@usuario" />
-                  </Field>
-                  <Field label="Etapa do Pipeline">
-                    <select value={current.stage} onChange={e => updateField('stage', e.target.value)}
-                      className={`${inputCls} appearance-none cursor-pointer`}>
-                      {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </Field>
-                </div>
+                  if (isDateField) {
+                    return (
+                      <div key={col.mappedTo}>
+                        <Field label={FIELD_CONFIG[col.detectedType]?.label || col.originalName} required={col.required}>
+                          <input type="date" value={fieldValue} onChange={e => updateField(fieldKey, e.target.value)}
+                            className={`${inputCls} [color-scheme:light]`} />
+                        </Field>
+                      </div>
+                    );
+                  }
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <Field label="Primeiro Contato">
-                    <input type="date" value={current.firstContact} onChange={e => updateField('firstContact', e.target.value)}
-                      className={`${inputCls} [color-scheme:light]`} />
-                  </Field>
-                  <Field label="Data de Fechamento">
-                    <input type="date" value={current.closingDate} onChange={e => updateField('closingDate', e.target.value)}
-                      className={`${inputCls} [color-scheme:light]`} />
-                  </Field>
-                </div>
+                  if (isSelectField && col.detectedType === 'stage') {
+                    return (
+                      <div key={col.mappedTo}>
+                        <Field label={FIELD_CONFIG[col.detectedType]?.label || col.originalName} required={col.required}>
+                          <select value={fieldValue} onChange={e => updateField(fieldKey, e.target.value)}
+                            className={`${inputCls} appearance-none cursor-pointer`}>
+                            {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </Field>
+                      </div>
+                    );
+                  }
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <Field label="Lembrete de Follow-up">
-                    <input type="date" value={current.followUpReminder} onChange={e => updateField('followUpReminder', e.target.value)}
-                      className={`${inputCls} [color-scheme:light]`} />
-                  </Field>
-                  <Field label="Valor do Contrato">
-                    <input 
-                      type="text" 
-                      value={current.value} 
-                      onChange={e => updateField('value', formatBRL(e.target.value))}
-                      className={inputCls} 
-                      placeholder="R$ 0,00" 
-                    />
-                  </Field>
-                </div>
+                  if (isSelectField && col.detectedType === 'origin') {
+                    return (
+                      <div key={col.mappedTo}>
+                        <Field label={FIELD_CONFIG[col.detectedType]?.label || col.originalName} required={col.required}>
+                          <select value={fieldValue} onChange={e => updateField(fieldKey, e.target.value)}
+                            className={`${inputCls} appearance-none cursor-pointer`}>
+                            <option value="">Selecione...</option>
+                            {STAGE_ORIGINS.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        </Field>
+                      </div>
+                    );
+                  }
 
-                <Field label="Endereço / Localização">
-                  <input type="text" value={current.address} onChange={e => updateField('address', e.target.value)}
-                    className={inputCls} placeholder="Ex: São Paulo - SP" />
-                </Field>
+                  if (col.detectedType === 'value') {
+                    return (
+                      <div key={col.mappedTo}>
+                        <Field label={FIELD_CONFIG.value?.label || 'Valor'} required={col.required}>
+                          <input type="text" value={fieldValue}
+                            onChange={e => updateField(fieldKey, formatBRL(e.target.value))}
+                            className={inputCls} placeholder="R$ 0,00" />
+                        </Field>
+                      </div>
+                    );
+                  }
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <Field label="Quantidade de Avaliações GMN">
-                    <input type="number" min="0" value={current.gmnReviews} onChange={e => updateField('gmnReviews', e.target.value)}
-                      className={inputCls} placeholder="Ex: 248" />
-                  </Field>
-                  <Field label="Média de Estrelas GMN">
-                    <input type="number" min="0" max="5" step="0.1" value={current.gmnStars} onChange={e => updateField('gmnStars', e.target.value)}
-                      className={inputCls} placeholder="Ex: 4.7" />
-                  </Field>
-                </div>
+                  if (col.detectedType === 'notes') {
+                    return (
+                      <div key={col.mappedTo}>
+                        <Field label={FIELD_CONFIG.notes?.label || 'Observacoes'} required={col.required}>
+                          <textarea value={fieldValue} onChange={e => updateField(fieldKey, e.target.value)}
+                            rows={4} className={`${inputCls} resize-none`}
+                            placeholder="Notas internas, contexto do lead..." />
+                        </Field>
+                      </div>
+                    );
+                  }
 
-                <Field label="Observações">
-                  <textarea value={current.notes} onChange={e => updateField('notes', e.target.value)}
-                    rows={4} className={`${inputCls} resize-none`}
-                    placeholder="Notas internas, contexto do lead..." />
-                </Field>
+                  if (col.detectedType === 'email') {
+                    return (
+                      <div key={col.mappedTo}>
+                        <Field label={FIELD_CONFIG.email?.label || 'Email'} required={col.required}>
+                          <input type="email" value={fieldValue} onChange={e => updateField(fieldKey, e.target.value)}
+                            className={inputCls} placeholder="email@dominio.com" />
+                        </Field>
+                      </div>
+                    );
+                  }
+
+                  if (col.detectedType === 'whatsapp') {
+                    return (
+                      <div key={col.mappedTo}>
+                        <Field label={FIELD_CONFIG.whatsapp?.label || 'WhatsApp'} required={col.required}>
+                          <input type="tel" value={fieldValue} onChange={e => updateField(fieldKey, e.target.value)}
+                            className={inputCls} placeholder="(11) 99999-9999" />
+                        </Field>
+                      </div>
+                    );
+                  }
+
+                  if (col.detectedType === 'gmnReviews') {
+                    return (
+                      <div key={col.mappedTo}>
+                        <Field label={FIELD_CONFIG.gmnReviews?.label || 'Avaliacoes GMN'} required={col.required}>
+                          <input type="number" min="0" value={fieldValue} onChange={e => updateField(fieldKey, e.target.value)}
+                            className={inputCls} placeholder="Ex: 248" />
+                        </Field>
+                      </div>
+                    );
+                  }
+
+                  if (col.detectedType === 'gmnStars') {
+                    return (
+                      <div key={col.mappedTo}>
+                        <Field label={FIELD_CONFIG.gmnStars?.label || 'Estrelas GMN'} required={col.required}>
+                          <input type="number" min="0" max="5" step="0.1" value={fieldValue} onChange={e => updateField(fieldKey, e.target.value)}
+                            className={inputCls} placeholder="Ex: 4.7" />
+                        </Field>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={col.mappedTo}>
+                      <Field label={FIELD_CONFIG[col.detectedType]?.label || col.originalName} required={col.required}>
+                        <input type="text" value={fieldValue} onChange={e => updateField(fieldKey, e.target.value)}
+                          className={inputCls} placeholder={FIELD_CONFIG[col.detectedType]?.placeholder || ''} />
+                      </Field>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="flex flex-col md:flex-row gap-2 md:gap-3 px-4 md:px-7 py-3 md:py-5 border-t border-slate-100 shrink-0 bg-white">
