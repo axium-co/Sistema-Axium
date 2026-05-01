@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
-import { useCRM } from '../../contexts/CRMContext';
+import { useState, useRef, useMemo } from 'react';
+import { useCRM, type Lead } from '../../contexts/CRMContext';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Table, X, ArrowRight, ArrowLeft, Columns, Users, Check, ChevronDown, Settings2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Table, X, ArrowRight, ArrowLeft, ArrowDownLeft, Map } from 'lucide-react';
 
 interface ImportRecord {
   name: string;
@@ -11,20 +11,52 @@ interface ImportRecord {
   status: 'Concluida' | 'Erro' | 'Processando';
 }
 
-type ImportStep = 'upload' | 'columns' | 'leads';
+type ImportStep = 'upload' | 'mapping' | 'preview';
 
-interface ColumnInfo {
-  originalName: string;
-  detectedType: string;
-  selected: boolean;
-  mappedTo: string;
+interface MappedColumn {
+  spreadsheetColumn: string;
+  targetField: string;
+  sampleValue: string;
 }
 
-interface CRMImportarState {
+interface UploadState {
   fileName: string;
-  data: any[];
-  columns: ColumnInfo[];
+  rawData: any[];
+  spreadsheetColumns: string[];
 }
+
+const TARGET_FIELDS: { key: string; label: string; required: boolean; type: string; keywords: string[] }[] = [
+  { key: '', label: '-- Nao mapear --', required: false, type: 'skip', keywords: [] },
+  { key: 'name', label: 'Nome', required: true, type: 'text', keywords: ['nome', 'name', 'cliente', 'full name', 'nome completo', 'razao social'] },
+  { key: 'niche', label: 'Nicho', required: false, type: 'text', keywords: ['niche', 'nicho', 'segmento', 'area', 'categoria', 'setor', 'tipo'] },
+  { key: 'whatsapp', label: 'WhatsApp', required: false, type: 'phone', keywords: ['whatsapp', 'telefone', 'phone', 'celular', 'contato', 'tel', 'zap', 'numero', 'whats'] },
+  { key: 'email', label: 'Email', required: false, type: 'email', keywords: ['email', 'e-mail', 'mail', 'e_mail', 'correo'] },
+  { key: 'instagram', label: 'Instagram', required: false, type: 'text', keywords: ['instagram', 'ig', 'insta', 'social', 'midia social'] },
+  { key: 'stage', label: 'Etapa do Pipeline', required: false, type: 'select', keywords: ['etapa', 'stage', 'status', 'fase', 'pipeline', 'situacao'] },
+  { key: 'firstContact', label: 'Primeiro Contato', required: false, type: 'date', keywords: ['primeiro contato', 'primeiro_contato', 'data entrada', 'data inicio', 'created', 'entrada'] },
+  { key: 'closingDate', label: 'Data de Fechamento', required: false, type: 'date', keywords: ['fechamento', 'closing', 'data fim', 'previsao', 'expected'] },
+  { key: 'followUpReminder', label: 'Follow-up', required: false, type: 'date', keywords: ['follow', 'followup', 'follow-up', 'lembrete', 'proximo contato', 'retorno'] },
+  { key: 'value', label: 'Valor do Contato', required: false, type: 'currency', keywords: ['valor', 'value', 'preco', 'price', 'investimento', 'ticket', 'faturamento', 'contrato'] },
+  { key: 'address', label: 'Endereco', required: false, type: 'text', keywords: ['endereco', 'address', 'cidade', 'city', 'estado', 'uf', 'localizacao', 'pais'] },
+  { key: 'gmnReviews', label: 'Qtd. Avaliacoes GMN', required: false, type: 'number', keywords: ['avaliacoes', 'reviews', 'qtd avaliacoes', 'total avaliacoes', 'numero avaliacoes'] },
+  { key: 'gmnStars', label: 'Media de Estrelas GMN', required: false, type: 'float', keywords: ['estrelas', 'stars', 'media estrelas', 'rating', 'nota'] },
+  { key: 'notes', label: 'Observacoes', required: false, type: 'textarea', keywords: ['observacoes', 'notas', 'notes', 'obs', 'comentarios', 'descricao', 'informacoes'] },
+];
+
+const STAGE_MAP: Record<string, string> = {
+  'novos leads': 'Novos Leads',
+  'novo lead': 'Novos Leads',
+  'novo': 'Novos Leads',
+  'primeiro contato': 'Primeiro Contato',
+  'contato ativo': 'Contato Ativo',
+  'reuniao agendada': 'Reunião Agendada',
+  'follow up': 'Follow Up',
+  'proposta enviada': 'Proposta Enviada',
+  'contrato fechado': 'Contrato Fechado',
+  'perdido': 'Perdido',
+  'ganho': 'Contrato Fechado',
+  'qualificacao': 'Primeiro Contato',
+};
 
 const CRMImportar = () => {
   const { addLead } = useCRM();
@@ -32,90 +64,148 @@ const CRMImportar = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [step, setStep] = useState<ImportStep>('upload');
-  const [importState, setImportState] = useState<CRMImportarState | null>(null);
+  const [uploadState, setUploadState] = useState<UploadState | null>(null);
+  const [mappings, setMappings] = useState<MappedColumn[]>([]);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [isImporting, setIsImporting] = useState(false);
-  const [recentImports, setRecentImports] = useState<ImportRecord[]>([
-    { name: 'clientes_abril.csv', date: '20 Abr 2026', records: '142 registros', status: 'Concluida' },
-    { name: 'leads_web.xlsx', date: '18 Abr 2026', records: '89 registros', status: 'Concluida' },
-    { name: 'parceiros.csv', date: '15 Abr 2026', records: '37 registros', status: 'Concluida' },
-  ]);
+  const [recentImports, setRecentImports] = useState<ImportRecord[]>([]);
 
-  const COLUMN_TYPE_KEYWORDS: Record<string, string[]> = {
-    name: ['nome', 'name', 'cliente', 'full name', 'nome completo', 'razao social'],
-    email: ['email', 'e-mail', 'mail', 'e_mail'],
-    whatsapp: ['whatsapp', 'telefone', 'phone', 'celular', 'contato', 'tel', 'zap', 'numero'],
-    niche: ['niche', 'nicho', 'segmento', 'area', 'categoria', 'setor'],
-    value: ['valor', 'value', 'preco', 'price', 'investimento', 'ticket', 'faturamento'],
-    address: ['endereco', 'address', 'cidade', 'city', 'estado', 'uf', 'cep', 'pais'],
-    instagram: ['instagram', 'ig', 'insta', 'social', 'midia social'],
-    stage: ['etapa', 'stage', 'status', 'fase', 'pipeline'],
-    origin: ['origem', 'origin', 'fonte', 'source', 'canal'],
-    notes: ['notas', 'notes', 'observacoes', 'obs', 'comentarios', 'descricao'],
-  };
-
-  const detectColumnType = (colName: string): string => {
+  const detectMapping = (colName: string): string => {
     const lower = colName.toLowerCase().trim();
-    for (const [type, keywords] of Object.entries(COLUMN_TYPE_KEYWORDS)) {
-      if (keywords.some(kw => lower.includes(kw))) {
-        return type;
+    for (const field of TARGET_FIELDS) {
+      if (field.key === '') continue;
+      if (field.keywords.some(kw => lower.includes(kw))) {
+        return field.key;
       }
     }
-    return 'unknown';
+    return '';
   };
 
-  const mapRecordToLead = (data: any, columns: ColumnInfo[]) => {
-    const selectedCols = columns.filter(c => c.selected);
-    const getValue = (mappedType: string) => {
-      const col = selectedCols.find(c => c.mappedTo === mappedType);
+  const parseDateValue = (val: string): string => {
+    if (!val || !val.trim()) return '';
+    const trimmed = val.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.split('T')[0];
+    const brMatch = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if (brMatch) {
+      const [, day, month, year] = brMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    const usMatch = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (usMatch) {
+      const [, a, b, c] = usMatch;
+      const year = c.length === 2 ? `20${c}` : c;
+      return `${year}-${b.padStart(2, '0')}-${a.padStart(2, '0')}`;
+    }
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().split('T')[0];
+    }
+    return '';
+  };
+
+  const parseCurrencyValue = (val: string): string => {
+    if (!val || !val.trim()) return '';
+    let cleaned = val.trim().replace(/[R$\s]/g, '');
+    if (cleaned.includes('.') && cleaned.includes(',')) {
+      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+      } else {
+        cleaned = cleaned.replace(/,/g, '');
+      }
+    } else if (cleaned.includes(',')) {
+      cleaned = cleaned.replace(',', '.');
+    }
+    const num = parseFloat(cleaned);
+    if (isNaN(num)) return val.trim();
+    return `R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const parseNumberValue = (val: string): string => {
+    if (!val || !val.trim()) return '';
+    const cleaned = val.trim().replace(/[^\d.,]/g, '').replace(',', '.');
+    const num = parseFloat(cleaned);
+    if (isNaN(num)) return '';
+    return String(Math.round(num));
+  };
+
+  const parseFloatValue = (val: string): string => {
+    if (!val || !val.trim()) return '';
+    const cleaned = val.trim().replace(/[^\d.,]/g, '').replace(',', '.');
+    const num = parseFloat(cleaned);
+    if (isNaN(num)) return '';
+    return num.toFixed(1);
+  };
+
+  const mapRowToLead = (row: any, cols: MappedColumn[]): Lead | null => {
+    const getValue = (targetField: string): string => {
+      const col = cols.find(c => c.targetField === targetField);
       if (!col) return '';
-      return String(data[col.originalName] || '');
+      const raw = String(row[col.spreadsheetColumn] ?? '').trim();
+      if (!raw) return '';
+
+      switch (targetField) {
+        case 'firstContact':
+        case 'closingDate':
+        case 'followUpReminder':
+          return parseDateValue(raw);
+        case 'value':
+          return parseCurrencyValue(raw);
+        case 'gmnReviews':
+          return parseNumberValue(raw);
+        case 'gmnStars':
+          return parseFloatValue(raw);
+        case 'stage':
+          return STAGE_MAP[raw.toLowerCase()] || raw;
+        default:
+          return raw;
+      }
     };
 
-    const getAnyValue = (keys: string[]) => {
-      for (const key of keys) {
-        const col = selectedCols.find(c => c.mappedTo === key);
-        if (col && data[col.originalName]) return String(data[col.originalName]);
-      }
-      const foundKey = Object.keys(data).find(k =>
-        keys.some(key => k.toLowerCase().includes(key.toLowerCase()))
-      );
-      return foundKey ? String(data[foundKey]) : '';
-    };
+    const name = getValue('name');
+    if (!name) return null;
 
     return {
-      name: getValue('name') || getAnyValue(['nome', 'name', 'cliente', 'full name']),
-      email: getValue('email') || getAnyValue(['email', 'e-mail', 'mail']),
-      whatsapp: getValue('whatsapp') || getAnyValue(['whatsapp', 'telefone', 'phone', 'celular']),
-      niche: getValue('niche') || getAnyValue(['niche', 'nicho', 'segmento']),
-      value: getValue('value') || getAnyValue(['valor', 'value', 'preco']),
+      id: '',
+      name,
+      niche: getValue('niche'),
+      whatsapp: getValue('whatsapp'),
+      email: getValue('email'),
+      instagram: getValue('instagram'),
       stage: getValue('stage') || 'Novos Leads',
-      origin: getValue('origin') || getAnyValue(['origem', 'source', 'canal']),
-      firstContact: new Date().toISOString().split('T')[0],
-      closingDate: '',
-      followUpReminder: '',
-      address: getValue('address') || getAnyValue(['endereco', 'address', 'cidade']),
-      gmnReviews: '0',
-      gmnStars: '0',
+      firstContact: getValue('firstContact'),
+      closingDate: getValue('closingDate'),
+      followUpReminder: getValue('followUpReminder'),
+      address: getValue('address'),
+      gmnReviews: getValue('gmnReviews') || '0',
+      gmnStars: getValue('gmnStars') || '0',
       notes: getValue('notes') || 'Importado via planilha.',
-      instagram: getValue('instagram') || getAnyValue(['instagram', 'ig', 'social']),
+      value: getValue('value'),
     };
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-
     if (!file) {
       setNotification({ type: 'error', message: 'Nenhum arquivo selecionado.' });
       return;
     }
 
-    const fileName = file.name;
-
     setIsUploading(true);
     setNotification(null);
+    const fileName = file.name;
 
-    const reader = new FileReader();
+    const processColumns = (rawColumns: string[], data: any[]) => {
+      const mapped: MappedColumn[] = rawColumns.map(col => ({
+        spreadsheetColumn: col,
+        targetField: detectMapping(col),
+        sampleValue: data.length > 0 ? String(data[0][col] ?? '') : '',
+      }));
+      setUploadState({ fileName, rawData: data, spreadsheetColumns: rawColumns });
+      setMappings(mapped);
+      setSelectedRows(new Set(data.map((_, i) => i)));
+      setStep('mapping');
+      setIsUploading(false);
+    };
 
     if (fileName.endsWith('.csv')) {
       Papa.parse(file, {
@@ -124,50 +214,32 @@ const CRMImportar = () => {
         complete: (results) => {
           try {
             const rawColumns = results.data.length > 0 ? Object.keys(results.data[0]) : [];
-            const columns: ColumnInfo[] = rawColumns.map(name => ({
-              originalName: name,
-              detectedType: detectColumnType(name),
-              selected: true,
-              mappedTo: detectColumnType(name),
-            }));
-            const allIndices = new Set(results.data.map((_, i) => i));
-            setImportState({ fileName, data: results.data, columns });
-            setSelectedRows(allIndices);
-            setStep('columns');
+            processColumns(rawColumns, results.data);
           } catch {
-            setNotification({ type: 'error', message: 'Erro ao processar CSV: arquivo pode estar corrompido.' });
+            setNotification({ type: 'error', message: 'Erro ao processar CSV.' });
+            setIsUploading(false);
           }
-          setIsUploading(false);
         },
-        error: (err) => {
-          setNotification({ type: 'error', message: 'Erro ao processar CSV: ' + err.message });
+        error: () => {
+          setNotification({ type: 'error', message: 'Erro ao processar CSV.' });
           setIsUploading(false);
         }
       });
     } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      const reader = new FileReader();
       reader.onload = (evt) => {
         try {
           const bstr = evt.target?.result;
           if (!bstr) throw new Error('Arquivo nao pode ser lido.');
           const wb = XLSX.read(bstr, { type: 'binary' });
-          const wsname = wb.SheetNames[0];
-          const ws = wb.Sheets[wsname];
+          const ws = wb.Sheets[wb.SheetNames[0]];
           const data = XLSX.utils.sheet_to_json(ws);
           const rawColumns = data.length > 0 ? Object.keys(data[0]) : [];
-          const columns: ColumnInfo[] = rawColumns.map(name => ({
-            originalName: name,
-            detectedType: detectColumnType(name),
-            selected: true,
-            mappedTo: detectColumnType(name),
-          }));
-          const allIndices = new Set(data.map((_, i) => i));
-          setImportState({ fileName, data, columns });
-          setSelectedRows(allIndices);
-          setStep('columns');
+          processColumns(rawColumns, data);
         } catch {
-          setNotification({ type: 'error', message: 'Erro ao processar Excel: arquivo pode estar corrompido.' });
+          setNotification({ type: 'error', message: 'Erro ao processar Excel.' });
+          setIsUploading(false);
         }
-        setIsUploading(false);
       };
       reader.readAsBinaryString(file);
     } else {
@@ -178,95 +250,75 @@ const CRMImportar = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const toggleColumn = (index: number) => {
-    if (!importState) return;
-    const newCols = [...importState.columns];
-    newCols[index].selected = !newCols[index].selected;
-    setImportState({ ...importState, columns: newCols });
+  const updateMapping = (index: number, targetField: string) => {
+    setMappings(prev => prev.map((m, i) => i === index ? { ...m, targetField } : m));
   };
 
-  const selectAllColumns = () => {
-    if (!importState) return;
-    setImportState({
-      ...importState,
-      columns: importState.columns.map(c => ({ ...c, selected: true })),
-    });
+  const autoMapAll = () => {
+    setMappings(prev => prev.map(m => ({
+      ...m,
+      targetField: detectMapping(m.spreadsheetColumn),
+    })));
   };
 
-  const deselectAllColumns = () => {
-    if (!importState) return;
-    setImportState({
-      ...importState,
-      columns: importState.columns.map(c => ({ ...c, selected: false })),
-    });
+  const clearMappings = () => {
+    setMappings(prev => prev.map(m => ({ ...m, targetField: '' })));
   };
 
-  const updateColumnMapping = (index: number, mappedTo: string) => {
-    if (!importState) return;
-    const newCols = [...importState.columns];
-    newCols[index].mappedTo = mappedTo;
-    setImportState({ ...importState, columns: newCols });
-  };
+  const mappedFieldsSet = useMemo(() => {
+    const used = new Set<string>();
+    mappings.forEach(m => { if (m.targetField) used.add(m.targetField); });
+    return used;
+  }, [mappings]);
 
-  const proceedToLeads = () => {
-    if (!importState) return;
-    const hasSelected = importState.columns.some(c => c.selected);
-    if (!hasSelected) {
-      setNotification({ type: 'error', message: 'Selecione pelo menos uma coluna para continuar.' });
+  const proceedToPreview = () => {
+    const nameMapped = mappings.some(m => m.targetField === 'name');
+    if (!nameMapped) {
+      setNotification({ type: 'error', message: 'O campo "Nome" e obrigatorio. Mapeie pelo menos uma coluna da planilha para "Nome".' });
       return;
     }
-    setStep('leads');
+    setStep('preview');
+    setNotification(null);
   };
 
   const toggleRow = (index: number) => {
-    const newSelected = new Set(selectedRows);
-    if (newSelected.has(index)) {
-      newSelected.delete(index);
-    } else {
-      newSelected.add(index);
-    }
-    setSelectedRows(newSelected);
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   };
 
-  const selectAllRows = () => {
-    const allIndices = new Set(importState?.data.map((_, i) => i) ?? []);
-    setSelectedRows(allIndices);
-  };
-
-  const deselectAllRows = () => {
-    setSelectedRows(new Set());
-  };
+  const selectAllRows = () => setSelectedRows(new Set(uploadState?.rawData.map((_, i) => i) ?? []));
+  const deselectAllRows = () => setSelectedRows(new Set());
 
   const confirmImport = () => {
-    if (!importState) return;
-
+    if (!uploadState) return;
     setIsImporting(true);
-    let count = 0;
 
+    let count = 0;
     const sortedRows = Array.from(selectedRows).sort((a, b) => a - b);
     sortedRows.forEach(rowIndex => {
-      const row = importState.data[rowIndex];
+      const row = uploadState.rawData[rowIndex];
       if (!row) return;
-      const lead = mapRecordToLead(row, importState.columns);
-      if (lead.name) {
+      const lead = mapRowToLead(row, mappings);
+      if (lead) {
         addLead(lead);
         count++;
       }
     });
 
     const newImport: ImportRecord = {
-      name: importState.fileName,
+      name: uploadState.fileName,
       date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
       records: `${count} registros`,
       status: 'Concluida'
     };
-
     setRecentImports(prev => [newImport, ...prev]);
-    setNotification({
-      type: 'success',
-      message: `Sucesso! ${count} leads importados com ${importState.columns.filter(c => c.selected).length} colunas selecionadas.`
-    });
-    setImportState(null);
+    setNotification({ type: 'success', message: `Sucesso! ${count} leads importados.` });
+    setUploadState(null);
+    setMappings([]);
     setSelectedRows(new Set());
     setStep('upload');
     setIsImporting(false);
@@ -274,7 +326,8 @@ const CRMImportar = () => {
   };
 
   const cancelImport = () => {
-    setImportState(null);
+    setUploadState(null);
+    setMappings([]);
     setSelectedRows(new Set());
     setStep('upload');
     setNotification(null);
@@ -282,49 +335,37 @@ const CRMImportar = () => {
   };
 
   const goBack = () => {
-    if (step === 'leads') setStep('columns');
-    else if (step === 'columns') cancelImport();
+    if (step === 'preview') setStep('mapping');
+    else if (step === 'mapping') cancelImport();
   };
 
-  const getTypeLabel = (type: string): string => {
-    const labels: Record<string, string> = {
-      name: 'Nome',
-      email: 'Email',
-      whatsapp: 'Telefone',
-      niche: 'Nicho',
-      value: 'Valor',
-      address: 'Endereco',
-      instagram: 'Instagram',
-      stage: 'Etapa',
-      origin: 'Origem',
-      notes: 'Notas',
-    };
-    return labels[type] || 'Outro';
-  };
+  const previewData = useMemo(() => {
+    if (!uploadState || !mappings.length) return [];
+    return uploadState.rawData.slice(0, 5).map(row => {
+      const lead = mapRowToLead(row, mappings);
+      return lead ? {
+        nome: lead.name,
+        nicho: lead.niche,
+        whatsapp: lead.whatsapp,
+        email: lead.email,
+        etapa: lead.stage,
+        valor: lead.value,
+      } : null;
+    }).filter(Boolean);
+  }, [uploadState, mappings]);
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'name': return <Users size={12} />;
-      case 'email': return '@';
-      case 'whatsapp': return '';
-      case 'value': return 'R$';
-      case 'address': return '';
-      case 'instagram': return 'IG';
-      default: return '';
-    }
-  };
+  const mappedCount = mappings.filter(m => m.targetField !== '').length;
+  const unmappedCount = mappings.length - mappedCount;
 
   return (
     <div className="min-h-screen p-2 md:p-8">
-      <div className="mb-4 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-start gap-3 md:gap-0">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Importar</h1>
-          <p className="text-neutral-500 text-xs md:text-sm">Importe leads e contatos para o CRM.</p>
-        </div>
+      <div className="mb-4 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Importar</h1>
+        <p className="text-neutral-500 text-xs md:text-sm">Importe leads e contatos para o CRM com mapeamento de colunas.</p>
       </div>
 
       {notification && (
-        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 ${
+        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
           notification.type === 'success' ? 'bg-emerald-50 border border-emerald-100 text-emerald-800' : 'bg-red-50 border border-red-100 text-red-800'
         }`}>
           {notification.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
@@ -334,138 +375,130 @@ const CRMImportar = () => {
 
       {step !== 'upload' && (
         <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={goBack}
-            className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg text-sm font-bold text-neutral-600 hover:bg-neutral-50 transition-colors"
-          >
+          <button onClick={goBack} className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg text-sm font-bold text-neutral-600 hover:bg-neutral-50 transition-colors">
             <ArrowLeft size={16} /> Voltar
           </button>
           <div className="flex items-center gap-2 text-sm">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
-              step === 'upload' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-600'
-            }`}>
-              <Upload size={12} /> 1. Upload
-            </div>
+            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${step === 'upload' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>1. Upload</span>
             <span className="text-neutral-300">→</span>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
-              step === 'columns' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-600'
-            }`}>
-              <Columns size={12} /> 2. Colunas
-            </div>
+            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${step === 'mapping' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>2. Mapeamento</span>
             <span className="text-neutral-300">→</span>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
-              step === 'leads' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-600'
-            }`}>
-              <Users size={12} /> 3. Leads
-            </div>
+            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${step === 'preview' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>3. Leads</span>
           </div>
         </div>
       )}
 
-      {step === 'columns' && importState && (
+      {step === 'mapping' && uploadState && (
         <div className="max-w-5xl">
           <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm mb-6">
             <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <Columns size={16} className="text-blue-600" />
+                  <Map size={16} className="text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-black">Selecionar Colunas</h3>
+                  <h3 className="text-sm font-black text-black">Mapeamento de Colunas</h3>
                   <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">
-                    {importState.fileName} · {importState.columns.length} colunas detectadas
+                    {uploadState.fileName} · {uploadState.spreadsheetColumns.length} colunas · {mappedCount} mapeadas
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={selectAllColumns} className="px-3 py-1.5 text-xs font-bold text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
-                  Selecionar Todas
+                <button onClick={autoMapAll} className="px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                  Auto-detectar
                 </button>
-                <button onClick={deselectAllColumns} className="px-3 py-1.5 text-xs font-bold text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
-                  Desselecionar Todas
+                <button onClick={clearMappings} className="px-3 py-1.5 text-xs font-bold text-neutral-500 hover:bg-neutral-100 rounded-lg transition-colors">
+                  Limpar
                 </button>
               </div>
             </div>
 
-            <div className="divide-y divide-neutral-100">
-              {importState.columns.map((col, index) => (
-                <div
-                  key={index}
-                  className={`px-6 py-4 flex items-center gap-4 transition-colors ${
-                    col.selected ? 'bg-white' : 'bg-neutral-50 opacity-60'
-                  } hover:bg-neutral-50`}
-                >
-                  <button
-                    onClick={() => toggleColumn(index)}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0 ${
-                      col.selected
-                        ? 'bg-black border-black text-white'
-                        : 'border-neutral-300 hover:border-neutral-400'
-                    }`}
-                  >
-                    {col.selected && <Check size={12} />}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-black truncate">{col.originalName}</p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                      col.detectedType !== 'unknown'
-                        ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                        : 'bg-neutral-100 text-neutral-500 border border-neutral-200'
-                    }`}>
-                      {getTypeIcon(col.detectedType)}
-                      {getTypeLabel(col.detectedType)}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <Settings2 size={12} className="text-neutral-400" />
-                      <select
-                        value={col.mappedTo}
-                        onChange={(e) => updateColumnMapping(index, e.target.value)}
-                        className="text-xs border border-neutral-200 rounded-lg px-2 py-1 outline-none focus:border-black bg-white"
-                      >
-                        <option value="unknown">Nao mapear</option>
-                        <option value="name">Nome</option>
-                        <option value="email">Email</option>
-                        <option value="whatsapp">Telefone</option>
-                        <option value="niche">Nicho</option>
-                        <option value="value">Valor</option>
-                        <option value="address">Endereco</option>
-                        <option value="instagram">Instagram</option>
-                        <option value="stage">Etapa</option>
-                        <option value="origin">Origem</option>
-                        <option value="notes">Notas</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-neutral-100 bg-neutral-50">
+                    <th className="text-left px-6 py-3 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                      Coluna da Planilha
+                    </th>
+                    <th className="text-center px-4 py-3">
+                      <ArrowDownLeft size={14} className="text-neutral-300 mx-auto" />
+                    </th>
+                    <th className="text-left px-6 py-3 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                      Campo no Sistema
+                    </th>
+                    <th className="text-left px-4 py-3 text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                      Exemplo
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {mappings.map((mapping, index) => (
+                    <tr key={index} className={`hover:bg-neutral-50 transition-colors ${!mapping.targetField ? 'opacity-50' : ''}`}>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${mapping.targetField ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
+                          <span className="text-sm font-bold text-black">{mapping.spreadsheetColumn}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <ArrowDownLeft size={14} className="text-neutral-300" />
+                      </td>
+                      <td className="px-6 py-3">
+                        <select
+                          value={mapping.targetField}
+                          onChange={(e) => updateMapping(index, e.target.value)}
+                          className="text-sm border border-neutral-200 rounded-lg px-3 py-2 outline-none focus:border-black focus:ring-2 focus:ring-black/5 bg-white min-w-[220px]"
+                        >
+                          {TARGET_FIELDS.map(field => (
+                            <option key={field.key || 'empty'} value={field.key}>
+                              {field.label}{field.required ? ' *' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-neutral-500 font-medium truncate block max-w-[150px]">
+                          {mapping.sampleValue || '-'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+
+            {unmappedCount > 0 && (
+              <div className="px-6 py-3 bg-amber-50 border-t border-amber-100">
+                <p className="text-xs font-bold text-amber-700">
+                  {unmappedCount} coluna{unmappedCount > 1 ? 's' : ''} nao mapeada{unmappedCount > 1 ? 's' : ''} (serao ignoradas na importacao)
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-4">
             <button onClick={cancelImport} className="flex-1 py-4 rounded-xl font-black text-sm uppercase tracking-widest border border-neutral-200 text-neutral-500 hover:bg-neutral-50 transition-colors">
               Cancelar
             </button>
-            <button onClick={proceedToLeads} className="flex-[2] py-4 rounded-xl font-black text-sm uppercase tracking-widest bg-black text-white hover:brightness-90 transition-all flex items-center justify-center gap-2">
-              Proximo: Selecionar Leads <ArrowRight size={18} />
+            <button onClick={proceedToPreview} className="flex-[2] py-4 rounded-xl font-black text-sm uppercase tracking-widest bg-black text-white hover:brightness-90 transition-all flex items-center justify-center gap-2">
+              Proximo: Preview dos Leads <ArrowRight size={18} />
             </button>
           </div>
         </div>
       )}
 
-      {step === 'leads' && importState && (
+      {step === 'preview' && uploadState && (
         <div className="max-w-6xl">
           <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm mb-6">
             <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                  <Users size={16} className="text-emerald-600" />
+                  <Table size={16} className="text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-black">Selecionar Leads</h3>
+                  <h3 className="text-sm font-black text-black">Preview dos Leads</h3>
                   <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">
-                    {selectedRows.size} de {importState.data.length} leads selecionados · {importState.columns.filter(c => c.selected).length} colunas
+                    {selectedRows.size} de {uploadState.rawData.length} leads selecionados · {mappedCount} campos mapeados
                   </p>
                 </div>
               </div>
@@ -474,7 +507,7 @@ const CRMImportar = () => {
                   Selecionar Todos
                 </button>
                 <button onClick={deselectAllRows} className="px-3 py-1.5 text-xs font-bold text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
-                  Desselecionar Todos
+                  Desselecionar
                 </button>
               </div>
             </div>
@@ -483,60 +516,66 @@ const CRMImportar = () => {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-neutral-100 bg-neutral-50">
-                    <th className="w-10 px-3 py-3">
-                      <button
-                        onClick={() => selectedRows.size === importState.data.length ? deselectAllRows() : selectAllRows()}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                          selectedRows.size === importState.data.length
-                            ? 'bg-black border-black text-white'
-                            : 'border-neutral-300 hover:border-neutral-400'
-                        }`}
-                      >
-                        {selectedRows.size === importState.data.length && <Check size={12} />}
-                      </button>
-                    </th>
-                    {importState.columns.filter(c => c.selected).map((col, i) => (
-                      <th key={i} className="text-left px-3 py-3 font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap">
-                        {col.originalName}
-                      </th>
-                    ))}
+                    <th className="w-10 px-3 py-3"></th>
+                    <th className="text-left px-3 py-3 font-black text-neutral-400 uppercase tracking-widest">Nome</th>
+                    <th className="text-left px-3 py-3 font-black text-neutral-400 uppercase tracking-widest">Nicho</th>
+                    <th className="text-left px-3 py-3 font-black text-neutral-400 uppercase tracking-widest">WhatsApp</th>
+                    <th className="text-left px-3 py-3 font-black text-neutral-400 uppercase tracking-widest">Email</th>
+                    <th className="text-left px-3 py-3 font-black text-neutral-400 uppercase tracking-widest">Etapa</th>
+                    <th className="text-left px-3 py-3 font-black text-neutral-400 uppercase tracking-widest">Valor</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {importState.data.map((row, rowIndex) => (
-                    <tr
-                      key={rowIndex}
-                      className={`border-b border-neutral-50 transition-colors cursor-pointer ${
-                        selectedRows.has(rowIndex) ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-neutral-50'
-                      }`}
-                      onClick={() => toggleRow(rowIndex)}
-                    >
-                      <td className="px-3 py-2.5">
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                          selectedRows.has(rowIndex)
-                            ? 'bg-black border-black text-white'
-                            : 'border-neutral-300'
-                        }`}>
-                          {selectedRows.has(rowIndex) && <Check size={12} />}
-                        </div>
-                      </td>
-                      {importState.columns.filter(c => c.selected).map((col, colIndex) => (
-                        <td key={colIndex} className="px-3 py-2.5 font-medium text-black whitespace-nowrap">
-                          {row[col.originalName] || '-'}
+                  {uploadState.rawData.slice(0, 50).map((row, rowIndex) => {
+                    const lead = mapRowToLead(row, mappings);
+                    return (
+                      <tr
+                        key={rowIndex}
+                        className={`border-b border-neutral-50 transition-colors cursor-pointer ${
+                          selectedRows.has(rowIndex) ? 'bg-emerald-50/50' : 'hover:bg-neutral-50'
+                        }`}
+                        onClick={() => toggleRow(rowIndex)}
+                      >
+                        <td className="px-3 py-2.5">
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                            selectedRows.has(rowIndex) ? 'bg-black border-black text-white' : 'border-neutral-300'
+                          }`}>
+                            {selectedRows.has(rowIndex) && <CheckCircle2 size={10} />}
+                          </div>
                         </td>
-                      ))}
-                    </tr>
-                  ))}
+                        <td className="px-3 py-2.5 font-bold text-black">{lead?.name || '-'}</td>
+                        <td className="px-3 py-2.5 text-neutral-600">{lead?.niche || '-'}</td>
+                        <td className="px-3 py-2.5 text-neutral-600">{lead?.whatsapp || '-'}</td>
+                        <td className="px-3 py-2.5 text-neutral-600">{lead?.email || '-'}</td>
+                        <td className="px-3 py-2.5">
+                          <span className="px-2 py-0.5 bg-neutral-100 rounded text-[10px] font-bold">{lead?.stage || '-'}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-neutral-600 font-medium">{lead?.value || '-'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
+
+            {uploadState.rawData.length > 50 && (
+              <div className="px-6 py-3 bg-neutral-50 border-t border-neutral-100 text-center">
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                  Mostrando 50 de {uploadState.rawData.length} leads
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-4">
             <button onClick={goBack} className="flex-1 py-4 rounded-xl font-black text-sm uppercase tracking-widest border border-neutral-200 text-neutral-500 hover:bg-neutral-50 transition-colors">
-              Voltar as Colunas
+              Voltar ao Mapeamento
             </button>
-            <button onClick={confirmImport} disabled={isImporting || selectedRows.size === 0} className="flex-[2] py-4 rounded-xl font-black text-sm uppercase tracking-widest bg-black text-white hover:brightness-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button
+              onClick={confirmImport}
+              disabled={isImporting || selectedRows.size === 0}
+              className="flex-[2] py-4 rounded-xl font-black text-sm uppercase tracking-widest bg-black text-white hover:brightness-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {isImporting ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
               Importar {selectedRows.size} Leads
             </button>
@@ -546,13 +585,7 @@ const CRMImportar = () => {
 
       {step === 'upload' && (
         <div className="max-w-2xl space-y-8">
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept=".csv,.xlsx,.xls"
-            onChange={handleFileUpload}
-          />
+          <input type="file" ref={fileInputRef} className="hidden" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} />
 
           <div
             onClick={() => !isUploading && fileInputRef.current?.click()}
@@ -564,7 +597,7 @@ const CRMImportar = () => {
               <div className="flex flex-col items-center">
                 <Loader2 className="w-12 h-12 text-black animate-spin mb-4" />
                 <h3 className="text-black font-black text-lg mb-1">Processando arquivo...</h3>
-                <p className="text-neutral-400 text-sm font-bold uppercase tracking-widest">Aguarde enquanto importamos seus dados</p>
+                <p className="text-neutral-400 text-sm font-bold uppercase tracking-widest">Aguarde</p>
               </div>
             ) : (
               <>
@@ -581,32 +614,32 @@ const CRMImportar = () => {
             )}
           </div>
 
-          <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-8 py-5 border-b border-neutral-100 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-neutral-50 flex items-center justify-center">
-                <FileText size={16} className="text-black" />
-              </div>
-              <h3 className="text-[11px] font-black text-black uppercase tracking-widest">Importacoes Recentes</h3>
-            </div>
-            <div className="divide-y divide-neutral-100">
-              {recentImports.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between px-8 py-5 hover:bg-neutral-50 transition-colors group">
-                  <div>
-                    <p className="text-sm font-black text-black group-hover:underline cursor-pointer">{item.name}</p>
-                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-1">
-                      {item.date} · <span className="text-neutral-500">{item.records}</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      item.status === 'Concluida' ? 'bg-emerald-500' : 'bg-neutral-300'
-                    }`} />
-                    <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">{item.status}</span>
-                  </div>
+          {recentImports.length > 0 && (
+            <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="px-8 py-5 border-b border-neutral-100 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-neutral-50 flex items-center justify-center">
+                  <FileText size={16} className="text-black" />
                 </div>
-              ))}
+                <h3 className="text-[11px] font-black text-black uppercase tracking-widest">Importacoes Recentes</h3>
+              </div>
+              <div className="divide-y divide-neutral-100">
+                {recentImports.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between px-8 py-5 hover:bg-neutral-50 transition-colors">
+                    <div>
+                      <p className="text-sm font-black text-black">{item.name}</p>
+                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-1">
+                        {item.date} · <span className="text-neutral-500">{item.records}</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${item.status === 'Concluida' ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
+                      <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">{item.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
