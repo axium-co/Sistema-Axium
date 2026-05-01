@@ -433,7 +433,7 @@ const CRMImportar = () => {
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {mappings.map((mapping, index) => (
-                    <tr key={index} className={`hover:bg-neutral-50 transition-colors ${!mapping.targetField ? 'opacity-50' : ''}`}>
+                    <tr key={index} className={`hover:bg-neutral-50 transition-colors ${!mapping.targetField ? 'bg-neutral-50' : ''}`}>
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${mapping.targetField ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
@@ -447,7 +447,7 @@ const CRMImportar = () => {
                         <select
                           value={mapping.targetField}
                           onChange={(e) => updateMapping(index, e.target.value)}
-                          className="text-sm border border-neutral-200 rounded-lg px-3 py-2 outline-none focus:border-black focus:ring-2 focus:ring-black/5 bg-white min-w-[220px]"
+                          className="text-sm font-medium text-neutral-900 border-2 border-neutral-300 rounded-lg px-3 py-2.5 outline-none focus:border-black focus:ring-2 focus:ring-black/10 bg-white hover:bg-neutral-50 hover:border-neutral-400 cursor-pointer min-w-[220px] transition-colors"
                         >
                           {TARGET_FIELDS.map(field => (
                             <option key={field.key || 'empty'} value={field.key}>
