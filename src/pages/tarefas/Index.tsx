@@ -139,6 +139,7 @@ const Board = ({
   };
 
   const handleCellChange = (rowId: string, colId: string, value: unknown) => {
+    console.log('Salvando:', { rowId, colId, value });
     const updated = board.rows.map(r => 
       r.id === rowId ? { ...r, values: { ...r.values, [colId]: value }, lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário') } : r
     );
@@ -203,11 +204,13 @@ const Board = ({
         const currentTags: string[] = Array.isArray(value) ? value : (value ? String(value).split(',').map((t: string) => t.trim()) : []);
 
         const removeTag = (tagToRemove: string) => {
+          console.log('Removendo tag:', tagToRemove);
           const newTags = currentTags.filter(t => t !== tagToRemove);
           handleCellChange(row.id, col.id, newTags);
         };
 
         const toggleTag = (tagLabel: string) => {
+          console.log('Toggle tag:', tagLabel);
           const newTags = currentTags.includes(tagLabel)
             ? currentTags.filter(t => t !== tagLabel)
             : [...currentTags, tagLabel];
@@ -216,6 +219,7 @@ const Board = ({
 
         const createAndAddTag = () => {
           if (!newTagName.trim()) return;
+          console.log('Criando nova tag:', newTagName);
           const newOption = { id: generateUUID(), label: newTagName.trim(), color: newTagColor };
           const updatedOptions = [...options, newOption];
           const updatedColumns = board.columns.map(c =>
@@ -249,6 +253,7 @@ const Board = ({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      console.log('Clicou no X para remover:', tag);
                       removeTag(tag);
                     }}
                     className="ml-0.5 hover:text-red-200 transition-colors cursor-pointer"
@@ -266,6 +271,7 @@ const Board = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   const rect = e.currentTarget.getBoundingClientRect();
+                  console.log('Abrindo dropdown de tags');
                   setTagPopover(prev => ({
                     open: !prev.open,
                     rowId: row.id,
@@ -300,6 +306,7 @@ const Board = ({
                         key={opt.id}
                         type="button"
                         onClick={() => {
+                          console.log('Clicou na tag do dropdown:', opt.label);
                           toggleTag(opt.label);
                         }}
                         className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 transition-colors ${
@@ -317,7 +324,10 @@ const Board = ({
                     {!showCreateTag ? (
                       <button
                         type="button"
-                        onClick={() => setShowCreateTag(true)}
+                        onClick={() => {
+                          console.log('Clicou em criar nova tag');
+                          setShowCreateTag(true);
+                        }}
                         className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-neutral-100 text-neutral-600 flex items-center gap-2 transition-colors"
                       >
                         <Plus size={12} /> Criar Nova Tag
@@ -356,148 +366,6 @@ const Board = ({
                           </button>
                           <button
                             type="button"
-                            onClick={createAndAddTag}
-                            disabled={!newTagName.trim()}
-                            className="flex-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-neutral-800 transition-colors disabled:opacity-50"
-                          >
-                            Criar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      }
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setTagPopover(prev => ({
-                    open: true,
-                    rowId: row.id,
-                    colId: col.id,
-                    tagIndex: null,
-                    position: { top: rect.bottom, left: rect.left }
-                  }));
-                }}
-                className="min-h-[24px] px-2 text-xs border-none outline-none cursor-pointer bg-neutral-100 rounded text-neutral-600 hover:bg-neutral-200 transition-colors"
-              >
-                + Tag
-              </button>
-
-              {tagPopover.open && tagPopover.rowId === row.id && tagPopover.colId === col.id && (
-                <div
-                  className="fixed z-50 bg-white border border-neutral-200 rounded-lg shadow-xl p-2 min-w-[200px] tag-popover"
-                  style={{ top: tagPopover.position.top, left: tagPopover.position.left }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {tagPopover.tagIndex !== null && tagPopover.tagIndex >= 0 && (
-                    <>
-                      <div className="text-xs font-bold text-neutral-500 px-2 py-1 border-b border-neutral-100 mb-1">
-                        Opções para "{currentTags[tagPopover.tagIndex]}"
-                      </div>
-                      {options
-                        .filter(opt => opt.label !== currentTags[tagPopover.tagIndex])
-                        .map(opt => (
-                          <button
-                            key={opt.id}
-                            onClick={() => {
-                              toggleTag(currentTags[tagPopover.tagIndex!]);
-                              toggleTag(opt.label);
-                              setTagPopover({ open: false, rowId: null, colId: null, tagIndex: null, position: { top: 0, left: 0 } });
-                            }}
-                            className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-neutral-100 flex items-center gap-2 transition-colors"
-                          >
-                            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
-                            <span className="flex-1">Trocar por "{opt.label}"</span>
-                          </button>
-                        ))}
-                      <button
-                        onClick={() => {
-                          removeTag(currentTags[tagPopover.tagIndex!]);
-                          setTagPopover({ open: false, rowId: null, colId: null, tagIndex: null, position: { top: 0, left: 0 } });
-                        }}
-                        className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-red-50 text-red-600 flex items-center gap-2 transition-colors border-t border-neutral-100 mt-1 pt-1"
-                      >
-                        <X size={12} /> Excluir esta Tag
-                      </button>
-                    </>
-                  )}
-
-                  {(tagPopover.tagIndex === null || tagPopover.tagIndex < 0) && (
-                    <>
-                      <div className="text-xs font-bold text-neutral-500 px-2 py-1 border-b border-neutral-100 mb-1">
-                        Gerenciar Tags
-                      </div>
-
-                      {options.length === 0 && (
-                        <div className="px-2 py-1.5 text-xs text-neutral-400">Nenhuma tag cadastrada</div>
-                      )}
-
-                      {options.map(opt => {
-                        const isActive = currentTags.includes(opt.label);
-                        return (
-                          <button
-                            key={opt.id}
-                            onClick={() => {
-                              toggleTag(opt.label);
-                            }}
-                            className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 transition-colors ${
-                              isActive ? 'bg-neutral-100 font-semibold' : 'hover:bg-neutral-50'
-                            }`}
-                          >
-                            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
-                            <span className="flex-1">{opt.label}</span>
-                            {isActive && <span className="text-neutral-400 font-bold">✓</span>}
-                          </button>
-                        );
-                      })}
-                    </>
-                  )}
-
-                  <div className="border-t border-neutral-100 mt-1 pt-1">
-                    {!showCreateTag ? (
-                      <button
-                        onClick={() => setShowCreateTag(true)}
-                        className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-neutral-100 text-neutral-600 flex items-center gap-2 transition-colors"
-                      >
-                        <Plus size={12} /> Criar Nova Tag
-                      </button>
-                    ) : (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={newTagName}
-                          onChange={(e) => setNewTagName(e.target.value)}
-                          placeholder="Nome da tag..."
-                          className="w-full px-2 py-1 text-xs border border-neutral-200 rounded outline-none focus:border-black"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') createAndAddTag();
-                          }}
-                        />
-                        <div className="flex gap-1 flex-wrap">
-                          {PRESET_COLORS.map(color => (
-                            <button
-                              key={color}
-                              onClick={() => setNewTagColor(color)}
-                              className={`w-5 h-5 rounded-full transition-all ${newTagColor === color ? 'ring-2 ring-offset-1 ring-black' : 'hover:scale-110'}`}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => { setShowCreateTag(false); setNewTagName(''); setNewTagColor('#6b7280'); }}
-                            className="flex-1 px-2 py-1 text-xs border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
-                          >
-                            Cancelar
-                          </button>
-                          <button
                             onClick={createAndAddTag}
                             disabled={!newTagName.trim()}
                             className="flex-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-neutral-800 transition-colors disabled:opacity-50"
