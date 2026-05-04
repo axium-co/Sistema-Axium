@@ -174,77 +174,165 @@ const Board = ({
           handleCellChange(row.id, col.id, newTags);
         };
 
-        const addTag = (tagToAdd: string) => {
-          if (currentTags.includes(tagToAdd)) return;
-          const newTags = [...currentTags, tagToAdd];
+        const toggleTag = (tagLabel: string) => {
+          const newTags = currentTags.includes(tagLabel)
+            ? currentTags.filter(t => t !== tagLabel)
+            : [...currentTags, tagLabel];
           handleCellChange(row.id, col.id, newTags);
         };
 
-        const removeAllTags = () => {
-          handleCellChange(row.id, col.id, []);
-        };
-
         const createAndAddTag = () => {
-          const newTagNameInput = document.getElementById(`new-tag-name-${row.id}-${col.id}`) as HTMLInputElement;
-          const newTagColorInput = document.getElementById(`new-tag-color-${row.id}-${col.id}`) as HTMLInputElement;
-          const tagName = newTagNameInput?.value?.trim();
-          const tagColor = newTagColorInput?.value || '#6b7280';
-          
-          if (!tagName) return;
-          
-          const newOption = { id: generateUUID(), label: tagName, color: tagColor };
+          if (!newTagName.trim()) return;
+          const newOption = { id: generateUUID(), label: newTagName.trim(), color: newTagColor };
           const updatedOptions = [...options, newOption];
           const updatedColumns = board.columns.map(c =>
             c.id === col.id ? { ...c, options: updatedOptions } : c
           );
-          const newTags = [...currentTags, tagName];
+          const newTags = [...currentTags, newTagName.trim()];
           const updatedRows = board.rows.map(r =>
             r.id === row.id ? { ...r, values: { ...r.values, [col.id]: newTags } } : r
           );
           onUpdateBoard({ ...board, columns: updatedColumns, rows: updatedRows });
-          
-          if (newTagNameInput) newTagNameInput.value = '';
-          if (newTagColorInput) newTagColorInput.value = '#6b7280';
+          setNewTagName('');
+          setNewTagColor('#6b7280');
+          setShowCreateTag(false);
+          setTagPopover({ open: false, rowId: null, colId: null, tagIndex: null, position: { top: 0, left: 0 } });
         };
 
         return (
-          <div className="flex flex-col gap-1 px-2 py-1" onClick={(e) => e.stopPropagation()}>
-            <div className="flex flex-wrap gap-1">
-              {currentTags.filter(Boolean).map((tag: string, idx: number) => {
-                const opt = options.find(o => o.label === tag);
-                const color = opt?.color || '#6b7280';
-                return (
-                  <span
-                    key={`${tag}-${idx}`}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs text-white rounded-full"
-                    style={{ backgroundColor: color }}
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        removeTag(tag);
-                      }}
-                      className="hover:text-red-200 transition-colors cursor-pointer"
-                      title="Remover tag"
-                    >
-                      <X size={10} />
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <select
-                value=""
-                onChange={(e) => {
+          <div className="flex flex-wrap items-center gap-1 px-2 py-1" onClick={(e) => e.stopPropagation()}>
+            {currentTags.filter(Boolean).map((tag: string, idx: number) => {
+              const opt = options.find(o => o.label === tag);
+              const color = opt?.color || '#6b7280';
+              return (
+                <span
+                  key={`${tag}-${idx}`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs text-white rounded-full cursor-pointer"
+                  style={{ backgroundColor: color }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeTag(tag);
+                  }}
+                  title="Clique para remover"
+                >
+                  {tag}
+                  <X size={10} className="hover:text-red-200" />
+                </span>
+              );
+            })}
+
+            <div className="relative inline-block">
+              <button
+                type="button"
+                onClick={(e) => {
                   e.stopPropagation();
-                  if (e.target.value) {
-                    addTag(e.target.value);
-                  }
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setTagPopover(prev => ({
+                    open: !prev.open,
+                    rowId: row.id,
+                    colId: col.id,
+                    tagIndex: null,
+                    position: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX }
+                  }));
+                }}
+                className="min-h-[24px] px-2 text-xs border-none outline-none cursor-pointer bg-neutral-100 rounded text-neutral-600 hover:bg-neutral-200 transition-colors"
+              >
+                + Tag
+              </button>
+
+              {tagPopover.open && tagPopover.rowId === row.id && tagPopover.colId === col.id && (
+                <div
+                  className="fixed z-[9999] bg-white border border-neutral-200 rounded-lg shadow-xl p-2 min-w-[200px] tag-popover"
+                  style={{ top: tagPopover.position.top, left: tagPopover.position.left }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="text-xs font-bold text-neutral-500 px-2 py-1 border-b border-neutral-100 mb-1">
+                    Gerenciar Tags
+                  </div>
+
+                  {options.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-neutral-400">Nenhuma tag cadastrada</div>
+                  )}
+
+                  {options.map(opt => {
+                    const isActive = currentTags.includes(opt.label);
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          toggleTag(opt.label);
+                        }}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 transition-colors ${
+                          isActive ? 'bg-neutral-100 font-semibold' : 'hover:bg-neutral-50'
+                        }`}
+                      >
+                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
+                        <span className="flex-1">{opt.label}</span>
+                        {isActive && <span className="text-neutral-400 font-bold">✓</span>}
+                      </button>
+                    );
+                  })}
+
+                  <div className="border-t border-neutral-100 mt-1 pt-1">
+                    {!showCreateTag ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateTag(true)}
+                        className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-neutral-100 text-neutral-600 flex items-center gap-2 transition-colors"
+                      >
+                        <Plus size={12} /> Criar Nova Tag
+                      </button>
+                    ) : (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={newTagName}
+                          onChange={(e) => setNewTagName(e.target.value)}
+                          placeholder="Nome da tag..."
+                          className="w-full px-2 py-1 text-xs border border-neutral-200 rounded outline-none focus:border-black"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') createAndAddTag();
+                          }}
+                        />
+                        <div className="flex gap-1 flex-wrap">
+                          {PRESET_COLORS.map(color => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => setNewTagColor(color)}
+                              className={`w-5 h-5 rounded-full transition-all ${newTagColor === color ? 'ring-2 ring-offset-1 ring-black' : 'hover:scale-110'}`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setShowCreateTag(false); setNewTagName(''); setNewTagColor('#6b7280'); }}
+                            className="flex-1 px-2 py-1 text-xs border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={createAndAddTag}
+                            disabled={!newTagName.trim()}
+                            className="flex-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-neutral-800 transition-colors disabled:opacity-50"
+                          >
+                            Criar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
                 }}
                 onClick={(e) => e.stopPropagation()}
                 className="min-h-[24px] px-1 text-xs border-none outline-none cursor-pointer bg-neutral-100 rounded text-neutral-600 hover:bg-neutral-200 transition-colors"
