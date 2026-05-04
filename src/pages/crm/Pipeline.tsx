@@ -23,6 +23,9 @@ import {
   isValidStage,
   calculateTotalValue
 } from '../../lib/crmHelpers';
+import { MessageCircle } from 'lucide-react';
+import { cleanPhoneNumber, generateWhatsAppLink, WHATSAPP_MESSAGE_TEMPLATES } from '../../lib/whatsapp';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface LeadCardProps {
   lead: Lead;
@@ -40,6 +43,8 @@ const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed }) => {
     zIndex: isDragging ? 50 : undefined,
   } : undefined;
 
+  const { employeeName } = useAuth();
+  
   return (
     <div
       ref={setNodeRef}
@@ -51,6 +56,24 @@ const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed }) => {
       <div className="font-bold text-[11px] md:text-[13px] text-black mb-0.5">{lead.name}</div>
       <div className="text-[9px] md:text-[10px] text-neutral-500 font-semibold mb-2 md:mb-3">{lead.niche}</div>
       
+      {lead.whatsapp && (
+        <div className="flex items-center gap-1 mb-2">
+          <span className="text-[9px] md:text-[10px] text-neutral-600">{lead.whatsapp}</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              const link = generateWhatsAppLink(lead.whatsapp, WHATSAPP_MESSAGE_TEMPLATES[0].template(lead.name, employeeName || 'Usuário'));
+              window.open(link, '_blank');
+            }}
+            className="text-[#25D366] hover:text-green-600 transition-colors"
+            title="Enviar mensagem via WhatsApp"
+          >
+            <MessageCircle size={12} className="md:w-3.5 md:h-3.5" />
+          </button>
+        </div>
+      )}
+
       {isClosed && (
         <div className="pt-2 md:pt-3 border-t border-neutral-100 mt-2 md:mt-3">
           <div className="flex justify-between items-center gap-2">
@@ -58,7 +81,7 @@ const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed }) => {
               <span className="text-[7px] md:text-[8px] text-neutral-400 font-bold uppercase tracking-[0.1em]">Valor</span>
               <span className="text-[10px] md:text-xs font-black text-black mt-0.5">{lead.value || 'R$ 0,00'}</span>
             </div>
-            <div className="w-5 md:w-6 h-5 md:h-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[9px] md:text-[10px] font-bold flex-shrink-0">
+            <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[9px] md:text-[10px] font-bold flex-shrink-0">
               ✓
             </div>
           </div>

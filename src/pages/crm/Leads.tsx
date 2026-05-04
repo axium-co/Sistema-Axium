@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ReactNode } from 'react';
-import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, AlertCircle, MessageCircle } from 'lucide-react';
+import { cleanPhoneNumber, generateWhatsAppLink, WHATSAPP_MESSAGE_TEMPLATES } from '../../lib/whatsapp';
 import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -106,6 +107,7 @@ const CRMLeads = () => {
   const [mode, setMode] = useState<'add' | 'edit'>('add');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [nicheSearch, setNicheSearch] = useState('');
+  const [whatsAppModal, setWhatsAppModal] = useState<{ lead: Lead | null; selectedTemplate: string | null }>({ lead: null, selectedTemplate: null });
   const [nicheSuggestions, setNicheSuggestions] = useState<string[]>([]);
   const [showNicheSuggestions, setShowNicheSuggestions] = useState(false);
 
@@ -446,7 +448,23 @@ const CRMLeads = () => {
                       <div className="font-semibold text-black text-xs md:text-sm">{lead?.name}</div>
                       <div className="text-[10px] md:text-xs text-neutral-400 truncate">{lead?.niche} · {lead?.email}</div>
                     </td>
-                    <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead?.whatsapp}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">
+                      {lead?.whatsapp ? (
+                        <div className="flex items-center gap-1.5">
+                          <span>{lead.whatsapp}</span>
+                          <button
+                            type="button"
+                            onClick={() => setWhatsAppModal({ lead, selectedTemplate: null })}
+                            className="text-[#25D366] hover:text-green-600 transition-colors"
+                            title="Enviar mensagem via WhatsApp"
+                          >
+                            <MessageCircle size={14} className="md:w-4 md:h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-neutral-400">—</span>
+                      )}
+                    </td>
                     <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead?.instagram}</td>
                     <td className="px-3 md:px-5 py-2 md:py-4">
                       <div className="text-black font-semibold text-xs md:text-sm">{lead?.gmnStars} ★</div>
@@ -607,9 +625,58 @@ const CRMLeads = () => {
         </div>
       )}
     </div>
+
+    {whatsAppModal.lead && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="bg-white border border-neutral-200 rounded-2xl p-8 max-w-md w-full shadow-2xl">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-black text-black">Enviar mensagem via WhatsApp</h3>
+            <button onClick={() => setWhatsAppModal({ lead: null, selectedTemplate: null })} className="text-neutral-400 hover:text-black">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="mb-4">
+            <p className="text-sm text-neutral-600">Lead: <span className="font-bold">{whatsAppModal.lead.name}</span></p>
+            <p className="text-sm text-neutral-600">WhatsApp: <span className="font-bold">{whatsAppModal.lead.whatsapp}</span></p>
+          </div>
+          <div className="space-y-3">
+            <p className="text-xs font-black text-neutral-500 uppercase tracking-widest mb-2">Escolha uma mensagem rápida:</p>
+            {WHATSAPP_MESSAGE_TEMPLATES.map(template => (
+              <button
+                key={template.id}
+                type="button"
+                onClick={() => {
+                  const message = template.template(whatsAppModal.lead.name, employeeName || 'Usuário');
+                  const link = generateWhatsAppLink(whatsAppModal.lead.whatsapp, message);
+                  window.open(link, '_blank');
+                  setWhatsAppModal({ lead: null, selectedTemplate: null });
+                }}
+                className="w-full p-4 text-left border border-neutral-200 rounded-lg hover:bg-neutral-50 hover:border-neutral-300 transition-colors"
+              >
+                <div className="font-bold text-black text-sm">{template.label}</div>
+                <div className="text-xs text-neutral-500 mt-1">
+                  {template.template(whatsAppModal.lead.name, employeeName || 'Usuário').substring(0, 60)}...
+                </div>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const link = generateWhatsAppLink(whatsAppModal.lead.whatsapp);
+                window.open(link, '_blank');
+                setWhatsAppModal({ lead: null, selectedTemplate: null });
+              }}
+              className="w-full p-4 text-left border border-dashed border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors text-sm text-neutral-500"
+            >
+              Abrir sem mensagem personalizada
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   );
 };
 
 export default function LeadsPage() {
-  return <CRMLeads />;
+  return <CRMleads />;
 }

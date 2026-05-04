@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, X, Edit3 } from 'lucide-react';
+import { Plus, Trash2, X, Edit3, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateUUID } from '../../lib/uuid';
+import { cleanPhoneNumber, generateWhatsAppLink, WHATSAPP_MESSAGE_TEMPLATES } from '../../lib/whatsapp';
 
 interface ColumnOption {
   id: string;
@@ -143,21 +144,42 @@ const Board = ({
 
   const renderCell = (row: Row, col: Column) => {
     const value = row.values[col.id] ?? '';
+    const { employeeName } = useAuth();
+
+    // Check if value looks like a phone number for WhatsApp
+    const isPhone = typeof value === 'string' && /[\d\s\-()]+$/.test(value) && value.replace(/\D/g, '').length >= 10;
 
     switch (col.type) {
       case 'text':
-      case 'people':
+      case 'people': {
+        const isPhone = typeof value === 'string' && /[\d\s\-()]+$/.test(value) && value.replace(/\D/g, '').length >= 10;
         return (
-          <input
-            type="text"
-            value={String(value)}
-            onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
-            onKeyDown={(e) => e.stopPropagation()}
-            className="w-full min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 text-black hover:bg-neutral-100 focus:bg-neutral-50 focus:border-b-2 focus:border-neutral-400 transition-colors"
-            autoComplete="off"
-            placeholder="Editar..."
-          />
+          <div className="flex items-center gap-1 w-full">
+            <input
+              type="text"
+              value={String(value)}
+              onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="flex-1 min-h-[36px] bg-transparent border-none outline-none text-sm px-3 py-2 text-black hover:bg-neutral-100 focus:bg-neutral-50 focus:border-b-2 focus:border-neutral-400 transition-colors"
+              autoComplete="off"
+              placeholder="Editar..."
+            />
+            {isPhone && (
+              <button
+                type="button"
+                onClick={() => {
+                  const link = generateWhatsAppLink(String(value), WHATSAPP_MESSAGE_TEMPLATES[0].template(row.values['col-1'] as string || 'Lead', employeeName || 'Usuário'));
+                  window.open(link, '_blank');
+                }}
+                className="text-[#25D366] hover:text-green-600 transition-colors p-1"
+                title="Enviar mensagem via WhatsApp"
+              >
+                <MessageCircle size={14} />
+              </button>
+            )}
+          </div>
         );
+      }
       case 'number':
         return (
           <input
