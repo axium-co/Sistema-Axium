@@ -88,39 +88,6 @@ const Board = ({
 }) => {
   const { role, employeeName } = useAuth();
 
-  const [tagPopover, setTagPopover] = useState<{
-    open: boolean;
-    rowId: string | null;
-    colId: string | null;
-    tagIndex: number | null;
-    position: { top: number; left: number };
-  }>({ open: false, rowId: null, colId: null, tagIndex: null, position: { top: 0, left: 0 } });
-
-  const [newTagName, setNewTagName] = useState('');
-  const [newTagColor, setNewTagColor] = useState('#6b7280');
-  const [showCreateTag, setShowCreateTag] = useState(false);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (tagPopover.open && !(e.target as HTMLElement).closest('.tag-popover')) {
-        setTagPopover({ open: false, rowId: null, colId: null, tagIndex: null, position: { top: 0, left: 0 } });
-        setShowCreateTag(false);
-      }
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && tagPopover.open) {
-        setTagPopover({ open: false, rowId: null, colId: null, tagIndex: null, position: { top: 0, left: 0 } });
-        setShowCreateTag(false);
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [tagPopover.open]);
-
   const handleAddRow = () => {
     const newRow: Row = {
       id: generateUUID(),
@@ -139,7 +106,6 @@ const Board = ({
   };
 
   const handleCellChange = (rowId: string, colId: string, value: unknown) => {
-    console.log('Salvando:', { rowId, colId, value });
     const updated = board.rows.map(r => 
       r.id === rowId ? { ...r, values: { ...r.values, [colId]: value }, lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário') } : r
     );
@@ -219,110 +185,117 @@ const Board = ({
         };
 
         const createAndAddTag = () => {
-          if (!newTagName.trim()) return;
-          const newOption = { id: generateUUID(), label: newTagName.trim(), color: newTagColor };
+          const newTagNameInput = document.getElementById(`new-tag-name-${row.id}-${col.id}`) as HTMLInputElement;
+          const newTagColorInput = document.getElementById(`new-tag-color-${row.id}-${col.id}`) as HTMLInputElement;
+          const tagName = newTagNameInput?.value?.trim();
+          const tagColor = newTagColorInput?.value || '#6b7280';
+          
+          if (!tagName) return;
+          
+          const newOption = { id: generateUUID(), label: tagName, color: tagColor };
           const updatedOptions = [...options, newOption];
           const updatedColumns = board.columns.map(c =>
             c.id === col.id ? { ...c, options: updatedOptions } : c
           );
-          const newTags = [...currentTags, newTagName.trim()];
+          const newTags = [...currentTags, tagName];
           const updatedRows = board.rows.map(r =>
             r.id === row.id ? { ...r, values: { ...r.values, [col.id]: newTags } } : r
           );
           onUpdateBoard({ ...board, columns: updatedColumns, rows: updatedRows });
-          setNewTagName('');
-          setNewTagColor('#6b7280');
-          setShowCreateTag(false);
-          setTagPopover({ open: false, rowId: null, colId: null, tagIndex: null, position: { top: 0, left: 0 } });
+          
+          if (newTagNameInput) newTagNameInput.value = '';
+          if (newTagColorInput) newTagColorInput.value = '#6b7280';
         };
 
         return (
-          <div className="flex flex-wrap gap-1 px-2 py-1" onClick={(e) => e.stopPropagation()}>
-            {currentTags.filter(Boolean).map((tag: string, idx: number) => {
-              const opt = options.find(o => o.label === tag);
-              const color = opt?.color || '#6b7280';
-              return (
-                <span
-                  key={`${tag}-${idx}`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs text-white rounded-full"
-                  style={{ backgroundColor: color }}
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      removeTag(tag);
-                    }}
-                    className="ml-0.5 hover:text-red-200 transition-colors cursor-pointer"
-                    title="Remover tag"
+          <div className="flex flex-col gap-1 px-2 py-1" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-wrap gap-1">
+              {currentTags.filter(Boolean).map((tag: string, idx: number) => {
+                const opt = options.find(o => o.label === tag);
+                const color = opt?.color || '#6b7280';
+                return (
+                  <span
+                    key={`${tag}-${idx}`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs text-white rounded-full"
+                    style={{ backgroundColor: color }}
                   >
-                    <X size={10} />
-                  </button>
-                </span>
-              );
-            })}
-
-            <select
-              value=""
-              onChange={(e) => {
-                e.stopPropagation();
-                if (e.target.value === '__remove_all__') {
-                  removeAllTags();
-                } else if (e.target.value === '__create__') {
-                  setShowCreateTag(true);
-                } else if (e.target.value) {
-                  addTag(e.target.value);
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className="min-h-[24px] px-1 text-xs border-none outline-none cursor-pointer bg-neutral-100 rounded text-neutral-600 hover:bg-neutral-200 transition-colors"
-            >
-              <option value="">+ Tag</option>
-              {options
-                .filter(opt => !currentTags.includes(opt.label))
-                .map(opt => (
-                  <option key={opt.id} value={opt.label}>{opt.label}</option>
-                ))}
-              {currentTags.length > 0 && (
-                <option value="__remove_all__">— Remover Todas —</option>
-              )}
-              <option value="__create__">+ Criar Nova Tag</option>
-            </select>
-
-            {showCreateTag && (
-              <div className="fixed z-50 bg-white border border-neutral-200 rounded-lg shadow-xl p-3 min-w-[220px] tag-popover"
-                style={{ top: tagPopover.position.top || 'auto', left: tagPopover.position.left || 'auto' }}
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeTag(tag);
+                      }}
+                      className="hover:text-red-200 transition-colors cursor-pointer"
+                      title="Remover tag"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <select
+                value=""
+                onChange={(e) => {
+                  e.stopPropagation();
+                  if (e.target.value) {
+                    addTag(e.target.value);
+                  }
+                }}
                 onClick={(e) => e.stopPropagation()}
+                className="min-h-[24px] px-1 text-xs border-none outline-none cursor-pointer bg-neutral-100 rounded text-neutral-600 hover:bg-neutral-200 transition-colors"
               >
-                <div className="text-xs font-bold text-neutral-500 mb-2">Criar Nova Tag</div>
+                <option value="">+ Tag</option>
+                {options
+                  .filter(opt => !currentTags.includes(opt.label))
+                  .map(opt => (
+                    <option key={opt.id} value={opt.label}>{opt.label}</option>
+                  ))}
+                {currentTags.length > 0 && (
+                  <option value="__remove_all__">— Remover Todas —</option>
+                )}
+                <option value="__create__">+ Criar Nova Tag</option>
+              </select>
+            </div>
+
+            {false && (
+              <div className="flex flex-col gap-1 p-2 border border-neutral-200 rounded bg-white shadow-sm">
                 <input
+                  id={`new-tag-name-${row.id}-${col.id}`}
                   type="text"
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
                   placeholder="Nome da tag..."
-                  className="w-full px-2 py-1 text-xs border border-neutral-200 rounded outline-none focus:border-black mb-2"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') createAndAddTag();
-                  }}
+                  className="w-full px-2 py-1 text-xs border border-neutral-200 rounded outline-none focus:border-black"
                 />
-                <div className="flex gap-1 flex-wrap mb-2">
+                <div className="flex gap-1 flex-wrap">
                   {PRESET_COLORS.map(color => (
                     <button
                       key={color}
                       type="button"
-                      onClick={() => setNewTagColor(color)}
-                      className={`w-5 h-5 rounded-full transition-all ${newTagColor === color ? 'ring-2 ring-offset-1 ring-black' : 'hover:scale-110'}`}
+                      onClick={() => {
+                        const colorInput = document.getElementById(`new-tag-color-${row.id}-${col.id}`) as HTMLInputElement;
+                        if (colorInput) colorInput.value = color;
+                      }}
+                      className={`w-5 h-5 rounded-full transition-all hover:scale-110`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
+                  <input
+                    id={`new-tag-color-${row.id}-${col.id}`}
+                    type="hidden"
+                    defaultValue="#6b7280"
+                  />
                 </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => { setShowCreateTag(false); setNewTagName(''); setNewTagColor('#6b7280'); }}
+                    onClick={() => {
+                      const container = document.getElementById(`new-tag-container-${row.id}-${col.id}`);
+                      if (container) container.style.display = 'none';
+                    }}
                     className="flex-1 px-2 py-1 text-xs border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
                   >
                     Cancelar
@@ -330,8 +303,7 @@ const Board = ({
                   <button
                     type="button"
                     onClick={createAndAddTag}
-                    disabled={!newTagName.trim()}
-                    className="flex-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-neutral-800 transition-colors disabled:opacity-50"
+                    className="flex-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-neutral-800 transition-colors"
                   >
                     Criar
                   </button>
@@ -576,7 +548,7 @@ const Tarefas = () => {
         ] :
         newColumnData.type === 'priority' ? [
           { id: 'pr-1', label: 'Baixa', color: '#94a3b8' },
-          { id: 'pr-2', label: 'Media', color: '#f59e0b' },
+          { id: 'pr-2', label: 'Média', color: '#f59e0b' },
           { id: 'pr-3', label: 'Alta', color: '#ef4444' },
         ] :
         newColumnData.type === 'tags' ? [
