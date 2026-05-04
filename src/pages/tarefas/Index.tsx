@@ -139,6 +139,7 @@ const Board = ({
   };
 
   const handleCellChange = (rowId: string, colId: string, value: unknown) => {
+    console.log('Salvando:', { rowId, colId, value });
     const updated = board.rows.map(r => 
       r.id === rowId ? { ...r, values: { ...r.values, [colId]: value }, lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário') } : r
     );
@@ -198,16 +199,18 @@ const Board = ({
           </select>
         );
       }
-       case 'tags': {
+      case 'tags': {
         const options = col.options || [];
         const currentTags: string[] = Array.isArray(value) ? value : (value ? String(value).split(',').map((t: string) => t.trim()) : []);
 
         const removeTag = (tagToRemove: string) => {
+          console.log('Removendo tag:', tagToRemove);
           const newTags = currentTags.filter(t => t !== tagToRemove);
           handleCellChange(row.id, col.id, newTags);
         };
 
         const toggleTag = (tagLabel: string) => {
+          console.log('Toggle tag:', tagLabel);
           const newTags = currentTags.includes(tagLabel)
             ? currentTags.filter(t => t !== tagLabel)
             : [...currentTags, tagLabel];
@@ -216,6 +219,7 @@ const Board = ({
 
         const createAndAddTag = () => {
           if (!newTagName.trim()) return;
+          console.log('Criando nova tag:', newTagName);
           const newOption = { id: generateUUID(), label: newTagName.trim(), color: newTagColor };
           const updatedOptions = [...options, newOption];
           const updatedColumns = board.columns.map(c =>
@@ -249,6 +253,7 @@ const Board = ({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      console.log('Clicou no X para remover:', tag);
                       removeTag(tag);
                     }}
                     className="ml-0.5 hover:text-red-200 transition-colors cursor-pointer"
@@ -266,6 +271,7 @@ const Board = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   const rect = e.currentTarget.getBoundingClientRect();
+                  console.log('Abrindo dropdown de tags');
                   setTagPopover(prev => ({
                     open: !prev.open,
                     rowId: row.id,
@@ -281,7 +287,7 @@ const Board = ({
 
               {tagPopover.open && tagPopover.rowId === row.id && tagPopover.colId === col.id && (
                 <div
-                  className="fixed z-[100] bg-white border border-neutral-200 rounded-lg shadow-xl p-2 min-w-[200px] tag-popover"
+                  className="fixed z-[9999] bg-white border border-neutral-200 rounded-lg shadow-xl p-2 min-w-[200px] tag-popover"
                   style={{ top: tagPopover.position.top, left: tagPopover.position.left }}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -300,6 +306,7 @@ const Board = ({
                         key={opt.id}
                         type="button"
                         onClick={() => {
+                          console.log('Clicou na tag do dropdown:', opt.label);
                           toggleTag(opt.label);
                         }}
                         className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 transition-colors ${
@@ -308,7 +315,7 @@ const Board = ({
                       >
                         <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
                         <span className="flex-1">{opt.label}</span>
-                        {isActive && <span className="text-neutral-400">✓</span>}
+                        {isActive && <span className="text-neutral-400 font-bold">✓</span>}
                       </button>
                     );
                   })}
@@ -317,7 +324,10 @@ const Board = ({
                     {!showCreateTag ? (
                       <button
                         type="button"
-                        onClick={() => setShowCreateTag(true)}
+                        onClick={() => {
+                          console.log('Clicou em criar nova tag');
+                          setShowCreateTag(true);
+                        }}
                         className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-neutral-100 text-neutral-600 flex items-center gap-2 transition-colors"
                       >
                         <Plus size={12} /> Criar Nova Tag
