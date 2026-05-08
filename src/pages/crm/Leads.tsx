@@ -451,7 +451,7 @@ const CRMLeads = () => {
                         <div className="flex items-center gap-2">
                           <span>{lead.whatsapp}</span>
                           <a
-                            href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, '').replace(/^0+/, '')}`}
+                            href={`https://wa.me/${lead.whatsapp.replace(/\D/g, '').replace(/^(?!55)/, '55')}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[#25D366] hover:text-green-600 transition-colors cursor-pointer"
