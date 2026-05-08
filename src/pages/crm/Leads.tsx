@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ReactNode } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, AlertCircle, MessageCircle } from 'lucide-react';
-import { cleanPhoneNumber } from '../../lib/whatsapp';
 import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -452,7 +451,7 @@ const CRMLeads = () => {
                         <div className="flex items-center gap-2">
                           <span>{lead.whatsapp}</span>
                           <a
-                            href={`https://wa.me/${cleanPhoneNumber(lead.whatsapp)}`}
+                            href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, '').replace(/^0+/, '')}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[#25D366] hover:text-green-600 transition-colors cursor-pointer"
