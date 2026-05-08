@@ -452,7 +452,7 @@ const CRMLeads = () => {
                         <div className="flex items-center gap-2">
                           <span>{lead.whatsapp}</span>
                           <a
-                            href={`https://wa.me/${cleanPhoneNumber(lead.whatsapp)}?text=${encodeURIComponent('Olá, falo da Ventura. Gostaria de falar sobre o seu evento.')}`}
+                            href={`https://wa.me/${cleanPhoneNumber(lead.whatsapp)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[#25D366] hover:text-green-600 transition-colors cursor-pointer"
