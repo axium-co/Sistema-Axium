@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ReactNode } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, AlertCircle, MessageCircle } from 'lucide-react';
-import { generateWhatsAppLink } from '../../lib/whatsapp';
+import { cleanPhoneNumber } from '../../lib/whatsapp';
 import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -449,22 +449,17 @@ const CRMLeads = () => {
                     </td>
                     <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">
                       {lead?.whatsapp ? (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           <span>{lead.whatsapp}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const link = generateWhatsAppLink(
-                                lead.whatsapp,
-                                'Olá, falo da Ventura. Gostaria de falar sobre o seu evento.'
-                              );
-                              if (link) window.open(link, '_blank');
-                            }}
+                          <a
+                            href={`https://wa.me/${cleanPhoneNumber(lead.whatsapp)}?text=${encodeURIComponent('Olá, falo da Ventura. Gostaria de falar sobre o seu evento.')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="text-[#25D366] hover:text-green-600 transition-colors cursor-pointer"
                             title="Enviar mensagem via WhatsApp"
                           >
                             <MessageCircle size={14} className="md:w-4 md:h-4" />
-                          </button>
+                          </a>
                         </div>
                       ) : (
                         <span className="text-neutral-400">—</span>
