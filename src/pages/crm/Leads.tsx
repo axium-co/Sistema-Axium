@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp,
 import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import { useAuth } from '../../contexts/AuthContext';
+import WhatsAppModal from '../../components/WhatsAppModal';
 
 const formatBRL = (val: string) => {
   const numeric = val.replace(/\D/g, '');
@@ -105,6 +106,7 @@ const CRMLeads = () => {
   const [current, setCurrent] = useState<Partial<Lead>>(EMPTY_LEAD);
   const [mode, setMode] = useState<'add' | 'edit'>('add');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [whatsAppTarget, setWhatsAppTarget] = useState<{ name: string; phone: string } | null>(null);
   const [nicheSearch, setNicheSearch] = useState('');
   const [nicheSuggestions, setNicheSuggestions] = useState<string[]>([]);
   const [showNicheSuggestions, setShowNicheSuggestions] = useState(false);
@@ -450,15 +452,14 @@ const CRMLeads = () => {
                       {lead?.whatsapp ? (
                         <div className="flex items-center gap-2">
                           <span>{lead.whatsapp}</span>
-                          <a
-                            href={`https://wa.me/${lead.whatsapp.replace(/\D/g, '').replace(/^(?!55)/, '55')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => setWhatsAppTarget({ name: lead.name, phone: lead.whatsapp })}
                             className="text-[#25D366] hover:text-green-600 transition-colors cursor-pointer"
                             title="Enviar mensagem via WhatsApp"
                           >
                             <MessageCircle size={14} className="md:w-4 md:h-4" />
-                          </a>
+                          </button>
                         </div>
                       ) : (
                         <span className="text-neutral-400">—</span>
@@ -622,6 +623,22 @@ const CRMLeads = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {whatsAppTarget && (
+        <WhatsAppModal
+          isOpen={true}
+          onClose={() => setWhatsAppTarget(null)}
+          leadName={whatsAppTarget.name}
+          leadPhone={whatsAppTarget.phone}
+          onEditLead={() => {
+            const lead = leads.find(l => l.name === whatsAppTarget.name);
+            if (lead) {
+              setWhatsAppTarget(null);
+              openEdit(lead);
+            }
+          }}
+        />
       )}
     </div>
 

@@ -24,15 +24,15 @@ import {
   calculateTotalValue
 } from '../../lib/crmHelpers';
 import { MessageCircle } from 'lucide-react';
-import { cleanPhoneNumber, generateWhatsAppLink, WHATSAPP_MESSAGE_TEMPLATES } from '../../lib/whatsapp';
-import { useAuth } from '../../contexts/AuthContext';
+import WhatsAppModal from '../../components/WhatsAppModal';
 
 interface LeadCardProps {
   lead: Lead;
   isClosed: boolean;
+  onWhatsAppClick?: (name: string, phone: string) => void;
 }
 
-const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed }) => {
+const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed, onWhatsAppClick }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
     data: { lead }
@@ -43,7 +43,6 @@ const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed }) => {
     zIndex: isDragging ? 50 : undefined,
   } : undefined;
 
-  const { employeeName } = useAuth();
   
   return (
     <div
@@ -63,8 +62,7 @@ const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed }) => {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              const link = generateWhatsAppLink(lead.whatsapp, WHATSAPP_MESSAGE_TEMPLATES[0].template(lead.name, employeeName || 'Usuário'));
-              window.open(link, '_blank');
+              onWhatsAppClick?.(lead.name, lead.whatsapp);
             }}
             className="text-[#25D366] hover:text-green-600 transition-colors"
             title="Enviar mensagem via WhatsApp"
@@ -247,6 +245,7 @@ const CRMPipeline = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [whatsAppTarget, setWhatsAppTarget] = useState<{ name: string; phone: string } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -359,6 +358,7 @@ const CRMPipeline = () => {
                     key={lead.id} 
                     lead={lead} 
                     isClosed={STAGE_CONFIG[stage].isClosed}
+                    onWhatsAppClick={(name, phone) => setWhatsAppTarget({ name, phone })}
                   />
                 ))}
               </DroppableColumn>
@@ -375,6 +375,15 @@ const CRMPipeline = () => {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {whatsAppTarget && (
+        <WhatsAppModal
+          isOpen={true}
+          onClose={() => setWhatsAppTarget(null)}
+          leadName={whatsAppTarget.name}
+          leadPhone={whatsAppTarget.phone}
+        />
+      )}
     </div>
   );
 };

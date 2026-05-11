@@ -5,6 +5,7 @@ import type { UserRole } from './contexts/AuthContext';
 import { CRMProvider } from './contexts/CRMContext';
 import { ActivityLogsProvider } from './contexts/ActivityContext';
 import { FilterProvider } from './contexts/FilterContext';
+import { WhatsAppTemplatesProvider } from './contexts/WhatsAppTemplatesContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
@@ -19,6 +20,7 @@ import CRMIntegracoes from './pages/crm/Integracoes';
 import Financeiro from './pages/financeiro/Index';
 import Tarefas from './pages/tarefas/Index';
 import Configuracoes from './pages/configuracoes/Index';
+import WhatsAppTemplatesPage from './pages/configuracoes/WhatsAppTemplates';
 
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
@@ -151,6 +153,16 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/configuracoes/whatsapp-templates"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <MainLayout>
+              <WhatsAppTemplatesPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
 
       {/* Root redirect to login or dashboard based on auth */}
       <Route path="/" element={<Navigate to={isAuthenticated ? '/crm/painel' : '/login'} replace />} />
@@ -169,7 +181,9 @@ function App() {
           <ActivityLogsProvider>
             <CRMProvider>
               <FilterProvider>
-                <AppRoutes />
+                <WhatsAppTemplatesProvider>
+                  <AppRoutes />
+                </WhatsAppTemplatesProvider>
               </FilterProvider>
             </CRMProvider>
           </ActivityLogsProvider>

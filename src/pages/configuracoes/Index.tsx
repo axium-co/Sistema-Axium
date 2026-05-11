@@ -4,7 +4,7 @@ import {
   Save, CheckCircle2,
   User, UserCircle,
   RefreshCw, Users,
-  AlertCircle
+  AlertCircle, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, PROFILES_TABLE } from '../../lib/supabase';
@@ -300,6 +300,10 @@ const Configuracoes = () => {
     { id: 'equipe' as ModalType, icon: Users, title: 'Equipe', description: 'Convidar membros e gerenciar acessos', items: ['Convidar', 'Permissões', 'Membros'] },
   ];
 
+  const extraSections = [
+    { icon: MessageCircle, title: 'Templates de WhatsApp', description: 'Crie e gerencie mensagens rápidas para WhatsApp', items: ['Listar', 'Criar', 'Editar', 'Reordenar'], path: '/configuracoes/whatsapp-templates' },
+  ];
+
   return (
     <div className="min-h-screen pb-20 relative">
       <div className="mb-10 flex justify-between items-end">
@@ -329,6 +333,37 @@ const Configuracoes = () => {
                   className="bg-black text-white px-6 py-3 rounded-md font-black text-[11px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.95] shadow-lg shadow-black/10"
                 >
                   Configurar
+                </button>
+              </div>
+              <div className="flex gap-2 flex-wrap mt-8 pt-8 border-t border-neutral-50">
+                {section.items.map((item, itemIdx) => (
+                  <span key={itemIdx} className="px-4 py-2 bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-[1.5px] rounded-md border border-neutral-100">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {extraSections.map((section, idx) => {
+          const Icon = section.icon;
+          return (
+            <div key={idx} className="bg-white border border-neutral-200 rounded-3xl p-8 hover:border-black transition-all group relative overflow-hidden">
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-6">
+                  <div className="w-16 h-16 bg-neutral-50 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-black transition-colors">
+                    <Icon className="w-8 h-8 text-neutral-400 group-hover:text-white transition-colors" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-black text-lg tracking-tight">{section.title}</h3>
+                    <p className="text-xs text-neutral-400 font-bold uppercase tracking-widest mt-1">{section.description}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate(section.path)}
+                  className="bg-black text-white px-6 py-3 rounded-md font-black text-[11px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.95] shadow-lg shadow-black/10"
+                >
+                  Gerenciar
                 </button>
               </div>
               <div className="flex gap-2 flex-wrap mt-8 pt-8 border-t border-neutral-50">
