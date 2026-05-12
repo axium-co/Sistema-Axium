@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import CRMSubmenu from '../components/CRMSubmenu';
 import TopHeader from '../components/TopHeader';
 import { useAuth } from '../contexts/AuthContext';
-import { BarChart3, Users, Lock } from 'lucide-react';
+import { BarChart3, DollarSign, CheckCircle, Settings, Users, Lock } from 'lucide-react';
 
 type UserRole = 'admin' | 'employee';
 
@@ -172,12 +172,41 @@ const MainLayout = ({ children }: MainLayoutProps) => {
           </div>
         )}
 
-        <div className="flex-1 bg-neutral-50 w-full">
+        <div className="flex-1 bg-neutral-50 w-full pb-16 md:pb-0">
           <div className="px-4 p-4 md:p-8 w-full">
             {children}
           </div>
         </div>
       </main>
+
+      {/* Bottom Navigation Bar - Mobile only */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-neutral-200 flex items-center justify-around md:hidden safe-area-bottom">
+        {[
+          { id: 'crm', label: 'CRM', icon: BarChart3, path: '/crm' },
+          { id: 'financeiro', label: 'Financeiro', icon: DollarSign, path: '/financeiro' },
+          { id: 'tarefas', label: 'Tarefas', icon: CheckCircle, path: '/tarefas' },
+          { id: 'configuracoes', label: 'Config', icon: Settings, path: '/configuracoes' },
+        ].map((item) => {
+          const Icon = item.icon;
+          const active = location.pathname.startsWith(item.path);
+          return (
+            <Link
+              key={item.id}
+              to={item.path}
+              className={`flex flex-col items-center justify-center gap-0.5 py-2 px-3 min-h-[56px] transition-colors ${
+                active ? 'text-black' : 'text-neutral-400'
+              }`}
+            >
+              <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
+              <span className={`text-[9px] font-black uppercase tracking-wider ${
+                active ? 'text-black' : 'text-neutral-400'
+              }`}>
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 };

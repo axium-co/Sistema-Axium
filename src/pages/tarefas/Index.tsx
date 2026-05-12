@@ -445,7 +445,8 @@ const Board = ({
         </button>
         <button onClick={onDeleteBoard} className="ml-auto text-neutral-400 hover:text-red-500"><Trash2 size={16} /></button>
       </div>
-      <div className="border rounded-2xl border-neutral-200 bg-white overflow-hidden flex flex-col">
+      {/* Desktop Table */}
+      <div className="hidden md:block border rounded-2xl border-neutral-200 bg-white overflow-hidden flex flex-col">
         <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10">
@@ -504,6 +505,40 @@ const Board = ({
             <Plus size={16} /> Nova Linha
           </button>
         </div>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="block md:hidden space-y-3">
+        {board.rows.map(row => (
+          <div key={row.id} className="border border-neutral-200 rounded-2xl bg-white overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 bg-neutral-50">
+              <span className="text-xs font-black text-neutral-500 uppercase tracking-widest">Linha</span>
+              <button onClick={() => handleDeleteRow(row.id)} className="text-neutral-400 hover:text-red-500 p-1">
+                <Trash2 size={14} />
+              </button>
+            </div>
+            <div className="divide-y divide-neutral-100">
+              {board.columns.map(col => {
+                const label = col.title;
+                return (
+                  <div key={col.id} className="px-4 py-2">
+                    <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">{label}</label>
+                    {renderCell(row, col)}
+                  </div>
+                );
+              })}
+              {role === 'admin' && (
+                <div className="px-4 py-2 bg-neutral-50">
+                  <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Última Modificação</label>
+                  <p className="text-sm text-neutral-600">{row.lastModifiedBy || '—'}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        <button onClick={handleAddRow} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-neutral-500 border-2 border-dashed border-neutral-300 rounded-2xl hover:text-black hover:border-neutral-400 transition-colors">
+          <Plus size={16} /> Nova Linha
+        </button>
       </div>
     </div>
   );

@@ -61,6 +61,25 @@ body {
   display: none;
 }
 
+/* Touch-friendly targets on mobile */
+@media (max-width: 767px) {
+  input, select, textarea {
+    min-height: 44px;
+  }
+  .btn-primary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  button.w-full {
+    min-height: 44px;
+  }
+  .sidebar-item {
+    min-height: 44px;
+  }
+}
+
 @layer components {
   /* ---- Sidebar navigation items ---- */
   .sidebar-item {
