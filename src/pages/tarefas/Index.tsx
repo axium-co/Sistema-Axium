@@ -1039,11 +1039,11 @@ const Tarefas = () => {
           onKeyDown={(e) => { if (e.key === 'Escape') setPreviewFile(null); }}
         >
           <div
-            className="relative max-w-4xl max-h-[90vh] w-full h-full flex flex-col items-center justify-center"
+            className="relative flex flex-col items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top bar */}
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10">
+            <div className="absolute -top-12 left-0 right-0 flex items-center justify-between px-4 z-10">
               <p className="text-sm font-bold text-white truncate max-w-[60%]">{previewFile.name}</p>
               <div className="flex items-center gap-2">
                 <a
@@ -1072,37 +1072,37 @@ const Tarefas = () => {
             </div>
 
             {/* Media display */}
-            <div className="flex items-center justify-center w-full h-full">
-              {previewFile.type.startsWith('image/') ? (
-                <img
-                  src={previewFile.data}
-                  alt={previewFile.name}
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                />
-              ) : previewFile.type.startsWith('video/') ? (
-                <video
-                  src={previewFile.data}
-                  controls
-                  autoPlay
-                  className="max-w-full max-h-full rounded-lg shadow-2xl"
+            {previewFile.type.startsWith('image/') ? (
+              <img
+                src={previewFile.data}
+                alt={previewFile.name}
+                className="max-w-[90vw] max-h-[85vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+              />
+            ) : previewFile.type.startsWith('video/') || previewFile.name.match(/\.mov$/i) ? (
+              <video
+                src={previewFile.data}
+                controls
+                autoPlay
+                playsInline
+                className="max-w-[90vw] max-h-[85vh] w-auto h-auto rounded-lg shadow-2xl"
+                style={{ aspectRatio: 'auto' }}
+              >
+                Seu navegador não suporta reprodução de vídeo.
+              </video>
+            ) : (
+              <div className="text-center text-white">
+                <Paperclip size={64} className="mx-auto mb-4 text-white/50" />
+                <p className="text-lg font-bold">Visualização não disponível</p>
+                <p className="text-sm text-white/60 mt-1">Faça o download para abrir este arquivo.</p>
+                <a
+                  href={previewFile.data}
+                  download={previewFile.name}
+                  className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-white text-black font-bold rounded-lg hover:bg-neutral-200 transition-colors"
                 >
-                  Seu navegador não suporta reprodução de vídeo.
-                </video>
-              ) : (
-                <div className="text-center text-white">
-                  <Paperclip size={64} className="mx-auto mb-4 text-white/50" />
-                  <p className="text-lg font-bold">Visualização não disponível</p>
-                  <p className="text-sm text-white/60 mt-1">Faça o download para abrir este arquivo.</p>
-                  <a
-                    href={previewFile.data}
-                    download={previewFile.name}
-                    className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-white text-black font-bold rounded-lg hover:bg-neutral-200 transition-colors"
-                  >
-                    <Download size={16} /> Baixar Arquivo
-                  </a>
-                </div>
-              )}
-            </div>
+                  <Download size={16} /> Baixar Arquivo
+                </a>
+              </div>
+            )}
           </div>
         </div>
       )}
