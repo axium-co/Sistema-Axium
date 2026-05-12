@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { X, MessageCircle, Edit3, ExternalLink, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { X, MessageCircle, ExternalLink, AlertCircle } from 'lucide-react';
 import { useWhatsAppTemplates } from '../contexts/WhatsAppTemplatesContext';
 import { useAuth } from '../contexts/AuthContext';
 import { cleanPhoneNumber, generateWhatsAppLink, replaceTemplateVariables, COMPANY_NAME } from '../lib/whatsapp';
@@ -29,9 +29,9 @@ export default function WhatsAppModal({
   const { employeeName } = useAuth();
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [editedMessage, setEditedMessage] = useState('');
   const [openWithoutMessage, setOpenWithoutMessage] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const cleanedPhone = useMemo(() => cleanPhoneNumber(leadPhone), [leadPhone]);
   const hasPhone = !!leadPhone && !!cleanedPhone;
@@ -63,36 +63,32 @@ export default function WhatsAppModal({
     [activeTemplates, selectedTemplateId]
   );
 
-  const previewMessage = useMemo(() => {
-    if (openWithoutMessage) return '';
-    if (!selectedTemplate) return '';
-    return replaceTemplateVariables(
-      isEditing ? editedMessage : selectedTemplate.message,
-      variables
-    );
-  }, [selectedTemplate, variables, isEditing, editedMessage, openWithoutMessage]);
-
   useEffect(() => {
     if (isOpen) {
       setSelectedTemplateId(null);
-      setIsEditing(false);
       setEditedMessage('');
       setOpenWithoutMessage(false);
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (selectedTemplate) {
+      setEditedMessage(replaceTemplateVariables(selectedTemplate.message, variables));
+      setOpenWithoutMessage(false);
+    }
+  }, [selectedTemplate, variables]);
+
+  useEffect(() => {
+    if (openWithoutMessage) {
+      setEditedMessage('');
+    }
+  }, [openWithoutMessage]);
+
   const handleOpenWhatsApp = () => {
-    const url = generateWhatsAppLink(leadPhone, previewMessage || undefined);
+    const url = generateWhatsAppLink(leadPhone, editedMessage.trim() || undefined);
     if (url) {
       window.open(url, '_blank');
     }
-  };
-
-  const handleEditToggle = () => {
-    if (!isEditing && selectedTemplate) {
-      setEditedMessage(selectedTemplate.message);
-    }
-    setIsEditing(!isEditing);
   };
 
   if (!isOpen) return null;
@@ -151,11 +147,7 @@ export default function WhatsAppModal({
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => {
-                        setSelectedTemplateId(t.id);
-                        setIsEditing(false);
-                        setOpenWithoutMessage(false);
-                      }}
+                      onClick={() => setSelectedTemplateId(t.id)}
                       className={`w-full text-left p-3 rounded-xl border-2 transition-all cursor-pointer ${
                         selectedTemplateId === t.id
                           ? 'border-black bg-neutral-50'
@@ -176,7 +168,6 @@ export default function WhatsAppModal({
                 onClick={() => {
                   setOpenWithoutMessage(true);
                   setSelectedTemplateId(null);
-                  setIsEditing(false);
                 }}
                 className={`w-full text-left p-3 rounded-xl border-2 transition-all flex items-center gap-3 cursor-pointer ${
                   openWithoutMessage
@@ -191,40 +182,19 @@ export default function WhatsAppModal({
                 </div>
               </button>
 
-              {(selectedTemplate || openWithoutMessage) && (
-                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                      {openWithoutMessage ? 'Mensagem' : 'Preview da Mensagem'}
-                    </span>
-                    {selectedTemplate && (
-                      <button
-                        type="button"
-                        onClick={handleEditToggle}
-                        className="flex items-center gap-1.5 text-xs font-bold text-black hover:text-neutral-600 transition-colors cursor-pointer"
-                      >
-                        <Edit3 size={12} />
-                        {isEditing ? 'Visualizar' : 'Editar antes de enviar'}
-                      </button>
-                    )}
-                  </div>
-
-                  {openWithoutMessage ? (
-                    <p className="text-sm text-neutral-400 italic">Nenhuma mensagem será enviada.</p>
-                  ) : isEditing ? (
-                    <textarea
-                      value={editedMessage}
-                      onChange={e => setEditedMessage(e.target.value)}
-                      className="w-full bg-white border border-neutral-200 rounded-lg p-3 text-sm font-medium text-black focus:border-black outline-none resize-none"
-                      rows={5}
-                    />
-                  ) : (
-                    <div className="bg-white rounded-lg p-3 text-sm text-neutral-700 whitespace-pre-wrap leading-relaxed">
-                      {previewMessage}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3">
+                <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest block">
+                  Mensagem
+                </span>
+                <textarea
+                  ref={textareaRef}
+                  value={editedMessage}
+                  onChange={e => setEditedMessage(e.target.value)}
+                  placeholder="Nenhuma mensagem será enviada"
+                  className="w-full bg-white border border-neutral-200 rounded-lg p-3 text-sm font-medium text-black focus:border-black outline-none resize-none min-h-[100px]"
+                  rows={5}
+                />
+              </div>
             </>
           )}
         </div>
