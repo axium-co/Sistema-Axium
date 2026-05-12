@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, X, Edit3, MessageCircle } from 'lucide-react';
+import { Plus, Trash2, X, Edit3, MessageCircle, Paperclip, Download, Eye } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCRM } from '../../contexts/CRMContext';
 import { generateUUID } from '../../lib/uuid';
@@ -23,6 +23,15 @@ interface Row {
   id: string;
   values: Record<string, unknown>;
   lastModifiedBy?: string;
+}
+
+interface FileAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  data: string;
+  uploadedAt: string;
 }
 
 interface BoardType {
@@ -56,6 +65,7 @@ const COLUMN_TYPES = [
   { type: 'date', label: 'Data', icon: '📅' },
   { type: 'notes', label: 'Notas', icon: '📝' },
   { type: 'tags', label: 'Tags', icon: '🏷' },
+  { type: 'files', label: 'Arquivos', icon: '📎' },
 ] as const;
 
 const DEFAULT_BOARD: BoardType = {
@@ -397,6 +407,29 @@ const Board = ({
             </button>
           </div>
         );
+      case 'files': {
+        const files: FileAttachment[] = Array.isArray(value) ? value : [];
+        return (
+          <div className="relative group cursor-pointer" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => {
+                const event = new CustomEvent('openFileManager', {
+                  detail: { rowId: row.id, colId: col.id, files, boardId: board.id }
+                });
+                window.dispatchEvent(event);
+              }}
+              className="w-full min-h-[36px] px-3 py-2 text-sm text-neutral-600 flex items-center gap-2 hover:bg-neutral-100 transition-colors"
+            >
+              <Paperclip size={14} className="text-neutral-400" />
+              {files.length === 0 ? (
+                <span className="text-neutral-400">Nenhum arquivo</span>
+              ) : (
+                <span className="font-medium text-black">{files.length} arquivo{files.length !== 1 ? 's' : ''}</span>
+              )}
+            </button>
+          </div>
+        );
+      }
       default:
         return <div className="text-sm px-3 py-2 text-neutral-400">{String(value) || '—'}</div>;
     }
@@ -493,6 +526,13 @@ const Tarefas = () => {
   const [editingNote, setEditingNote] = useState<{ rowId: string; colId: string; boardId: string } | null>(null);
   const [noteContent, setNoteContent] = useState('');
 
+  const [editingFiles, setEditingFiles] = useState<{
+    rowId: string;
+    colId: string;
+    boardId: string;
+    files: FileAttachment[];
+  } | null>(null);
+
   const [newColumnData, setNewColumnData] = useState({
     title: '',
     type: 'text' as Column['type'],
@@ -508,6 +548,16 @@ const Tarefas = () => {
 
     window.addEventListener('openNoteEditor', handleOpenNoteEditor);
     return () => window.removeEventListener('openNoteEditor', handleOpenNoteEditor);
+  }, []);
+
+  useEffect(() => {
+    const handleOpenFileManager = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setEditingFiles({ rowId: detail.rowId, colId: detail.colId, boardId: detail.boardId, files: detail.files || [] });
+    };
+
+    window.addEventListener('openFileManager', handleOpenFileManager);
+    return () => window.removeEventListener('openFileManager', handleOpenFileManager);
   }, []);
 
   useEffect(() => {
@@ -626,6 +676,53 @@ const Tarefas = () => {
     setEditingNote(null);
     setNoteContent('');
   };
+
+  const handleSaveFiles = (files: FileAttachment[]) => {
+    if (!editingFiles) return;
+
+    const board = boards.find(b => b.id === editingFiles.boardId);
+    if (!board) return;
+
+    const updated = board.rows.map(r =>
+      r.id === editingFiles.rowId ? { ...r, values: { ...r.values, [editingFiles.colId]: files } } : r
+    );
+    handleUpdateBoard({ ...board, rows: updated });
+    setEditingFiles(null);
+  };
+
+  const handleAddFiles = async (newFiles: FileList) => {
+    if (!editingFiles) return;
+
+    const fileAttachments: FileAttachment[] = [];
+    for (let i = 0; i < newFiles.length; i++) {
+      const file = newFiles[i];
+      const data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      fileAttachments.push({
+        id: generateUUID(),
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        data,
+        uploadedAt: new Date().toISOString(),
+      });
+    }
+    handleSaveFiles([...editingFiles.files, ...fileAttachments]);
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    if (!editingFiles) return;
+    handleSaveFiles(editingFiles.files.filter(f => f.id !== fileId));
+  };
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
 
   return (
     <div className="p-6 space-y-8 min-h-screen">
@@ -823,6 +920,107 @@ const Tarefas = () => {
                 className="flex-1 p-3 bg-black text-white rounded-lg font-bold hover:bg-neutral-800 transition-colors"
               >
                 Salvar Nota
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingFiles && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white border border-neutral-200 rounded-2xl p-8 max-w-lg w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-black">Gerenciar Arquivos</h3>
+              <button onClick={() => setEditingFiles(null)} className="text-neutral-400 hover:text-black">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Drop Zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-black', 'bg-neutral-50'); }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove('border-black', 'bg-neutral-50'); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('border-black', 'bg-neutral-50');
+                if (e.dataTransfer.files.length > 0) {
+                  handleAddFiles(e.dataTransfer.files);
+                }
+              }}
+              onClick={() => document.getElementById(`file-input-${editingFiles.colId}`)?.click()}
+              className="border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center cursor-pointer hover:border-neutral-400 transition-colors mb-4"
+            >
+              <input
+                id={`file-input-${editingFiles.colId}`}
+                type="file"
+                multiple
+                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleAddFiles(e.target.files);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <Paperclip size={32} className="mx-auto text-neutral-300 mb-3" />
+              <p className="text-sm font-bold text-neutral-500">Arraste arquivos aqui ou clique para selecionar</p>
+              <p className="text-[11px] text-neutral-400 font-medium mt-1">Vídeos, fotos e documentos</p>
+            </div>
+
+            {/* File List */}
+            {editingFiles.files.length > 0 ? (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {editingFiles.files.map((file) => (
+                  <div key={file.id} className="flex items-center gap-3 p-3 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors group">
+                    {/* Preview */}
+                    <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 overflow-hidden">
+                      {file.type.startsWith('image/') ? (
+                        <img src={file.data} alt={file.name} className="w-full h-full object-cover" />
+                      ) : file.type.startsWith('video/') ? (
+                        <video src={file.data} className="w-full h-full object-cover" />
+                      ) : (
+                        <Paperclip size={16} className="text-neutral-400" />
+                      )}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-black truncate">{file.name}</p>
+                      <p className="text-[11px] text-neutral-400 font-medium">{formatFileSize(file.size)}</p>
+                    </div>
+                    {/* Actions */}
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <a
+                        href={file.data}
+                        download={file.name}
+                        className="p-1.5 text-neutral-400 hover:text-black rounded-md hover:bg-neutral-100 transition-colors"
+                        title="Download"
+                      >
+                        <Download size={14} />
+                      </a>
+                      <button
+                        onClick={() => handleRemoveFile(file.id)}
+                        className="p-1.5 text-neutral-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
+                        title="Remover"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+                <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest italic">Nenhum arquivo anexado</p>
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setEditingFiles(null)}
+                className="flex-1 p-3 border border-neutral-200 rounded-lg text-neutral-600 hover:text-black hover:bg-neutral-50 transition-colors font-bold"
+              >
+                Fechar
               </button>
             </div>
           </div>
