@@ -53,6 +53,7 @@ interface CRMContextType {
   setSearchTerm: (term: string) => void;
   markNotificationsAsRead: () => void;
   clearNotifications: () => void;
+  removeNotification: (id: string) => void;
   pushNotification: (title: string, description: string, type: Notification['type']) => void;
   addLead: (lead: LeadInput) => void;
   updateLead: (id: string, fields: LeadUpdate) => void;
@@ -210,6 +211,11 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
 
   const clearNotifications = useCallback(() => {
     setNotifications([]);
+    localStorage.removeItem('axium_notifications_v1');
+  }, []);
+
+  const removeNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
   const pushNotificationCb = useCallback((title: string, description: string, type: Notification['type']) => {
@@ -300,6 +306,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     setSearchTerm,
     markNotificationsAsRead,
     clearNotifications,
+    removeNotification,
     pushNotification: pushNotificationCb,
     addLead,
     updateLead,
@@ -319,6 +326,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     notifications,
     markNotificationsAsRead,
     clearNotifications,
+    removeNotification,
     pushNotificationCb,
     addLead,
     updateLead,
