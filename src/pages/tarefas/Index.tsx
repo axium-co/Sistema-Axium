@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, X, Edit3, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCRM } from '../../contexts/CRMContext';
 import { generateUUID } from '../../lib/uuid';
 import { cleanPhoneNumber, generateWhatsAppLink, WHATSAPP_MESSAGE_TEMPLATES } from '../../lib/whatsapp';
 
@@ -476,6 +477,7 @@ const Board = ({
 };
 
 const Tarefas = () => {
+  const { pushNotification } = useCRM();
   const [boards, setBoards] = useState<BoardType[]>(() => {
     const stored = localStorage.getItem('axium_boards_v3');
     return stored ? JSON.parse(stored) : [DEFAULT_BOARD];
@@ -513,12 +515,26 @@ const Tarefas = () => {
   }, [boards]);
 
   const handleUpdateBoard = (updatedBoard: BoardType) => {
+    const oldBoard = boards.find(b => b.id === updatedBoard.id);
+    if (oldBoard) {
+      if (updatedBoard.rows.length > oldBoard.rows.length) {
+        pushNotification('Nova Tarefa', `Tarefa adicionada ao quadro "${updatedBoard.title}".`, 'system');
+      } else if (updatedBoard.rows.length < oldBoard.rows.length) {
+        pushNotification('Tarefa Excluída', `Tarefa removida do quadro "${updatedBoard.title}".`, 'system');
+      } else if (updatedBoard.columns.length !== oldBoard.columns.length) {
+        pushNotification('Coluna Alterada', `Colunas do quadro "${updatedBoard.title}" foram modificadas.`, 'system');
+      } else {
+        pushNotification('Tarefa Atualizada', `Tarefa atualizada no quadro "${updatedBoard.title}".`, 'system');
+      }
+    }
     setBoards(boards.map(b => b.id === updatedBoard.id ? updatedBoard : b));
   };
 
   const handleDeleteBoard = (id: string) => {
     if (boards.length > 1 && confirm('Excluir quadro?')) {
+      const board = boards.find(b => b.id === id);
       setBoards(boards.filter(b => b.id !== id));
+      if (board) pushNotification('Quadro Excluído', `Quadro "${board.title}" foi removido.`, 'system');
     }
   };
 
@@ -550,6 +566,7 @@ const Tarefas = () => {
     };
     
     setBoards([...boards, newBoard]);
+    pushNotification('Novo Quadro', `Quadro "${newBoardTitle}" foi criado.`, 'system');
     setNewBoardTitle('');
     setNewBoardColor('#3b82f6');
     setShowNewBoardModal(false);

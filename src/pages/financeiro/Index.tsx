@@ -88,7 +88,7 @@ const RadioFilter = ({ label, checked, onChange }: { label: string; checked: boo
 );
 
 const Financeiro = () => {
-  const { leads, getTotalValueByStage } = useCRM();
+  const { leads, getTotalValueByStage, pushNotification } = useCRM();
   const { filters } = useFilters();
   const { role, employeeName } = useAuth();
 
@@ -356,6 +356,7 @@ const Financeiro = () => {
 
     if (isNewInvoice) {
       setManualInvoices(prev => [modifiedInvoice, ...prev]);
+      pushNotification('Nova Fatura', `Fatura de ${modifiedInvoice.client} no valor de ${modifiedInvoice.amount} foi criada.`, 'meeting');
     } else {
       if (editingInvoice.source === 'lead') {
         alert('Faturas vinculadas a leads devem ser editadas no módulo de Leads.');
@@ -363,6 +364,7 @@ const Financeiro = () => {
         alert('Faturas do Asaas são sincronizadas automaticamente e não podem ser editadas manualmente.');
       } else {
         setManualInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? modifiedInvoice : inv));
+        pushNotification('Fatura Atualizada', `Fatura de ${modifiedInvoice.client} foi modificada.`, 'meeting');
       }
     }
     setIsInvoiceModalOpen(false);
@@ -376,6 +378,7 @@ const Financeiro = () => {
     }
     if (confirm('Excluir esta fatura manual?')) {
       setManualInvoices(prev => prev.filter(inv => inv.id !== id));
+      pushNotification('Fatura Excluída', `Fatura de ${inv.client} foi removida.`, 'meeting');
       setIsInvoiceModalOpen(false);
     }
   };
@@ -409,15 +412,19 @@ const Financeiro = () => {
 
     if (isNewExpense) {
       setExpenses(prev => [modifiedExpense, ...prev]);
+      pushNotification('Nova Despesa', `Despesa de ${modifiedExpense.category} - ${modifiedExpense.description} no valor de ${modifiedExpense.amount} foi criada.`, 'system');
     } else {
       setExpenses(prev => prev.map(exp => exp.id === editingExpense.id ? modifiedExpense : exp));
+      pushNotification('Despesa Atualizada', `Despesa de ${modifiedExpense.category} foi modificada.`, 'system');
     }
     setIsExpenseModalOpen(false);
   };
 
   const handleDeleteExpense = (id: string) => {
     if (confirm('Excluir esta despesa?')) {
+      const exp = expenses.find(e => e.id === id);
       setExpenses(prev => prev.filter(exp => exp.id !== id));
+      if (exp) pushNotification('Despesa Excluída', `Despesa de ${exp.category} foi removida.`, 'system');
       setIsExpenseModalOpen(false);
     }
   };

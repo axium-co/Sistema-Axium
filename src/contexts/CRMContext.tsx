@@ -52,6 +52,8 @@ interface CRMContextType {
   notifications: Notification[];
   setSearchTerm: (term: string) => void;
   markNotificationsAsRead: () => void;
+  clearNotifications: () => void;
+  pushNotification: (title: string, description: string, type: Notification['type']) => void;
   addLead: (lead: LeadInput) => void;
   updateLead: (id: string, fields: LeadUpdate) => void;
   updateLeadStage: (id: string, stage: string) => void;
@@ -126,12 +128,6 @@ const INITIAL_EVENTS: CalendarEvent[] = [
   }
 ];
 
-const INITIAL_NOTIFICATIONS: Notification[] = [
-  { id: '1', title: 'Novo Lead Criado', description: 'O lead "Clínica Saúde" foi adicionado via importação.', time: '5 min atrás', isRead: false, type: 'lead' },
-  { id: '2', title: 'Reunião em breve', description: 'Sua reunião com João Silva começa em 15 minutos.', time: '10 min atrás', isRead: false, type: 'meeting' },
-  { id: '3', title: 'Follow-up pendente', description: 'Você tem 3 follow-ups agendados para hoje.', time: '1 hora atrás', isRead: true, type: 'system' },
-];
-
 function loadFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   
@@ -146,14 +142,32 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   }
 }
 
-// Função removida - usar generateUUID de ../lib/uuid
+function now(): string {
+  return 'Agora';
+}
+
+function pushNotification(
+  setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>,
+  title: string,
+  description: string,
+  type: Notification['type']
+) {
+  const n: Notification = {
+    id: generateUUID(),
+    title,
+    description,
+    time: now(),
+    isRead: false,
+    type,
+  };
+  setNotifications(prev => [n, ...prev]);
+}
 
 export const CRMProvider = ({ children }: { children: ReactNode }) => {
   const [leads, setLeads] = useState<Lead[]>(() => {
     const storageKey = 'axium_leads_v2';
     let loaded: Lead[] = [];
     
-    // Debug localStorage
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(storageKey);
       console.log('[DEBUG CRMProvider] raw localStorage:', stored);
@@ -162,19 +176,17 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     loaded = loadFromStorage(storageKey, INITIAL_LEADS);
     console.log('[DEBUG CRMProvider] Carregando leads do localStorage:', loaded?.length ?? 0, loaded);
     
-    // Fallback: se vazio ou undefined, usa dados iniciais
     if (!loaded || !Array.isArray(loaded) || loaded.length === 0) {
       console.log('[DEBUG CRMProvider] Usando INITIAL_LEADS como fallback');
       loaded = INITIAL_LEADS;
     }
     
-    // Debug final
     console.log('[DEBUG CRMProvider] Leads finais:', loaded?.length ?? 0);
     return loaded;
   });
   const [events, setEvents] = useState<CalendarEvent[]>(() => loadFromStorage('axium_events_v2', INITIAL_EVENTS));
   const [searchTerm, setSearchTerm] = useState('');
-  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>(() => loadFromStorage('axium_notifications_v1', []));
 
   useEffect(() => {
     localStorage.setItem('axium_leads_v2', JSON.stringify(leads));
@@ -184,6 +196,10 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('axium_events_v2', JSON.stringify(events));
   }, [events]);
 
+  useEffect(() => {
+    localStorage.setItem('axium_notifications_v1', JSON.stringify(notifications));
+  }, [notifications]);
+
   const leadsByStage = useMemo(() => groupLeadsByStage(leads), [leads]);
   
   const totalPipelineValue = useMemo(() => calculateTotalValue(leads), [leads]);
@@ -192,45 +208,78 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
   }, []);
 
+  const clearNotifications = useCallback(() => {
+    setNotifications([]);
+  }, []);
+
+  const pushNotificationCb = useCallback((title: string, description: string, type: Notification['type']) => {
+    pushNotification(setNotifications, title, description, type);
+  }, []);
+
   const addLead = useCallback((lead: LeadInput) => {
     const id = generateUUID();
     const newLead: Lead = { ...lead, id };
-    
     setLeads(prev => [...prev, newLead]);
-    
-    setNotifications(prev => [{
-      id: generateUUID(),
-      title: 'Novo Lead',
-      description: `${lead.name} foi adicionado ao sistema.`,
-      time: 'Agora',
-      isRead: false,
-      type: 'lead'
-    } as Notification, ...prev]);
+    pushNotification(setNotifications, 'Novo Lead', `${lead.name} foi adicionado ao sistema.`, 'lead');
   }, []);
 
   const updateLead = useCallback((id: string, fields: LeadUpdate) => {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...fields } : l));
+    setLeads(prev => {
+      const old = prev.find(l => l.id === id);
+      if (old) {
+        const changedFields = Object.keys(fields).filter(k => (fields as any)[k] !== (old as any)[k]);
+        if (changedFields.length > 0) {
+          pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
+        }
+      }
+      return prev.map(l => l.id === id ? { ...l, ...fields } : l);
+    });
   }, []);
 
   const updateLeadStage = useCallback((id: string, stage: string) => {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, stage } : l));
+    setLeads(prev => {
+      const old = prev.find(l => l.id === id);
+      if (old && old.stage !== stage) {
+        pushNotification(setNotifications, 'Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
+      }
+      return prev.map(l => l.id === id ? { ...l, stage } : l);
+    });
   }, []);
 
   const deleteLead = useCallback((id: string) => {
-    setLeads(prev => prev.filter(l => l.id !== id));
+    setLeads(prev => {
+      const old = prev.find(l => l.id === id);
+      if (old) {
+        pushNotification(setNotifications, 'Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
+      }
+      return prev.filter(l => l.id !== id);
+    });
   }, []);
 
   const addEvent = useCallback((event: Omit<CalendarEvent, 'id'>) => {
     const id = generateUUID();
     setEvents(prev => [...prev, { ...event, id }]);
+    pushNotification(setNotifications, 'Evento Criado', `${event.title} foi adicionado ao calendário.`, 'meeting');
   }, []);
 
   const updateEvent = useCallback((id: string, fields: Partial<CalendarEvent>) => {
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+    setEvents(prev => {
+      const old = prev.find(e => e.id === id);
+      if (old) {
+        pushNotification(setNotifications, 'Evento Atualizado', `${old.title} foi modificado.`, 'meeting');
+      }
+      return prev.map(e => e.id === id ? { ...e, ...fields } : e);
+    });
   }, []);
 
   const deleteEvent = useCallback((id: string) => {
-    setEvents(prev => prev.filter(e => e.id !== id));
+    setEvents(prev => {
+      const old = prev.find(e => e.id === id);
+      if (old) {
+        pushNotification(setNotifications, 'Evento Removido', `${old.title} foi removido do calendário.`, 'meeting');
+      }
+      return prev.filter(e => e.id !== id);
+    });
   }, []);
 
   const getLeadsByStage = useCallback((stage: string) => {
@@ -250,6 +299,8 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     notifications,
     setSearchTerm,
     markNotificationsAsRead,
+    clearNotifications,
+    pushNotification: pushNotificationCb,
     addLead,
     updateLead,
     updateLeadStage,
@@ -267,6 +318,8 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     searchTerm,
     notifications,
     markNotificationsAsRead,
+    clearNotifications,
+    pushNotificationCb,
     addLead,
     updateLead,
     updateLeadStage,
