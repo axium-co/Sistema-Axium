@@ -533,6 +533,8 @@ const Tarefas = () => {
     files: FileAttachment[];
   } | null>(null);
 
+  const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
+
   const [newColumnData, setNewColumnData] = useState({
     title: '',
     type: 'text' as Column['type'],
@@ -972,9 +974,12 @@ const Tarefas = () => {
             {editingFiles.files.length > 0 ? (
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {editingFiles.files.map((file) => (
-                  <div key={file.id} className="flex items-center gap-3 p-3 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors group">
+                  <div key={file.id} className="flex items-center gap-3 p-3 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors group cursor-pointer">
                     {/* Preview */}
-                    <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 overflow-hidden">
+                    <div
+                      onClick={() => setPreviewFile(file)}
+                      className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer"
+                    >
                       {file.type.startsWith('image/') ? (
                         <img src={file.data} alt={file.name} className="w-full h-full object-cover" />
                       ) : file.type.startsWith('video/') ? (
@@ -984,8 +989,8 @@ const Tarefas = () => {
                       )}
                     </div>
                     {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-black truncate">{file.name}</p>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setPreviewFile(file)}>
+                      <p className="text-sm font-bold text-black truncate hover:underline">{file.name}</p>
                       <p className="text-[11px] text-neutral-400 font-medium">{formatFileSize(file.size)}</p>
                     </div>
                     {/* Actions */}
@@ -999,7 +1004,7 @@ const Tarefas = () => {
                         <Download size={14} />
                       </a>
                       <button
-                        onClick={() => handleRemoveFile(file.id)}
+                        onClick={(e) => { e.stopPropagation(); handleRemoveFile(file.id); }}
                         className="p-1.5 text-neutral-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
                         title="Remover"
                       >
@@ -1022,6 +1027,81 @@ const Tarefas = () => {
               >
                 Fechar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewFile && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4"
+          onClick={() => setPreviewFile(null)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setPreviewFile(null); }}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] w-full h-full flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top bar */}
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10">
+              <p className="text-sm font-bold text-white truncate max-w-[60%]">{previewFile.name}</p>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewFile.data}
+                  download={previewFile.name}
+                  className="p-2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                  title="Download"
+                >
+                  <Download size={18} />
+                </a>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRemoveFile(previewFile.id); setPreviewFile(null); }}
+                  className="p-2 text-white/70 hover:text-red-400 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                  title="Remover"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <button
+                  onClick={() => setPreviewFile(null)}
+                  className="p-2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                  title="Fechar"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Media display */}
+            <div className="flex items-center justify-center w-full h-full">
+              {previewFile.type.startsWith('image/') ? (
+                <img
+                  src={previewFile.data}
+                  alt={previewFile.name}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                />
+              ) : previewFile.type.startsWith('video/') ? (
+                <video
+                  src={previewFile.data}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-full rounded-lg shadow-2xl"
+                >
+                  Seu navegador não suporta reprodução de vídeo.
+                </video>
+              ) : (
+                <div className="text-center text-white">
+                  <Paperclip size={64} className="mx-auto mb-4 text-white/50" />
+                  <p className="text-lg font-bold">Visualização não disponível</p>
+                  <p className="text-sm text-white/60 mt-1">Faça o download para abrir este arquivo.</p>
+                  <a
+                    href={previewFile.data}
+                    download={previewFile.name}
+                    className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-white text-black font-bold rounded-lg hover:bg-neutral-200 transition-colors"
+                  >
+                    <Download size={16} /> Baixar Arquivo
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
