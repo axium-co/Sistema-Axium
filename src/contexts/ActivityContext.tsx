@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { supabase, ACTIVITY_LOGS_TABLE, type ActivityLog } from '../lib/supabase';
+import { supabase, ACTIVITY_LOGS_TABLE, isSupabaseConfigured, type ActivityLog } from '../lib/supabase';
 
 interface ActivityLogsContextType {
   activityLogs: ActivityLog[];
@@ -25,6 +25,12 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
   const [fetchActivityLogsError, setFetchActivityLogsError] = useState<string | null>(null);
 
   const fetchActivityLogs = useCallback(async (limit = 20) => {
+    if (!isSupabaseConfigured) {
+      setActivityLogs([]);
+      setIsLoadingLogs(false);
+      return;
+    }
+
     setIsLoadingLogs(true);
     setFetchActivityLogsError(null);
     
@@ -68,6 +74,8 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const logActivity = async (acao: ActivityLog['acao'], descricao: string) => {
+    if (!isSupabaseConfigured) return;
+
     try {
       const { data, error } = await supabase
         .from(ACTIVITY_LOGS_TABLE)

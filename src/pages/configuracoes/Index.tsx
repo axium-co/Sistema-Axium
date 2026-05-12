@@ -7,7 +7,7 @@ import {
   AlertCircle, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, PROFILES_TABLE } from '../../lib/supabase';
+import { supabase, PROFILES_TABLE, isSupabaseConfigured } from '../../lib/supabase';
 import { isValidUUID } from '../../lib/uuid';
 import { useNavigate } from 'react-router-dom';
 
@@ -53,6 +53,10 @@ const Configuracoes = () => {
   useEffect(() => {
     const loadData = async () => {
       if (!user?.id) return;
+      if (!isSupabaseConfigured) {
+        setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
+        return;
+      }
       try {
         const { data, error } = await supabase
           .from(PROFILES_TABLE)
@@ -92,6 +96,10 @@ const Configuracoes = () => {
 
   const loadEmployees = async () => {
     if (!user?.id) return;
+    if (!isSupabaseConfigured) {
+      setEmployees([]);
+      return;
+    }
     setIsLoadingEmployees(true);
     try {
       const { data, error } = await supabase
@@ -126,7 +134,11 @@ const Configuracoes = () => {
       return;
     }
 
-    // Validar se user.id é um UUID válido
+    if (!isSupabaseConfigured) {
+      setInviteError('Supabase não configurado. Configure as variáveis de ambiente.');
+      return;
+    }
+
     if (!user?.id || !isValidUUID(user.id)) {
       setInviteError('ID de usuário inválido. Faça logout e login novamente.');
       console.error('[CONFIG] user.id inválido:', user?.id);
@@ -160,6 +172,7 @@ const Configuracoes = () => {
 
   const handleRemoveEmployee = async (id: string) => {
     if (!confirm('Remover funcionário?')) return;
+    if (!isSupabaseConfigured) return;
 
     try {
       const { error } = await supabase
@@ -194,6 +207,12 @@ const Configuracoes = () => {
     if (profileData.email && profileData.email.trim() && !emailRegex.test(profileData.email.trim())) {
       setProfileError('Email profissional inválido');
       console.error('[CONFIG] Erro: email inválido');
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      setProfileSuccess('Perfil atualizado (apenas local, Supabase não configurado)');
+      setTimeout(() => { setProfileSuccess(''); setActiveModal(null); }, 1500);
       return;
     }
     
@@ -251,6 +270,11 @@ const Configuracoes = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    if (!isSupabaseConfigured) {
+      setProfileError('Supabase não configurado. Configure as variáveis de ambiente.');
+      return;
+    }
+
     const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!validTypes.includes(file.type)) {
       setProfileError('Apenas PNG ou JPG são aceitos');
