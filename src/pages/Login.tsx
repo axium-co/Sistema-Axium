@@ -98,7 +98,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Sua senha secreta"
-                  className="w-full border border-neutral-200 rounded-md py-3 pl-11 pr-12 text-black text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
+                  className="w-full border border-neutral-200 rounded-md py-2 md:py-3 pl-10 md:pl-11 pr-12 text-black text-xs md:text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
                   disabled={isLoading}
                 />
                 <button

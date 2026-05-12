@@ -125,4 +125,8 @@ body {
     @apply text-xs font-semibold uppercase tracking-widest;
     color: var(--text-muted);
   }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
