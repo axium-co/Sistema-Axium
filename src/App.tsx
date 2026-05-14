@@ -19,6 +19,7 @@ import CRMImportar from './pages/crm/Importar';
 import CRMIntegracoes from './pages/crm/Integracoes';
 import Financeiro from './pages/financeiro/Index';
 import Tarefas from './pages/tarefas/Index';
+import LandingAnalytics from './pages/landing/Index';
 import Configuracoes from './pages/configuracoes/Index';
 import WhatsAppTemplatesPage from './pages/configuracoes/WhatsAppTemplates';
 
@@ -137,6 +138,18 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
             <MainLayout>
               <Tarefas />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Protected Routes - Landing Page Analytics - All authenticated users */}
+      <Route
+        path="/landing"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
+            <MainLayout>
+              <LandingAnalytics />
             </MainLayout>
           </ProtectedRoute>
         }
