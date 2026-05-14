@@ -3,14 +3,7 @@ import { createClient, type RealtimeChannel } from '@supabase/supabase-js';
 const rawUrl = import.meta.env.VITE_SUPABASE_URL;
 const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const PLACEHOLDER_URL = 'https://your-project.supabase.co';
-const PLACEHOLDER_KEY = 'your-anon-key';
-
-const isConfigured =
-  !!rawUrl &&
-  !!rawKey &&
-  rawUrl !== PLACEHOLDER_URL &&
-  rawKey !== PLACEHOLDER_KEY;
+const isConfigured = !!rawUrl && !!rawKey;
 
 if (!isConfigured) {
   console.warn(
@@ -22,8 +15,8 @@ if (!isConfigured) {
   );
 }
 
-const supabaseUrl = rawUrl || PLACEHOLDER_URL;
-const supabaseAnonKey = rawKey || PLACEHOLDER_KEY;
+const supabaseUrl = rawUrl || 'https://placeholder.supabase.co';
+const supabaseAnonKey = rawKey || 'placeholder-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
