@@ -7,7 +7,7 @@ import {
   AlertCircle, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, PROFILES_TABLE, isSupabaseConfigured } from '../../lib/supabase';
+import { supabase, PROFILES_TABLE, isSupabaseConfigured, subscribeToTable, type Profile } from '../../lib/supabase';
 import { isValidUUID } from '../../lib/uuid';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,6 +17,17 @@ interface Employee {
   name: string;
   role: 'funcionario' | 'socio';
   createdAt: string;
+}
+
+interface EmployeeRow {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatar: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 type ModalType = 'perfil' | 'equipe';
@@ -94,6 +105,31 @@ const Configuracoes = () => {
     loadData();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id || !isSupabaseConfigured) return;
+
+    const channel = subscribeToTable<Profile>(
+      PROFILES_TABLE,
+      'UPDATE',
+      (payload) => {
+        const updated = payload.new;
+        if (updated.user_id !== user.id) return;
+        setProfileData(prev => ({
+          ...prev,
+          name: updated.nome ?? prev.name,
+          phone: updated.telefone ?? prev.phone,
+          avatar: updated.avatar ?? prev.avatar,
+        }));
+        if (updated.avatar) setAvatarPreview(updated.avatar);
+      },
+      `user_id=eq.${user.id}`,
+    );
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   const loadEmployees = async () => {
     if (!user?.id) return;
     if (!isSupabaseConfigured) {
@@ -121,6 +157,44 @@ const Configuracoes = () => {
     if (user?.id) {
       loadEmployees();
     }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !isSupabaseConfigured) return;
+
+    const channel = supabase
+      .channel('employees_changes')
+      .on<EmployeeRow>(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'employees', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          setEmployees(prev => {
+            if (prev.some(emp => emp.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
+        },
+      )
+      .on<EmployeeRow>(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'employees', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          setEmployees(prev =>
+            prev.map(emp => (emp.id === payload.new.id ? { ...emp, ...payload.new } : emp)),
+          );
+        },
+      )
+      .on<EmployeeRow>(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'employees', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          setEmployees(prev => prev.filter(emp => emp.id !== payload.old.id));
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const handleAddEmployee = async () => {

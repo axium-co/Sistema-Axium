@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type RealtimeChannel } from '@supabase/supabase-js';
 
 const rawUrl = import.meta.env.VITE_SUPABASE_URL;
 const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -34,6 +34,48 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
   },
 });
+
+type TableChangeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+
+interface TableChangePayload<T> {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new: T;
+  old: T;
+}
+
+export function subscribeToTable<T>(
+  table: string,
+  event: TableChangeEvent,
+  callback: (payload: TableChangePayload<T>) => void,
+  filter?: string,
+): RealtimeChannel | null {
+  if (!isConfigured) return null;
+
+  const channelName = `realtime:${table}:${event}:${filter ?? 'all'}`;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const channelConfig: Record<string, any> = {
+    event,
+    schema: 'public',
+    table,
+  };
+
+  if (filter) {
+    channelConfig.filter = filter;
+  }
+
+  return supabase
+    .channel(channelName)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .on('postgres_changes', channelConfig, (payload: any) => {
+      callback({
+        eventType: payload.eventType as TableChangePayload['eventType'],
+        new: payload.new as T,
+        old: payload.old as T,
+      });
+    })
+    .subscribe();
+}
 
 export { isConfigured as isSupabaseConfigured };
 

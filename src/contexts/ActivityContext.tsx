@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { supabase, ACTIVITY_LOGS_TABLE, isSupabaseConfigured, type ActivityLog } from '../lib/supabase';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { supabase, ACTIVITY_LOGS_TABLE, isSupabaseConfigured, subscribeToTable, type ActivityLog } from '../lib/supabase';
 
 interface ActivityLogsContextType {
   activityLogs: ActivityLog[];
@@ -99,6 +99,25 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
       console.error('Erro ao registrar atividade:', err);
     }
   };
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const channel = subscribeToTable<ActivityLog>(
+      ACTIVITY_LOGS_TABLE,
+      'INSERT',
+      (payload) => {
+        setActivityLogs(prev => {
+          if (prev.some(log => log.id === payload.new.id)) return prev;
+          return [payload.new, ...prev];
+        });
+      },
+    );
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <ActivityLogsContext.Provider value={{ activityLogs, isLoadingLogs, fetchActivityLogsError, fetchActivityLogs, logActivity }}>
