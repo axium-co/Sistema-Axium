@@ -10,11 +10,6 @@ interface PageEvent {
   created_at: string;
 }
 
-interface ClickGroup {
-  label: string;
-  count: number;
-}
-
 interface DayView {
   date: string;
   views: number;
@@ -101,22 +96,21 @@ const LandingAnalytics = () => {
     [events],
   );
 
-  const clicksByLabel: ClickGroup[] = useMemo(() => {
-    const grouped: Record<string, number> = {};
-    (events ?? [])
-      .filter(e => e.event_type === 'button_click' && e.label)
-      .forEach(e => {
-        const label = e.label!;
-        grouped[label] = (grouped[label] || 0) + 1;
-      });
-    return Object.entries(grouped)
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [events]);
+  const clickEvents: PageEvent[] = useMemo(
+    () => (events ?? [])
+      .filter(e => e.event_type === 'button_click')
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [events],
+  );
 
   const totalClicks = useMemo(
-    () => clicksByLabel.reduce((sum, g) => sum + g.count, 0),
-    [clicksByLabel],
+    () => clickEvents.length,
+    [clickEvents],
+  );
+
+  const uniqueButtons = useMemo(
+    () => new Set(clickEvents.filter(e => e.label).map(e => e.label)).size,
+    [clickEvents],
   );
 
   const viewsByDay: DayView[] = useMemo(
@@ -173,7 +167,7 @@ const LandingAnalytics = () => {
         </div>
         <div className="bg-white border border-neutral-200 rounded-3xl p-8">
           <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Botões únicos</p>
-          <p className="text-5xl font-black text-black">{clicksByLabel.length}</p>
+          <p className="text-5xl font-black text-black">{uniqueButtons}</p>
         </div>
       </div>
 
@@ -211,15 +205,22 @@ const LandingAnalytics = () => {
       </div>
 
       <div className="bg-white border border-neutral-200 rounded-3xl p-8">
-        <h2 className="font-black text-black text-lg tracking-tight mb-6">Cliques por Botão</h2>
-        {clicksByLabel.length === 0 ? (
+        <h2 className="font-black text-black text-lg tracking-tight mb-6">Cliques (cronológico)</h2>
+        {clickEvents.length === 0 ? (
           <p className="text-neutral-400 text-sm font-medium">Nenhum clique registrado ainda.</p>
         ) : (
-          <div className="space-y-3">
-            {clicksByLabel.map((item) => (
-              <div key={item.label} className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl border border-neutral-100">
-                <span className="font-bold text-sm text-black">{item.label}</span>
-                <span className="font-black text-lg text-black">{item.count}</span>
+          <div className="space-y-2">
+            {clickEvents.map((event) => (
+              <div key={event.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100">
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm text-black">{event.label || '—'}</span>
+                  <span className="text-[11px] text-neutral-400 font-medium">
+                    {new Date(event.created_at).toLocaleDateString('pt-BR', {
+                      day: '2-digit', month: '2-digit', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
