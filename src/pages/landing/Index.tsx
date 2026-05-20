@@ -157,7 +157,7 @@ const LandingAnalytics = () => {
           <p className="text-neutral-500 text-sm font-medium">Analytics de eventos da landing page — atualizado em tempo real.</p>
         </div>
         <a
-          href="/landing-page"
+          href="/"
           target="_blank"
           rel="noopener noreferrer"
           className="px-5 py-3 bg-black text-white text-xs font-bold rounded-2xl hover:bg-neutral-800 transition-colors shrink-0"

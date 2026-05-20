@@ -48,6 +48,12 @@ const PublicLanding = () => {
                 {item.label}
               </a>
             ))}
+            <a
+              href="/login"
+              className="text-sm font-bold text-black hover:text-neutral-600 transition-colors"
+            >
+              Entrar
+            </a>
           </nav>
         </div>
       </header>

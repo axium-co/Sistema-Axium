@@ -29,9 +29,9 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Public Landing Page Route */}
+      {/* Public Landing Page Route (root) */}
       <Route
-        path="/landing-page"
+        path="/"
         element={<PublicLanding />}
       />
 
@@ -184,11 +184,8 @@ function AppRoutes() {
         }
       />
 
-      {/* Root redirect to login or dashboard based on auth */}
-      <Route path="/" element={<Navigate to={isAuthenticated ? '/crm/painel' : '/login'} replace />} />
-
       {/* Fallback for unknown routes */}
-      <Route path="*" element={<Navigate to="/crm/painel" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
