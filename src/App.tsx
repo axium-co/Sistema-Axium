@@ -20,6 +20,7 @@ import CRMIntegracoes from './pages/crm/Integracoes';
 import Financeiro from './pages/financeiro/Index';
 import Tarefas from './pages/tarefas/Index';
 import LandingAnalytics from './pages/landing/Index';
+import PublicLanding from './pages/landing/PublicLanding';
 import Configuracoes from './pages/configuracoes/Index';
 import WhatsAppTemplatesPage from './pages/configuracoes/WhatsAppTemplates';
 
@@ -28,6 +29,12 @@ function AppRoutes() {
 
   return (
     <Routes>
+      {/* Public Landing Page Route */}
+      <Route
+        path="/landing-page"
+        element={<PublicLanding />}
+      />
+
       {/* Login Route */}
       <Route
         path="/login"

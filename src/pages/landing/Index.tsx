@@ -151,9 +151,19 @@ const LandingAnalytics = () => {
 
   return (
     <div className="p-6 space-y-8 min-h-screen">
-      <div>
-        <h1 className="text-4xl font-black text-black tracking-tighter mb-1">Landing Page</h1>
-        <p className="text-neutral-500 text-sm font-medium">Analytics de eventos da landing page — atualizado em tempo real.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-4xl font-black text-black tracking-tighter mb-1">Landing Page</h1>
+          <p className="text-neutral-500 text-sm font-medium">Analytics de eventos da landing page — atualizado em tempo real.</p>
+        </div>
+        <a
+          href="/landing-page"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-5 py-3 bg-black text-white text-xs font-bold rounded-2xl hover:bg-neutral-800 transition-colors shrink-0"
+        >
+          Visitar Landing Page
+        </a>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
