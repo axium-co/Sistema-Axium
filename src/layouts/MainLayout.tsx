@@ -28,13 +28,13 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         <TopHeader onMenuClick={() => setSidebarOpen(true)} />
 
         {isCRMRoute && (
-          <div className="sticky top-10 md:top-[56px] z-20">
+          <div className="md:sticky md:top-[56px] md:z-20">
             <CRMSubmenu />
           </div>
         )}
 
         <div className="flex-1 bg-neutral-50 w-full pb-16 md:pb-0">
-          <div className="px-4 p-4 md:p-8 w-full">
+          <div className="px-4 p-4 pt-2 md:p-8 w-full">
             {children}
           </div>
         </div>

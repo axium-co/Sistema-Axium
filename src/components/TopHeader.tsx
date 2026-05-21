@@ -64,7 +64,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-neutral-200/60 px-3 md:px-8 py-2 md:py-4 flex items-center justify-between transition-all duration-300">
+    <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-neutral-200/60 px-3 md:px-8 py-3 md:py-4 flex items-center justify-between transition-all duration-300 safe-area-top">
       {/* Mobile Menu Button */}
       <button
         onClick={onMenuClick}
