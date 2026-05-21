@@ -8,6 +8,7 @@ import { FilterProvider } from './contexts/FilterContext';
 import { WhatsAppTemplatesProvider } from './contexts/WhatsAppTemplatesContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
+import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 import MainLayout from './layouts/MainLayout';
@@ -200,6 +201,7 @@ function App() {
               <FilterProvider>
                 <WhatsAppTemplatesProvider>
                   <AppRoutes />
+                  <PWAUpdatePrompt />
                 </WhatsAppTemplatesProvider>
               </FilterProvider>
             </CRMProvider>
