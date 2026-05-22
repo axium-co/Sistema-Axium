@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading, user, hasPermission } = useAuth();
+  const { isAuthenticated, isLoading, hasPermission } = useAuth();
 
   if (isLoading) {
     return (

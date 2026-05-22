@@ -36,13 +36,17 @@ const STORAGE_KEY = 'auth_user';
 
 const EMPLOYEES = ['Maria', 'João', 'Pedro', 'Ana'];
 
-const CREDENTIALS: Record<string, { password: string; role: UserRole; name: string }> = {
-  'axium.contato@gmail.com': {
-    password: 'axium@26',
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
+
+const CREDENTIALS: Record<string, { password: string; role: UserRole; name: string }> = {};
+if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+  CREDENTIALS[ADMIN_EMAIL] = {
+    password: ADMIN_PASSWORD,
     role: 'admin',
     name: 'Administrador'
-  }
-};
+  };
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);

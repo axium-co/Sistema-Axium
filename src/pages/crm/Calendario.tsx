@@ -162,7 +162,9 @@ const CRMCalendario = () => {
           <span className="hidden sm:inline">Criar</span>
           <span className="sm:hidden">Novo</span>
         </button>
-      </div>\n\n      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-6\">
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-6">
         <div className="lg:col-span-3 bg-white border border-neutral-200 rounded-md p-6 shadow-sm overflow-hidden">
           {/* Calendar Grid Header */}
           <div className="grid grid-cols-7 gap-1 mb-4">

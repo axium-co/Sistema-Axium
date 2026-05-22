@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, X, Edit3, MessageCircle, Paperclip, Download, Eye } from 'lucide-react';
+import { Plus, Trash2, X, Edit3, MessageCircle, Paperclip, Download } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCRM } from '../../contexts/CRMContext';
 import { generateUUID } from '../../lib/uuid';
@@ -155,7 +155,6 @@ const Board = ({
 
   const renderCell = (row: Row, col: Column) => {
     const value = row.values[col.id] ?? '';
-    const { employeeName } = useAuth();
 
     // Check if value looks like a phone number for WhatsApp
     const isPhone = typeof value === 'string' && /[\d\s\-()]+$/.test(value) && value.replace(/\D/g, '').length >= 10;
@@ -683,7 +682,7 @@ const Tarefas = () => {
         ] :
         newColumnData.type === 'priority' ? [
           { id: 'pr-1', label: 'Baixa', color: '#94a3b8' },
-          { id: 'pr-2', label: 'Media', color: '#f59e0b' },
+          { id: 'pr-2', label: 'Média', color: '#f59e0b' },
           { id: 'pr-3', label: 'Alta', color: '#ef4444' },
         ] :
         newColumnData.type === 'tags' ? [
@@ -730,9 +729,14 @@ const Tarefas = () => {
   const handleAddFiles = async (newFiles: FileList) => {
     if (!editingFiles) return;
 
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
     const fileAttachments: FileAttachment[] = [];
     for (let i = 0; i < newFiles.length; i++) {
       const file = newFiles[i];
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`Arquivo "${file.name}" muito grande. Máximo: 50MB.`);
+        continue;
+      }
       const data = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
@@ -1002,7 +1006,7 @@ const Tarefas = () => {
               />
               <Paperclip size={32} className="mx-auto text-neutral-300 mb-3" />
               <p className="text-sm font-bold text-neutral-500">Arraste arquivos aqui ou clique para selecionar</p>
-              <p className="text-[11px] text-neutral-400 font-medium mt-1">Vídeos, fotos e documentos</p>
+              <p className="text-[11px] text-neutral-400 font-medium mt-1">Vídeos, fotos e documentos (máx. 50MB)</p>
             </div>
 
             {/* File List */}

@@ -74,7 +74,13 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigin = process.env.APP_URL || 'https://sistema-axium.vercel.app';
+  const requestOrigin = req.headers.origin;
+  if (requestOrigin && (requestOrigin === allowedOrigin || allowedOrigin === '*')) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 

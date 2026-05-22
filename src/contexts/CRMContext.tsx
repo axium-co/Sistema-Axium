@@ -144,7 +144,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 function now(): string {
-  return 'Agora';
+  return new Date().toISOString();
 }
 
 function pushNotification(
@@ -167,22 +167,10 @@ function pushNotification(
 export const CRMProvider = ({ children }: { children: ReactNode }) => {
   const [leads, setLeads] = useState<Lead[]>(() => {
     const storageKey = 'axium_leads_v2';
-    let loaded: Lead[] = [];
-    
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(storageKey);
-      console.log('[DEBUG CRMProvider] raw localStorage:', stored);
-    }
-    
-    loaded = loadFromStorage(storageKey, INITIAL_LEADS);
-    console.log('[DEBUG CRMProvider] Carregando leads do localStorage:', loaded?.length ?? 0, loaded);
-    
+    let loaded = loadFromStorage<Lead[]>(storageKey, INITIAL_LEADS);
     if (!loaded || !Array.isArray(loaded) || loaded.length === 0) {
-      console.log('[DEBUG CRMProvider] Usando INITIAL_LEADS como fallback');
       loaded = INITIAL_LEADS;
     }
-    
-    console.log('[DEBUG CRMProvider] Leads finais:', loaded?.length ?? 0);
     return loaded;
   });
   const [events, setEvents] = useState<CalendarEvent[]>(() => loadFromStorage('axium_events_v2', INITIAL_EVENTS));
@@ -230,37 +218,34 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const updateLead = useCallback((id: string, fields: LeadUpdate) => {
-    setLeads(prev => {
-      const old = prev.find(l => l.id === id);
-      if (old) {
-        const changedFields = Object.keys(fields).filter(k => (fields as any)[k] !== (old as any)[k]);
-        if (changedFields.length > 0) {
-          pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
-        }
+    const currentLeads = leads;
+    const old = currentLeads.find(l => l.id === id);
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...fields } : l));
+    if (old) {
+      const changedFields = Object.keys(fields).filter(k => (fields as any)[k] !== (old as any)[k]);
+      if (changedFields.length > 0) {
+        pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
       }
-      return prev.map(l => l.id === id ? { ...l, ...fields } : l);
-    });
-  }, []);
+    }
+  }, [leads]);
 
   const updateLeadStage = useCallback((id: string, stage: string) => {
-    setLeads(prev => {
-      const old = prev.find(l => l.id === id);
-      if (old && old.stage !== stage) {
-        pushNotification(setNotifications, 'Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
-      }
-      return prev.map(l => l.id === id ? { ...l, stage } : l);
-    });
-  }, []);
+    const currentLeads = leads;
+    const old = currentLeads.find(l => l.id === id);
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, stage } : l));
+    if (old && old.stage !== stage) {
+      pushNotification(setNotifications, 'Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
+    }
+  }, [leads]);
 
   const deleteLead = useCallback((id: string) => {
-    setLeads(prev => {
-      const old = prev.find(l => l.id === id);
-      if (old) {
-        pushNotification(setNotifications, 'Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
-      }
-      return prev.filter(l => l.id !== id);
-    });
-  }, []);
+    const currentLeads = leads;
+    const old = currentLeads.find(l => l.id === id);
+    setLeads(prev => prev.filter(l => l.id !== id));
+    if (old) {
+      pushNotification(setNotifications, 'Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
+    }
+  }, [leads]);
 
   const addEvent = useCallback((event: Omit<CalendarEvent, 'id'>) => {
     const id = generateUUID();
@@ -269,24 +254,22 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const updateEvent = useCallback((id: string, fields: Partial<CalendarEvent>) => {
-    setEvents(prev => {
-      const old = prev.find(e => e.id === id);
-      if (old) {
-        pushNotification(setNotifications, 'Evento Atualizado', `${old.title} foi modificado.`, 'meeting');
-      }
-      return prev.map(e => e.id === id ? { ...e, ...fields } : e);
-    });
-  }, []);
+    const currentEvents = events;
+    const old = currentEvents.find(e => e.id === id);
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+    if (old) {
+      pushNotification(setNotifications, 'Evento Atualizado', `${old.title} foi modificado.`, 'meeting');
+    }
+  }, [events]);
 
   const deleteEvent = useCallback((id: string) => {
-    setEvents(prev => {
-      const old = prev.find(e => e.id === id);
-      if (old) {
-        pushNotification(setNotifications, 'Evento Removido', `${old.title} foi removido do calendário.`, 'meeting');
-      }
-      return prev.filter(e => e.id !== id);
-    });
-  }, []);
+    const currentEvents = events;
+    const old = currentEvents.find(e => e.id === id);
+    setEvents(prev => prev.filter(e => e.id !== id));
+    if (old) {
+      pushNotification(setNotifications, 'Evento Removido', `${old.title} foi removido do calendário.`, 'meeting');
+    }
+  }, [events]);
 
   const getLeadsByStage = useCallback((stage: string) => {
     return leads.filter(l => l.stage === stage);

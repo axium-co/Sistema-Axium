@@ -174,6 +174,9 @@ const CRMIntegracoes = () => {
                   placeholder="Insira seu token de acesso..."
                   className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all placeholder:text-neutral-300"
                 />
+                <p className="text-[9px] text-amber-600 font-medium flex items-center gap-1">
+                  A chave será armazenada localmente no navegador. Para produção, configure as chaves via backend.
+                </p>
               </div>
             </div>
 

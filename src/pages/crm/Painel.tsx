@@ -5,6 +5,7 @@ import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useActivityLogs } from '../../contexts/ActivityContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFilters } from '../../contexts/FilterContext';
+import { STAGES } from '../../lib/crmHelpers';
 
 // Dados iniciais como fallback
 const INITIAL_LEADS: Lead[] = [
@@ -13,17 +14,6 @@ const INITIAL_LEADS: Lead[] = [
   { id: '3', name: 'Pedro Oliveira', niche: 'Clínica Geral', whatsapp: '11 77777-7777', email: 'pedro@example.com', instagram: '@pedrooli', stage: 'Proposta Enviada', firstContact: '2026-03-20', closingDate: '2026-05-15', followUpReminder: '2026-04-23', address: 'Belo Horizonte - MG', gmnReviews: '312', gmnStars: '4.9', notes: 'Aguardando aprovação.', value: 'R$ 12.000' },
   { id: '4', name: 'Clínica Sorriso', niche: 'Odontologia', whatsapp: '11 5555-5555', email: 'contato@sorriso.com', instagram: '@clinicasorriso', stage: 'Contrato Fechado', firstContact: '2026-03-10', closingDate: '2026-04-15', followUpReminder: '', address: 'Curitiba - PR', gmnReviews: '150', gmnStars: '4.8', notes: 'Contrato fechado!', value: 'R$ 15.000' },
 ];
-
-const STAGES = [
-  'Novos Leads',
-  'Primeiro Contato',
-  'Contato Ativo',
-  'Reunião Agendada',
-  'Follow Up',
-  'Proposta Enviada',
-  'Contrato Fechado',
-  'Perdido'
-] as const;
 
 interface Stat {
   title: string;

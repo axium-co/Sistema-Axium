@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp,
 import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { STAGES } from '../../lib/crmHelpers';
 import WhatsAppModal from '../../components/WhatsAppModal';
 
 const formatBRL = (val: string) => {
@@ -22,17 +23,6 @@ const EMPTY_LEAD: Partial<Lead> = {
   followUpReminder: '', address: '', gmnReviews: '', gmnStars: '',
   notes: '', value: '',
 };
-
-const STAGES = [
-  'Novos Leads',
-  'Primeiro Contato',
-  'Contato Ativo',
-  'Reunião Agendada',
-  'Follow Up',
-  'Proposta Enviada',
-  'Contrato Fechado',
-  'Perdido'
-];
 
 const STAGE_ORIGINS = [
   'Instagram',

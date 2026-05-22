@@ -4,6 +4,17 @@ import { Bell, Search, X, User, MessageSquare, Calendar as CalendarIcon, Clock, 
 import { useAuth } from '../contexts/AuthContext';
 import { useCRM } from '../contexts/CRMContext'
 
+function formatRelativeTime(timestamp: string): string {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) return '';
+  const diff = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (diff < 1) return 'Agora';
+  if (diff < 60) return `${diff}min`;
+  if (diff < 1440) return `${Math.floor(diff / 60)}h`;
+  return `${Math.floor(diff / 1440)}d`;
+}
+
 interface TopHeaderProps {
   onMenuClick?: () => void;
 }
@@ -124,7 +135,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
                           <p className="text-[11px] text-neutral-500 font-bold leading-relaxed">{n.description}</p>
                           <div className="flex items-center gap-1.5 text-[9px] text-neutral-400 font-black uppercase tracking-tight mt-2">
                             <Clock size={10} strokeWidth={3} />
-                            {n.time}
+                            {formatRelativeTime(n.time)}
                           </div>
                         </div>
                       </div>
