@@ -21,28 +21,23 @@ const CRMSubmenu = () => {
   return (
     <>
       {/* Mobile collapsible section */}
-      <div className="md:hidden bg-white/70 backdrop-blur-md border-b border-neutral-200/60 px-3">
+      <div className="md:hidden bg-white border-b border-neutral-200/60">
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="flex items-center justify-between w-full py-3"
+          className="flex items-center justify-between w-full px-3 py-2.5"
         >
-          <div className="flex items-center gap-2">
-            {currentItem && (
-              <currentItem.icon className="w-4 h-4" strokeWidth={2.5} />
-            )}
-            <span className="text-sm font-bold text-black">
-              {currentItem?.label || 'CRM'}
-            </span>
-          </div>
+          <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+            {currentItem?.label || 'CRM'}
+          </span>
           <ChevronDown
-            className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
+            className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${
               mobileOpen ? 'rotate-180' : ''
             }`}
           />
         </button>
 
         {mobileOpen && (
-          <div className="pb-2 space-y-0.5">
+          <div className="px-3 pb-3 space-y-0.5">
             {crmSubItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);

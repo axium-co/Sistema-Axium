@@ -74,10 +74,10 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
         <Menu className="w-5 h-5 text-neutral-600" />
       </button>
       
-      <div>
-        <h2 className="text-base md:text-lg font-black text-black tracking-tight leading-none">{route.title}</h2>
+      <div className="min-w-0 flex-1 md:flex-none">
+        <h2 className="text-base md:text-lg font-black text-black tracking-tight leading-none truncate">{route.title}</h2>
         {route.subtitle && (
-          <p className="text-[10px] md:text-xs text-neutral-400 font-medium mt-0.5">{route.subtitle}</p>
+          <p className="text-[10px] md:text-xs text-neutral-400 font-medium mt-0.5 truncate">{route.subtitle}</p>
         )}
       </div>
 
