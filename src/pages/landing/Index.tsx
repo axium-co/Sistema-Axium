@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db, isFirebaseConfigured } from '../../lib/firebase';
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface PageEvent {
@@ -15,7 +16,7 @@ interface DayView {
   views: number;
 }
 
-const PAGE_EVENTS_TABLE = 'page_events';
+const PAGE_EVENTS_COLLECTION = 'page_events';
 
 function buildViewsByDay(events: PageEvent[], now: number): DayView[] {
   const grouped: Record<string, number> = {};
@@ -42,7 +43,7 @@ function buildViewsByDay(events: PageEvent[], now: number): DayView[] {
 
 const LandingAnalytics = () => {
   const [events, setEvents] = useState<PageEvent[] | null>(
-    () => isSupabaseConfigured ? null : [],
+    () => isFirebaseConfigured ? null : [],
   );
   const [error, setError] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
@@ -50,45 +51,32 @@ const LandingAnalytics = () => {
   const isLoading = events === null && !error;
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isFirebaseConfigured) return;
 
-    const fetchEvents = async () => {
-      try {
-        const { data, error: fetchError } = await supabase
-          .from(PAGE_EVENTS_TABLE)
-          .select('*')
-          .gte('created_at', new Date(now - 60 * 24 * 60 * 60 * 1000).toISOString())
-          .order('created_at', { ascending: false });
+    const thirtyDaysAgo = new Date(now - 60 * 24 * 60 * 60 * 1000).toISOString();
 
-        if (fetchError) throw fetchError;
-        setEvents(data || []);
-      } catch (err) {
+    const q = query(
+      collection(db, PAGE_EVENTS_COLLECTION),
+      where('created_at', '>=', thirtyDaysAgo),
+      orderBy('created_at', 'desc'),
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as PageEvent[];
+        setEvents(docs);
+      },
+      (err) => {
         console.error('[Landing Analytics] Erro ao buscar eventos:', err);
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados.');
-      }
-    };
+      },
+    );
 
-    fetchEvents();
-
-    const channel = supabase
-      .channel('page_events_realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: PAGE_EVENTS_TABLE },
-        (payload) => {
-          setEvents(prev => {
-            if (!prev) return prev;
-            const incoming = payload.new as PageEvent;
-            if (prev.some(e => e.id === incoming.id)) return prev;
-            return [incoming, ...prev];
-          });
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => unsubscribe();
   }, [now]);
 
   const totalViews = useMemo(
@@ -128,13 +116,13 @@ const LandingAnalytics = () => {
     );
   }
 
-  if (!isSupabaseConfigured) {
+  if (!isFirebaseConfigured) {
     return (
       <div className="p-6">
         <h1 className="text-4xl font-black text-black tracking-tighter mb-2">Landing Page</h1>
         <p className="text-neutral-500 text-sm font-medium mb-6">Analytics de eventos da landing page.</p>
         <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-2xl text-yellow-700 text-sm font-medium">
-          Supabase não configurado. Configure as variáveis de ambiente para visualizar os dados.
+          Firebase não configurado. Configure as variáveis de ambiente para visualizar os dados.
         </div>
       </div>
     );

@@ -7,7 +7,9 @@ import {
   AlertCircle, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, PROFILES_TABLE, isSupabaseConfigured, subscribeToTable, type Profile } from '../../lib/supabase';
+import { db, storage, PROFILES_COLLECTION, isFirebaseConfigured } from '../../lib/firebase';
+import { doc, getDoc, setDoc, collection, query, where, orderBy, getDocs, addDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { isValidUUID } from '../../lib/uuid';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,24 +21,13 @@ interface Employee {
   createdAt: string;
 }
 
-interface EmployeeRow {
-  id: string;
-  user_id: string;
-  name: string;
-  email: string;
-  role: string;
-  avatar: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 type ModalType = 'perfil' | 'equipe';
 
 const Configuracoes = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [activeModal, setActiveModal] = useState<ModalType | 'delete' | null>(null);
   const [confirmationText, setConfirmationText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -53,7 +44,6 @@ const Configuracoes = () => {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
 
   const [newEmployee, setNewEmployee] = useState({
     email: '',
@@ -64,38 +54,29 @@ const Configuracoes = () => {
   useEffect(() => {
     const loadData = async () => {
       if (!user?.id) return;
-      if (!isSupabaseConfigured) {
+      if (!isFirebaseConfigured) {
         setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
         return;
       }
       try {
-        const { data, error } = await supabase
-          .from(PROFILES_TABLE)
-          .select('nome, telefone, avatar')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (error) {
-          if (error.code === '404' || error.message?.includes('not found') || error.message?.includes('no rows')) {
-            console.warn('Profiles table not found, using defaults');
-            setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
-            return;
-          }
-          console.warn('Profile load error:', error.message);
+        const docRef = doc(db, PROFILES_COLLECTION, user.id);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+          console.warn('Profile document not found, using defaults');
           setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
           return;
         }
-        
-        if (data) {
-          setProfileData({
-            name: data.nome || '',
-            email: user.email || '',
-            phone: data.telefone || '(11) 99999-9999',
-            avatar: data.avatar || ''
-          });
-          if (data.avatar) {
-            setAvatarPreview(data.avatar);
-          }
+
+        const data = docSnap.data();
+        setProfileData({
+          name: data.nome || '',
+          email: user.email || '',
+          phone: data.telefone || '(11) 99999-9999',
+          avatar: data.avatar || ''
+        });
+        if (data.avatar) {
+          setAvatarPreview(data.avatar);
         }
       } catch (err) {
         console.error('[CONFIG] Erro ao carregar perfil:', err);
@@ -106,50 +87,44 @@ const Configuracoes = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user?.id || !isSupabaseConfigured) return;
+    if (!user?.id || !isFirebaseConfigured) return;
 
-    const channel = subscribeToTable<Profile>(
-      PROFILES_TABLE,
-      'UPDATE',
-      (payload) => {
-        const updated = payload.new;
-        if (updated.user_id !== user.id) return;
-        setProfileData(prev => ({
-          ...prev,
-          name: updated.nome ?? prev.name,
-          phone: updated.telefone ?? prev.phone,
-          avatar: updated.avatar ?? prev.avatar,
-        }));
-        if (updated.avatar) setAvatarPreview(updated.avatar);
-      },
-      `user_id=eq.${user.id}`,
-    );
+    const docRef = doc(db, PROFILES_COLLECTION, user.id);
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (!docSnap.exists()) return;
+      const updated = docSnap.data();
+      setProfileData(prev => ({
+        ...prev,
+        name: updated.nome ?? prev.name,
+        phone: updated.telefone ?? prev.phone,
+        avatar: updated.avatar ?? prev.avatar,
+      }));
+      if (updated.avatar) setAvatarPreview(updated.avatar);
+    });
 
-    return () => {
-      if (channel) supabase.removeChannel(channel);
-    };
+    return () => unsubscribe();
   }, [user?.id]);
 
   const loadEmployees = async () => {
     if (!user?.id) return;
-    if (!isSupabaseConfigured) {
+    if (!isFirebaseConfigured) {
       setEmployees([]);
       return;
     }
-    setIsLoadingEmployees(true);
     try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
-      
-      if (error) throw error;
-      setEmployees(data || []);
+      const q = query(
+        collection(db, 'employees'),
+        where('user_id', '==', user.id),
+        orderBy('created_at', 'asc'),
+      );
+      const querySnapshot = await getDocs(q);
+      const emps = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Employee[];
+      setEmployees(emps);
     } catch (err) {
       console.error('[CONFIG] Erro ao carregar funcionários:', err);
-    } finally {
-      setIsLoadingEmployees(false);
     }
   };
 
@@ -160,41 +135,23 @@ const Configuracoes = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user?.id || !isSupabaseConfigured) return;
+    if (!user?.id || !isFirebaseConfigured) return;
 
-    const channel = supabase
-      .channel('employees_changes')
-      .on<EmployeeRow>(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'employees', filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          setEmployees(prev => {
-            if (prev.some(emp => emp.id === payload.new.id)) return prev;
-            return [...prev, payload.new];
-          });
-        },
-      )
-      .on<EmployeeRow>(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'employees', filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          setEmployees(prev =>
-            prev.map(emp => (emp.id === payload.new.id ? { ...emp, ...payload.new } : emp)),
-          );
-        },
-      )
-      .on<EmployeeRow>(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'employees', filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          setEmployees(prev => prev.filter(emp => emp.id !== payload.old.id));
-        },
-      )
-      .subscribe();
+    const q = query(
+      collection(db, 'employees'),
+      where('user_id', '==', user.id),
+      orderBy('created_at', 'asc'),
+    );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const emps = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Employee[];
+      setEmployees(emps);
+    });
+
+    return () => unsubscribe();
   }, [user?.id]);
 
   const handleAddEmployee = async () => {
@@ -208,8 +165,8 @@ const Configuracoes = () => {
       return;
     }
 
-    if (!isSupabaseConfigured) {
-      setInviteError('Supabase não configurado. Configure as variáveis de ambiente.');
+    if (!isFirebaseConfigured) {
+      setInviteError('Firebase não configurado. Configure as variáveis de ambiente.');
       return;
     }
 
@@ -220,20 +177,23 @@ const Configuracoes = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('employees')
-        .insert([{
-          user_id: user.id,
-          email: newEmployee.email.trim(),
-          name: newEmployee.name.trim(),
-          role: newEmployee.role,
-        }])
-        .select()
-        .single();
+      const docRef = await addDoc(collection(db, 'employees'), {
+        user_id: user.id,
+        email: newEmployee.email.trim(),
+        name: newEmployee.name.trim(),
+        role: newEmployee.role,
+        created_at: new Date().toISOString(),
+      });
 
-      if (error) throw error;
+      const newEmp: Employee = {
+        id: docRef.id,
+        email: newEmployee.email.trim(),
+        name: newEmployee.name.trim(),
+        role: newEmployee.role,
+        createdAt: new Date().toISOString(),
+      };
 
-      setEmployees([...employees, data]);
+      setEmployees([...employees, newEmp]);
       setNewEmployee({ email: '', name: '', role: 'funcionario' });
       setInviteSuccess('Funcionário adicionado!');
       setInviteError('');
@@ -246,16 +206,10 @@ const Configuracoes = () => {
 
   const handleRemoveEmployee = async (id: string) => {
     if (!confirm('Remover funcionário?')) return;
-    if (!isSupabaseConfigured) return;
+    if (!isFirebaseConfigured) return;
 
     try {
-      const { error } = await supabase
-        .from('employees')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await deleteDoc(doc(db, 'employees', id));
       setEmployees(employees.filter(emp => emp.id !== id));
     } catch (err: any) {
       console.error('[CONFIG] Erro ao remover funcionário:', err);
@@ -266,7 +220,7 @@ const Configuracoes = () => {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('[CONFIG] handleSaveProfile iniciado', { userId: user?.id, name: profileData.name });
-    
+
     if (!user?.id) {
       setProfileError('Usuário não autenticado');
       console.error('[CONFIG] Erro: usuário não autenticado');
@@ -284,44 +238,33 @@ const Configuracoes = () => {
       return;
     }
 
-    if (!isSupabaseConfigured) {
-      setProfileSuccess('Perfil atualizado (apenas local, Supabase não configurado)');
+    if (!isFirebaseConfigured) {
+      setProfileSuccess('Perfil atualizado (apenas local, Firebase não configurado)');
       setTimeout(() => { setProfileSuccess(''); setActiveModal(null); }, 1500);
       return;
     }
-    
+
     setIsSavingProfile(true);
     setProfileError('');
     setProfileSuccess('');
-    
+
     try {
-      console.log('[CONFIG] Tentando salvar no Supabase...');
-      
-      const updateData: Record<string, unknown> = { 
+      console.log('[CONFIG] Tentando salvar no Firestore...');
+
+      const updateData: Record<string, unknown> = {
         nome: profileData.name.trim(),
         telefone: profileData.phone.trim()
       };
-      
+
       if (avatarPreview && avatarPreview !== profileData.avatar) {
         updateData.avatar = avatarPreview;
       }
-      
+
       console.log('[CONFIG] Dados a salvar:', updateData);
-      
-      const { data, error } = await supabase
-        .from(PROFILES_TABLE)
-        .update(updateData)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      
-      console.log('[CONFIG] Resposta do Supabase:', { data, error });
-      
-      if (error) {
-        console.error('[CONFIG] Erro do Supabase:', error);
-        throw error;
-      }
-      
+
+      const docRef = doc(db, PROFILES_COLLECTION, user.id);
+      await setDoc(docRef, updateData, { merge: true });
+
       console.log('[CONFIG] Perfil salvo com sucesso!');
       setProfileSuccess('Perfil atualizado com sucesso!');
       setProfileData(prev => ({ ...prev, avatar: avatarPreview || prev.avatar, email: profileData.email.trim() || prev.email }));
@@ -343,9 +286,9 @@ const Configuracoes = () => {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    if (!isSupabaseConfigured) {
-      setProfileError('Supabase não configurado. Configure as variáveis de ambiente.');
+
+    if (!isFirebaseConfigured) {
+      setProfileError('Firebase não configurado. Configure as variáveis de ambiente.');
       return;
     }
 
@@ -354,24 +297,19 @@ const Configuracoes = () => {
       setProfileError('Apenas PNG ou JPG são aceitos');
       return;
     }
-    
+
     setIsUploadingAvatar(true);
     setProfileError('');
-    
+
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}/avatar-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true });
-      
-      if (uploadError) throw uploadError;
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-      
+      const fileName = `avatars/${user?.id}/avatar-${Date.now()}.${fileExt}`;
+
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, file);
+
+      const publicUrl = await getDownloadURL(storageRef);
+
       setAvatarPreview(publicUrl);
       setProfileSuccess('Avatar atualizado! Clique em Salvar para confirmar.');
       setTimeout(() => setProfileSuccess(''), 3000);
@@ -426,7 +364,7 @@ const Configuracoes = () => {
                     <p className="text-xs text-neutral-400 font-bold uppercase tracking-widest mt-1">{section.description}</p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setActiveModal(section.id)}
                   className="bg-black text-white px-6 py-3 rounded-md font-black text-[11px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.95] shadow-lg shadow-black/10"
                 >
@@ -486,7 +424,7 @@ const Configuracoes = () => {
             <h3 className="font-black text-red-600 uppercase tracking-widest text-sm">Zona de Perigo</h3>
           </div>
           <p className="text-sm text-neutral-500 font-bold leading-relaxed mb-8 max-w-md">Estas ações são irreversíveis e deletarão todos os seus dados e leads permanentemente.</p>
-          <button 
+          <button
             onClick={() => setActiveModal('delete')}
             className="text-[11px] font-black uppercase tracking-[2px] bg-white border-2 border-red-100 text-red-600 px-10 py-4 rounded-2xl hover:bg-red-600 hover:text-white hover:border-red-600 transition-all shadow-xl shadow-red-100/50 active:scale-[0.98]"
           >

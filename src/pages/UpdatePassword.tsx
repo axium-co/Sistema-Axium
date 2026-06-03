@@ -1,8 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { auth } from '../lib/firebase';
+import { confirmPasswordReset, signOut } from 'firebase/auth';
+
+const getOobCode = () => {
+  return new URLSearchParams(window.location.search).get('oobCode');
+};
+
+const getInitialError = () => {
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get('mode');
+  const code = params.get('oobCode');
+  if (mode !== 'resetPassword' || !code) {
+    return 'Link de recuperação expirado ou inválido. Por favor, solicite um novo link.';
+  }
+  return '';
+};
 
 const UpdatePassword = () => {
   const navigate = useNavigate();
@@ -10,23 +25,8 @@ const UpdatePassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(getInitialError);
   const [success, setSuccess] = useState('');
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        setError('Link de recuperação expirado ou inválido. Por favor, solicite um novo link.');
-      }
-      
-      setIsCheckingSession(false);
-    };
-
-    checkSession();
-  }, []);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -53,14 +53,17 @@ const UpdatePassword = () => {
         return;
       }
 
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-
-      if (updateError) {
-        throw new Error(updateError.message);
+      const code = getOobCode();
+      if (!code) {
+        setError('Código de recuperação inválido.');
+        setIsLoading(false);
+        return;
       }
 
+      await confirmPasswordReset(auth, code, password);
+
       setSuccess('Senha atualizada com sucesso!');
-      await supabase.auth.signOut();
+      await signOut(auth);
       localStorage.removeItem('axium_auth');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
@@ -157,13 +160,11 @@ const UpdatePassword = () => {
 
             <button
               type="submit"
-              disabled={isLoading || isCheckingSession}
+              disabled={isLoading}
               className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-md transition-colors flex items-center justify-center gap-2 text-sm"
             >
               {isLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Atualizando...</>
-              ) : isCheckingSession ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Verificando...</>
               ) : (
                 'Atualizar senha'
               )}

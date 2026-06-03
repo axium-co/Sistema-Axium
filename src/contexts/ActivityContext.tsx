@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { supabase, ACTIVITY_LOGS_TABLE, isSupabaseConfigured, subscribeToTable, type ActivityLog } from '../lib/supabase';
+import { db, ACTIVITY_LOGS_COLLECTION, isFirebaseConfigured, type ActivityLog } from '../lib/firebase';
+import { collection, query, orderBy, limit, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 
 interface ActivityLogsContextType {
   activityLogs: ActivityLog[];
@@ -24,8 +25,8 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [fetchActivityLogsError, setFetchActivityLogsError] = useState<string | null>(null);
 
-  const fetchActivityLogs = useCallback(async (limit = 20) => {
-    if (!isSupabaseConfigured) {
+  const fetchActivityLogs = useCallback(async (limitCount = 20) => {
+    if (!isFirebaseConfigured) {
       setActivityLogs([]);
       setIsLoadingLogs(false);
       return;
@@ -33,37 +34,32 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
 
     setIsLoadingLogs(true);
     setFetchActivityLogsError(null);
-    
+
     const timeoutId = setTimeout(() => {
       setFetchActivityLogsError('Tempo limite excedido (5s). Verifique sua conexão.');
       setIsLoadingLogs(false);
     }, 5000);
 
     try {
-      const { data, error } = await supabase
-        .from(ACTIVITY_LOGS_TABLE)
-        .select('*')
-        .order('timestamp', { ascending: false })
-        .limit(limit);
-      
+      const q = query(
+        collection(db, ACTIVITY_LOGS_COLLECTION),
+        orderBy('timestamp', 'desc'),
+        limit(limitCount),
+      );
+      const querySnapshot = await getDocs(q);
+
       clearTimeout(timeoutId);
-      
-      if (error) {
-        if (error.code === '404' || error.message.includes('not found')) {
-          console.warn('Tabela de logs de atividade não encontrada:', error.message);
-          setActivityLogs([]);
-          setIsLoadingLogs(false);
-          return;
-        }
-        console.error('Erro ao buscar logs de atividade:', error);
-        setFetchActivityLogsError('Erro ao carregar atividades. Tente novamente mais tarde.');
-        return;
-      }
-      setActivityLogs(data || []);
-    } catch (err: any) {
+
+      const logs = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as ActivityLog[];
+
+      setActivityLogs(logs);
+    } catch (err) {
       clearTimeout(timeoutId);
       console.error('Erro ao buscar logs de atividade:', err);
-      if (err?.message?.includes('fetch')) {
+      if (err instanceof Error && err.message?.includes('fetch')) {
         setFetchActivityLogsError('Erro de conexão. Verifique sua internet.');
       } else {
         setFetchActivityLogsError('Erro ao carregar atividades. Tente novamente.');
@@ -74,49 +70,46 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const logActivity = async (acao: ActivityLog['acao'], descricao: string) => {
-    if (!isSupabaseConfigured) return;
+    if (!isFirebaseConfigured) return;
 
     try {
-      const { data, error } = await supabase
-        .from(ACTIVITY_LOGS_TABLE)
-        .insert({ acao, descricao, timestamp: new Date().toISOString() })
-        .select()
-        .single();
-      
-      if (error) {
-        if (error.code === '404' || error.message.includes('not found')) {
-          console.warn('Tabela de logs não encontrada. Atividade não será registrada.');
-          return;
-        }
-        console.error('Erro ao registrar atividade:', error);
-        return;
-      }
-      
-      if (data) {
-        setActivityLogs(prev => [data, ...prev]);
-      }
+      const docRef = await addDoc(collection(db, ACTIVITY_LOGS_COLLECTION), {
+        acao,
+        descricao,
+        timestamp: new Date().toISOString(),
+      });
+
+      const newLog: ActivityLog = {
+        id: docRef.id,
+        user_id: '',
+        acao,
+        descricao,
+        timestamp: new Date().toISOString(),
+      };
+      setActivityLogs(prev => [newLog, ...prev]);
     } catch (err) {
       console.error('Erro ao registrar atividade:', err);
     }
   };
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isFirebaseConfigured) return;
 
-    const channel = subscribeToTable<ActivityLog>(
-      ACTIVITY_LOGS_TABLE,
-      'INSERT',
-      (payload) => {
-        setActivityLogs(prev => {
-          if (prev.some(log => log.id === payload.new.id)) return prev;
-          return [payload.new, ...prev];
-        });
-      },
+    const q = query(
+      collection(db, ACTIVITY_LOGS_COLLECTION),
+      orderBy('timestamp', 'desc'),
+      limit(20),
     );
 
-    return () => {
-      if (channel) supabase.removeChannel(channel);
-    };
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const logs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as ActivityLog[];
+      setActivityLogs(logs);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return (

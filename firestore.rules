@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Landing page events — qualquer um pode inserir e ler
+    match /page_events/{eventId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // Profiles — leitura e escrita liberadas para o app funcionar
+    // (o app usa autenticação local, não Firebase Auth)
+    match /profiles/{profileId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Employees — mesmo caso dos profiles
+    match /employees/{employeeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Activity logs
+    match /activity_logs/{logId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+  }
+}

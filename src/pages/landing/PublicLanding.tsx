@@ -1,19 +1,19 @@
 import { useEffect, useCallback } from 'react';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db, isFirebaseConfigured } from '../../lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
-const PAGE_EVENTS_TABLE = 'page_events';
+const PAGE_EVENTS_COLLECTION = 'page_events';
 
 function trackEvent(eventType: 'page_view' | 'button_click', label?: string) {
-  if (!isSupabaseConfigured) return;
+  if (!isFirebaseConfigured) return;
 
-  supabase
-    .from(PAGE_EVENTS_TABLE)
-    .insert({ event_type: eventType, label: label || null })
-    .then(({ error }) => {
-      if (error) {
-        console.error('[Landing Page] Erro ao registrar evento:', error);
-      }
-    });
+  addDoc(collection(db, PAGE_EVENTS_COLLECTION), {
+    event_type: eventType,
+    label: label || null,
+    created_at: new Date().toISOString(),
+  }).catch((error) => {
+    console.error('[Landing Page] Erro ao registrar evento:', error);
+  });
 }
 
 const buttonItems = [
