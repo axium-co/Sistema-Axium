@@ -4,7 +4,6 @@ import {
   query,
   onSnapshot,
   addDoc,
-  setDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -15,6 +14,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
+import { generateUUID } from './uuid';
 
 export type SyncStatus = 'loading' | 'synced' | 'error' | 'offline' | 'migrating';
 
@@ -94,20 +94,25 @@ export function useCollectionSync<T extends { id: string }>(
             setState((prev) => ({ ...prev, status: 'migrating' }));
 
             try {
-              const batch = writeBatch(db);
-              localItems.forEach((item) => {
-                const ref = doc(db, collectionName, item.id);
-                batch.set(ref, {
-                  ...item,
-                  createdAt: serverTimestamp(),
-                  updatedAt: serverTimestamp(),
-                  userId: userId || null,
+              const BATCH_LIMIT = 500;
+              for (let i = 0; i < localItems.length; i += BATCH_LIMIT) {
+                const batch = writeBatch(db);
+                const chunk = localItems.slice(i, i + BATCH_LIMIT);
+                chunk.forEach((item) => {
+                  const ref = doc(db, collectionName, item.id);
+                  batch.set(ref, {
+                    ...item,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    userId: userId || null,
+                  });
                 });
-              });
-              await batch.commit();
+                await batch.commit();
+              }
               console.log(`[Sync] Migrated ${localItems.length} items to ${collectionName}`);
             } catch (err) {
               console.error(`[Sync] Migration error for ${collectionName}:`, err);
+              localDataMigrated.current = false;
             }
             return;
           }
@@ -142,7 +147,7 @@ export function useCollectionSync<T extends { id: string }>(
     async (item: Omit<T, 'id'>): Promise<string> => {
       if (!isFirebaseConfigured) {
         const stored = loadFromStorage<T[]>(storageKey);
-        const newId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
+        const newId = generateUUID();
         const newItem = { ...item, id: newId } as unknown as T;
         saveToStorage(storageKey, [...stored, newItem]);
         setState((prev) => ({ ...prev, data: [...prev.data, newItem] }));

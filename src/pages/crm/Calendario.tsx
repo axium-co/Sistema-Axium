@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import type { CalendarEvent } from '../../contexts/CRMContext';
 import { generateUUID } from '../../lib/uuid';
-import { X, ExternalLink, Clock, User, MessageSquare, Plus, Trash2, Calendar as CalendarIcon, Link as LinkIcon, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Clock, User, MessageSquare, Plus, Trash2, Calendar as CalendarIcon, Link as LinkIcon, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const CRMCalendario = () => {
   const { events, addEvent, updateEvent, deleteEvent } = useCRM();
@@ -165,7 +165,7 @@ const CRMCalendario = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-6">
-        <div className="lg:col-span-3 bg-white border border-neutral-200 rounded-md p-6 shadow-sm overflow-hidden">
+        <div className="lg:col-span-3 bg-white border border-neutral-200 rounded-md p-6 shadow-sm overflow-x-auto">
           {/* Calendar Grid Header */}
           <div className="grid grid-cols-7 gap-1 mb-4">
             {days.map((day) => (

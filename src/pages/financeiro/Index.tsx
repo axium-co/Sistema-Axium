@@ -648,7 +648,7 @@ const Financeiro = () => {
         </>
       )}
 
-      <main className="flex-1 overflow-hidden p-4 md:p-6">
+      <main className="flex-1 overflow-x-auto p-4 md:p-6">
         <div className="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div className="flex items-center gap-3">
             <div className="relative group">

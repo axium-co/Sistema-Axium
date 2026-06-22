@@ -1,6 +1,7 @@
 import { 
   DndContext, 
-  PointerSensor, 
+  PointerSensor,
+  TouchSensor,
   useSensor, 
   useSensors,
   useDraggable,
@@ -19,7 +20,6 @@ import {
   type Stage, 
   STAGE_CONFIG, 
   formatCurrency, 
-  parseMonetaryValue,
   isValidStage,
   calculateTotalValue
 } from '../../lib/crmHelpers';
@@ -251,6 +251,12 @@ const CRMPipeline = () => {
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
       },
     })
   );

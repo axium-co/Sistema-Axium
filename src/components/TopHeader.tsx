@@ -46,7 +46,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
 
   const hasUnread = notifications.some(n => !n.isRead);
 
-  const userDisplayName = user?.fullName || user?.email?.split('@')[0] || 'Usuário';
+  const userDisplayName = user?.name || user?.email?.split('@')[0] || 'Usuário';
   const initials = userDisplayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 
   useEffect(() => {
@@ -107,7 +107,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
 
           {/* Notifications Panel */}
           {isNotificationsOpen && (
-            <div className="absolute right-0 mt-3 w-80 bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+            <div className="fixed md:absolute right-2 md:right-0 left-2 md:left-auto mt-3 max-w-[calc(100vw-16px)] md:max-w-none md:w-80 bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
               <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-white">
                 <h3 className="text-[10px] font-black text-black uppercase tracking-widest">Notificações</h3>
                 <span className="text-[9px] font-black bg-neutral-100 text-neutral-500 px-2 py-0.5 rounded uppercase">Recentes</span>
@@ -165,7 +165,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
           </button>
 
           {isUserMenuOpen && (
-            <div className="absolute right-0 mt-3 w-56 bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+            <div className="fixed md:absolute right-2 md:right-0 left-2 md:left-auto mt-3 md:w-56 bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
               <div className="px-4 py-3 border-b border-neutral-100">
                 <p className="text-xs font-black text-black truncate">{userDisplayName}</p>
                 <p className="text-[10px] text-neutral-500 truncate">{user?.email}</p>

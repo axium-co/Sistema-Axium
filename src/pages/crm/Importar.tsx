@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from 'react';
 import { useCRM, type Lead } from '../../contexts/CRMContext';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Table, X, ArrowRight, ArrowLeft, ArrowDownLeft, Map } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Table, ArrowRight, ArrowLeft, ArrowDownLeft, Map } from 'lucide-react';
 
 interface ImportRecord {
   name: string;

@@ -420,7 +420,8 @@ const CRMLeads = () => {
             </button>
           </div>
 
-          <div className="bg-white border border-neutral-200 rounded-md overflow-x-auto shadow-sm">
+          {/* Desktop Table */}
+          <div className="hidden md:block bg-white border border-neutral-200 rounded-md overflow-x-auto shadow-sm">
             <table className="w-full text-xs md:text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 bg-neutral-50">
@@ -486,6 +487,69 @@ const CRMLeads = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="block md:hidden space-y-3">
+            {Array.isArray(filteredLeads) && filteredLeads.length > 0 ? filteredLeads.map(lead => (
+              <div key={lead?.id} className="bg-white border border-neutral-200 rounded-md shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 bg-neutral-50">
+                  <div>
+                    <div className="font-semibold text-black text-sm">{lead?.name}</div>
+                    <div className="text-[10px] text-neutral-400">{lead?.niche} · {lead?.email}</div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEdit(lead)} className="p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100 rounded-md transition-all">
+                      <Pencil size={14} />
+                    </button>
+                    <button onClick={() => handleDelete(lead?.id)} className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="divide-y divide-neutral-100">
+                  <div className="px-4 py-2.5 flex justify-between items-center">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">WhatsApp</span>
+                    <span className="text-xs text-neutral-600">
+                      {lead?.whatsapp ? (
+                        <span className="flex items-center gap-1">
+                          {lead.whatsapp}
+                          <button
+                            type="button"
+                            onClick={() => setWhatsAppTarget({ name: lead.name, phone: lead.whatsapp })}
+                            className="text-[#25D366]"
+                          >
+                            <MessageCircle size={12} />
+                          </button>
+                        </span>
+                      ) : '—'}
+                    </span>
+                  </div>
+                  <div className="px-4 py-2.5 flex justify-between items-center">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Instagram</span>
+                    <span className="text-xs text-neutral-600">{lead?.instagram || '—'}</span>
+                  </div>
+                  <div className="px-4 py-2.5 flex justify-between items-center">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">GMN</span>
+                    <span className="text-xs text-neutral-600">{lead?.gmnStars} ★ ({lead?.gmnReviews} aval.)</span>
+                  </div>
+                  <div className="px-4 py-2.5 flex justify-between items-center">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Valor</span>
+                    <span className="text-xs text-black font-medium">{lead?.value || '—'}</span>
+                  </div>
+                  <div className="px-4 py-2.5 flex justify-between items-center">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Etapa</span>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${stageStyle[lead?.stage] ?? 'bg-neutral-100 text-neutral-600'}`}>
+                      {lead?.stage}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <div className="text-center py-8 text-neutral-400 font-medium italic text-xs">
+                {hasActiveFilters ? 'Nenhum lead encontrado com os filtros aplicados' : `Nenhum lead encontrado para "${searchTerm}"`}
+              </div>
+            )}
           </div>
         </div>
       </main>
