@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateUUID } from '../../lib/uuid';
+import { useCollectionSync } from '../../lib/sync';
+import { INVOICES_COLLECTION, EXPENSES_COLLECTION } from '../../lib/firebase';
 import { Plus, Pencil, Save, X, TrendingUp, TrendingDown, DollarSign, PieChart, CreditCard, User, Calendar, CheckCircle2, Clock, AlertTriangle, RefreshCw, ExternalLink, Receipt, Wallet, Filter, XCircle, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 
 interface Invoice {
@@ -90,7 +92,7 @@ const RadioFilter = ({ label, checked, onChange }: { label: string; checked: boo
 const Financeiro = () => {
   const { leads, getTotalValueByStage, pushNotification } = useCRM();
   const { filters } = useFilters();
-  const { role, employeeName } = useAuth();
+  const { role, employeeName, user } = useAuth();
 
   const STORAGE_KEY = 'axium_finance_v2';
   const EXPENSES_KEY = 'axium_expenses_v1';
@@ -166,16 +168,55 @@ const Financeiro = () => {
   const [isAsaasConnected] = useState(localStorage.getItem('axium_int_asaas') === 'true');
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
-  const [manualInvoices, setManualInvoices] = useState<Invoice[]>(() => {
-    const stored = localStorage.getItem('axium_finance_v1');
-    if (stored) return JSON.parse(stored).manualInvoices ?? [];
-    return [];
-  });
+
+  useEffect(() => {
+    const legacy = localStorage.getItem('axium_finance_v1');
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      const invoices = parsed.manualInvoices ?? [];
+      if (invoices.length > 0) {
+        const current = localStorage.getItem('axium_invoices_v2');
+        if (!current || JSON.parse(current).length === 0) {
+          localStorage.setItem('axium_invoices_v2', JSON.stringify(invoices));
+        }
+      }
+      localStorage.removeItem('axium_finance_v1');
+    }
+  }, []);
+
+  const {
+    data: syncedManualInvoices,
+    add: addInvoiceToFirestore,
+    update: updateInvoiceInFirestore,
+    remove: removeInvoiceFromFirestore,
+  } = useCollectionSync<Invoice>(
+    INVOICES_COLLECTION,
+    'axium_invoices_v2',
+    [],
+    user?.id,
+  );
+
+  const {
+    data: syncedExpenses,
+    add: addExpenseToFirestore,
+    update: updateExpenseInFirestore,
+    remove: removeExpenseFromFirestore,
+  } = useCollectionSync<Expense>(
+    EXPENSES_COLLECTION,
+    EXPENSES_KEY,
+    [],
+    user?.id,
+  );
+
+  const [manualInvoices, setManualInvoices] = useState<Invoice[]>(syncedManualInvoices);
   const [asaasInvoices, setAsaasInvoices] = useState<Invoice[]>([]);
-  
+
   const [expenses, setExpenses] = useState<Expense[]>(() => {
     const stored = localStorage.getItem(EXPENSES_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
     return [
       { id: 'exp-001', category: 'aluguel', description: 'Aluguel do escritório', amount: 'R$ 5.000,00', date: '2026-04-01', status: 'Pago' },
       { id: 'exp-002', category: 'software', description: 'Assinatura CRM', amount: 'R$ 497,00', date: '2026-04-05', status: 'Pago' },
@@ -187,8 +228,16 @@ const Financeiro = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
-  }, [expenses]);
+    if (syncedManualInvoices.length > 0) {
+      setManualInvoices(syncedManualInvoices);
+    }
+  }, [syncedManualInvoices]);
+
+  useEffect(() => {
+    if (syncedExpenses.length > 0) {
+      setExpenses(syncedExpenses);
+    }
+  }, [syncedExpenses]);
   
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
@@ -355,6 +404,7 @@ const Financeiro = () => {
     };
 
     if (isNewInvoice) {
+      addInvoiceToFirestore(modifiedInvoice);
       setManualInvoices(prev => [modifiedInvoice, ...prev]);
       pushNotification('Nova Fatura', `Fatura de ${modifiedInvoice.client} no valor de ${modifiedInvoice.amount} foi criada.`, 'meeting');
     } else {
@@ -363,6 +413,7 @@ const Financeiro = () => {
       } else if (editingInvoice.source === 'asaas') {
         alert('Faturas do Asaas são sincronizadas automaticamente e não podem ser editadas manualmente.');
       } else {
+        updateInvoiceInFirestore(editingInvoice.id, modifiedInvoice);
         setManualInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? modifiedInvoice : inv));
         pushNotification('Fatura Atualizada', `Fatura de ${modifiedInvoice.client} foi modificada.`, 'meeting');
       }
@@ -377,6 +428,7 @@ const Financeiro = () => {
       return;
     }
     if (confirm('Excluir esta fatura manual?')) {
+      removeInvoiceFromFirestore(id);
       setManualInvoices(prev => prev.filter(inv => inv.id !== id));
       pushNotification('Fatura Excluída', `Fatura de ${inv.client} foi removida.`, 'meeting');
       setIsInvoiceModalOpen(false);
@@ -411,9 +463,11 @@ const Financeiro = () => {
     };
 
     if (isNewExpense) {
+      addExpenseToFirestore(modifiedExpense);
       setExpenses(prev => [modifiedExpense, ...prev]);
       pushNotification('Nova Despesa', `Despesa de ${modifiedExpense.category} - ${modifiedExpense.description} no valor de ${modifiedExpense.amount} foi criada.`, 'system');
     } else {
+      updateExpenseInFirestore(editingExpense.id, modifiedExpense);
       setExpenses(prev => prev.map(exp => exp.id === editingExpense.id ? modifiedExpense : exp));
       pushNotification('Despesa Atualizada', `Despesa de ${modifiedExpense.category} foi modificada.`, 'system');
     }
@@ -423,6 +477,7 @@ const Financeiro = () => {
   const handleDeleteExpense = (id: string) => {
     if (confirm('Excluir esta despesa?')) {
       const exp = expenses.find(e => e.id === id);
+      removeExpenseFromFirestore(id);
       setExpenses(prev => prev.filter(exp => exp.id !== id));
       if (exp) pushNotification('Despesa Excluída', `Despesa de ${exp.category} foi removida.`, 'system');
       setIsExpenseModalOpen(false);

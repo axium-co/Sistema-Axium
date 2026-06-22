@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2, X, Edit3, MessageCircle, Paperclip, Download } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCRM } from '../../contexts/CRMContext';
 import { generateUUID } from '../../lib/uuid';
 import { cleanPhoneNumber, generateWhatsAppLink, WHATSAPP_MESSAGE_TEMPLATES } from '../../lib/whatsapp';
+import { useCollectionSync } from '../../lib/sync';
+import { BOARDS_COLLECTION } from '../../lib/firebase';
 
 interface ColumnOption {
   id: string;
@@ -545,10 +547,38 @@ const Board = ({
 
 const Tarefas = () => {
   const { pushNotification } = useCRM();
+  const { user } = useAuth();
+  const isInitialSync = useRef(true);
+
+  const {
+    data: syncedBoards,
+    add: addBoardToFirestore,
+    update: updateBoardInFirestore,
+    remove: removeBoardFromFirestore,
+  } = useCollectionSync<BoardType>(
+    BOARDS_COLLECTION,
+    'axium_boards_v3',
+    [],
+    user?.id,
+  );
+
   const [boards, setBoards] = useState<BoardType[]>(() => {
     const stored = localStorage.getItem('axium_boards_v3');
-    return stored ? JSON.parse(stored) : [DEFAULT_BOARD];
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    return [DEFAULT_BOARD];
   });
+
+  useEffect(() => {
+    if (syncedBoards.length > 0 && isInitialSync.current) {
+      setBoards(syncedBoards);
+      isInitialSync.current = false;
+    } else if (syncedBoards.length > 0 && !isInitialSync.current) {
+      setBoards(syncedBoards);
+    }
+  }, [syncedBoards]);
 
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [showNewBoardModal, setShowNewBoardModal] = useState(false);
@@ -596,11 +626,7 @@ const Tarefas = () => {
     return () => window.removeEventListener('openFileManager', handleOpenFileManager);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('axium_boards_v3', JSON.stringify(boards));
-  }, [boards]);
-
-  const handleUpdateBoard = (updatedBoard: BoardType) => {
+  const handleUpdateBoard = useCallback((updatedBoard: BoardType) => {
     const oldBoard = boards.find(b => b.id === updatedBoard.id);
     if (oldBoard) {
       if (updatedBoard.rows.length > oldBoard.rows.length) {
@@ -613,16 +639,18 @@ const Tarefas = () => {
         pushNotification('Tarefa Atualizada', `Tarefa atualizada no quadro "${updatedBoard.title}".`, 'system');
       }
     }
-    setBoards(boards.map(b => b.id === updatedBoard.id ? updatedBoard : b));
-  };
+    updateBoardInFirestore(updatedBoard.id, updatedBoard);
+    setBoards(prev => prev.map(b => b.id === updatedBoard.id ? updatedBoard : b));
+  }, [boards, pushNotification, updateBoardInFirestore]);
 
-  const handleDeleteBoard = (id: string) => {
+  const handleDeleteBoard = useCallback((id: string) => {
     if (boards.length > 1 && confirm('Excluir quadro?')) {
       const board = boards.find(b => b.id === id);
-      setBoards(boards.filter(b => b.id !== id));
+      removeBoardFromFirestore(id);
+      setBoards(prev => prev.filter(b => b.id !== id));
       if (board) pushNotification('Quadro Excluído', `Quadro "${board.title}" foi removido.`, 'system');
     }
-  };
+  }, [boards, pushNotification, removeBoardFromFirestore]);
 
   const handleCreateNewTask = (boardId: string) => {
     const board = boards.find(b => b.id === boardId);
@@ -651,7 +679,8 @@ const Tarefas = () => {
       rows: [],
     };
     
-    setBoards([...boards, newBoard]);
+    addBoardToFirestore(newBoard);
+    setBoards(prev => [...prev, newBoard]);
     pushNotification('Novo Quadro', `Quadro "${newBoardTitle}" foi criado.`, 'system');
     setNewBoardTitle('');
     setNewBoardColor('#3b82f6');

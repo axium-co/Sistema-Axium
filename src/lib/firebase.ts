@@ -55,3 +55,11 @@ export interface ActivityLog {
 
 export const PROFILES_COLLECTION = 'profiles';
 export const ACTIVITY_LOGS_COLLECTION = 'activity_logs';
+export const LEADS_COLLECTION = 'leads';
+export const EVENTS_COLLECTION = 'events';
+export const NOTIFICATIONS_COLLECTION = 'notifications';
+export const WHATSAPP_TEMPLATES_COLLECTION = 'whatsapp_templates';
+export const BOARDS_COLLECTION = 'boards';
+export const INVOICES_COLLECTION = 'invoices';
+export const EXPENSES_COLLECTION = 'expenses';
+export const INTEGRATIONS_COLLECTION = 'integrations';

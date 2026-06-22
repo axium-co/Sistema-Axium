@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, MessageSquare, CreditCard, Shield, Key, Loader2, CheckCircle2, Share2, Globe } from 'lucide-react';
+import { useCollectionSync } from '../../lib/sync';
+import { INTEGRATIONS_COLLECTION, isFirebaseConfigured } from '../../lib/firebase';
 
 interface Integration {
   id: string;
@@ -10,15 +12,50 @@ interface Integration {
   type?: 'default' | 'n8n';
 }
 
+interface IntegrationStatus {
+  id: string;
+  connected: boolean;
+}
+
+const INTEGRATION_DEFS: Integration[] = [
+  { id: 'whatsapp', name: 'WhatsApp', description: 'Envio de notificações automáticas e mensagens diretas', connected: false, icon: MessageSquare },
+  { id: 'asaas', name: 'Asaas', description: 'Automação de cobranças e faturamento via Financeiro', connected: false, icon: CreditCard },
+  { id: 'n8n', name: 'n8n', description: 'Orquestrador de fluxos de dados e automações complexas', connected: false, icon: Share2, type: 'n8n' },
+  { id: 'salesforce', name: 'Salesforce', description: 'Sincronização completa de leads e contatos', connected: true },
+  { id: 'google', name: 'Google Workspace', description: 'Integração com Gmail e Google Contacts', connected: false },
+  { id: 'mailchimp', name: 'Mailchimp', description: 'Sincronização com listas de email', connected: false },
+];
+
 const CRMIntegracoes = () => {
-  const [integrations, setIntegrations] = useState<Integration[]>([
-    { id: 'whatsapp', name: 'WhatsApp', description: 'Envio de notificações automáticas e mensagens diretas', connected: false, icon: MessageSquare },
-    { id: 'asaas', name: 'Asaas', description: 'Automação de cobranças e faturamento via Financeiro', connected: false, icon: CreditCard },
-    { id: 'n8n', name: 'n8n', description: 'Orquestrador de fluxos de dados e automações complexas', connected: false, icon: Share2, type: 'n8n' },
-    { id: 'salesforce', name: 'Salesforce', description: 'Sincronização completa de leads e contatos', connected: true },
-    { id: 'google', name: 'Google Workspace', description: 'Integração com Gmail e Google Contacts', connected: false },
-    { id: 'mailchimp', name: 'Mailchimp', description: 'Sincronização com listas de email', connected: false },
-  ]);
+  const {
+    data: syncedStatuses,
+    add: addStatus,
+    update: updateStatus,
+    remove: removeStatus,
+  } = useCollectionSync<IntegrationStatus>(
+    INTEGRATIONS_COLLECTION,
+    'axium_integrations_status',
+  );
+
+  const [integrations, setIntegrations] = useState<Integration[]>(() => {
+    return INTEGRATION_DEFS.map(def => {
+      const synced = syncedStatuses.find(s => s.id === def.id);
+      if (synced !== undefined) {
+        return { ...def, connected: synced.connected };
+      }
+      const local = localStorage.getItem(`axium_int_${def.id}`);
+      return { ...def, connected: local === 'true' };
+    });
+  });
+
+  useEffect(() => {
+    if (syncedStatuses.length > 0) {
+      setIntegrations(prev => prev.map(int => {
+        const synced = syncedStatuses.find(s => s.id === int.id);
+        return synced !== undefined ? { ...int, connected: synced.connected } : int;
+      }));
+    }
+  }, [syncedStatuses]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
@@ -26,26 +63,21 @@ const CRMIntegracoes = () => {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    // Load local storage states
-    const whatsappConnected = localStorage.getItem('axium_int_whatsapp') === 'true';
-    const asaasConnected = localStorage.getItem('axium_int_asaas') === 'true';
-    const n8nConnected = localStorage.getItem('axium_int_n8n') === 'true';
-    
-    setIntegrations(prev => prev.map(int => {
-      if (int.id === 'whatsapp') return { ...int, connected: whatsappConnected };
-      if (int.id === 'asaas') return { ...int, connected: asaasConnected };
-      if (int.id === 'n8n') return { ...int, connected: n8nConnected };
-      return int;
-    }));
-  }, []);
+  const pushStatus = (id: string, connected: boolean) => {
+    const existing = syncedStatuses.find(s => s.id === id);
+    if (existing) {
+      updateStatus(existing.id, { connected });
+    } else {
+      addStatus({ id, connected });
+    }
+    localStorage.setItem(`axium_int_${id}`, connected ? 'true' : 'false');
+  };
 
   const handleConnectClick = (integration: Integration) => {
     if (integration.connected) {
-      localStorage.removeItem(`axium_int_${integration.id}`);
       localStorage.removeItem(`axium_key_${integration.id}`);
       if (integration.type === 'n8n') localStorage.removeItem('axium_webhook_n8n');
-      
+      pushStatus(integration.id, false);
       setIntegrations(prev => prev.map(int => int.id === integration.id ? { ...int, connected: false } : int));
       return;
     }
@@ -62,10 +94,9 @@ const CRMIntegracoes = () => {
     setIsSaving(true);
     
     setTimeout(() => {
-      localStorage.setItem(`axium_int_${selectedIntegration.id}`, 'true');
       localStorage.setItem(`axium_key_${selectedIntegration.id}`, apiKey);
       if (selectedIntegration.type === 'n8n') localStorage.setItem('axium_webhook_n8n', webhookUrl);
-      
+      pushStatus(selectedIntegration.id, true);
       setIntegrations(prev => prev.map(int => int.id === selectedIntegration.id ? { ...int, connected: true } : int));
       setIsSaving(false);
       setIsModalOpen(false);

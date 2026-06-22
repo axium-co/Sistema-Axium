@@ -1,7 +1,15 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { STAGES, STAGE_CONFIG, parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
 import { generateUUID } from '../lib/uuid';
+import { useCollectionSync } from '../lib/sync';
+import { useAuth } from './AuthContext';
+import {
+  LEADS_COLLECTION,
+  EVENTS_COLLECTION,
+  NOTIFICATIONS_COLLECTION,
+  isFirebaseConfigured,
+} from '../lib/firebase';
 
 export interface Lead {
   id: string;
@@ -165,17 +173,41 @@ function pushNotification(
 }
 
 export const CRMProvider = ({ children }: { children: ReactNode }) => {
-  const [leads, setLeads] = useState<Lead[]>(() => {
-    const storageKey = 'axium_leads_v2';
-    let loaded = loadFromStorage<Lead[]>(storageKey, INITIAL_LEADS);
-    if (!loaded || !Array.isArray(loaded) || loaded.length === 0) {
-      loaded = INITIAL_LEADS;
-    }
-    return loaded;
-  });
-  const [events, setEvents] = useState<CalendarEvent[]>(() => loadFromStorage('axium_events_v2', INITIAL_EVENTS));
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>(() => loadFromStorage('axium_notifications_v1', []));
+  const localMutationRef = useRef(false);
+
+  const {
+    data: firestoreLeads,
+    add: addLeadToFirestore,
+    update: updateLeadInFirestore,
+    remove: removeLeadFromFirestore,
+  } = useCollectionSync<Lead>(
+    LEADS_COLLECTION,
+    'axium_leads_v2',
+    [],
+    user?.id,
+  );
+
+  const {
+    data: firestoreEvents,
+    add: addEventToFirestore,
+    update: updateEventInFirestore,
+    remove: removeEventFromFirestore,
+  } = useCollectionSync<CalendarEvent>(
+    EVENTS_COLLECTION,
+    'axium_events_v2',
+    [],
+    user?.id,
+  );
+
+  const leads = firestoreLeads.length > 0
+    ? firestoreLeads
+    : loadFromStorage<Lead[]>('axium_leads_v2', INITIAL_LEADS);
+  const events = firestoreEvents.length > 0
+    ? firestoreEvents
+    : loadFromStorage<CalendarEvent[]>('axium_events_v2', INITIAL_EVENTS);
 
   useEffect(() => {
     localStorage.setItem('axium_leads_v2', JSON.stringify(leads));
@@ -211,65 +243,62 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addLead = useCallback((lead: LeadInput) => {
-    const id = generateUUID();
-    const newLead: Lead = { ...lead, id };
-    setLeads(prev => [...prev, newLead]);
+    addLeadToFirestore(lead);
     pushNotification(setNotifications, 'Novo Lead', `${lead.name} foi adicionado ao sistema.`, 'lead');
-  }, []);
+  }, [addLeadToFirestore]);
 
   const updateLead = useCallback((id: string, fields: LeadUpdate) => {
     const currentLeads = leads;
     const old = currentLeads.find(l => l.id === id);
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...fields } : l));
+    updateLeadInFirestore(id, fields);
     if (old) {
       const changedFields = Object.keys(fields).filter(k => (fields as any)[k] !== (old as any)[k]);
       if (changedFields.length > 0) {
         pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
       }
     }
-  }, [leads]);
+  }, [leads, updateLeadInFirestore]);
 
   const updateLeadStage = useCallback((id: string, stage: string) => {
     const currentLeads = leads;
     const old = currentLeads.find(l => l.id === id);
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, stage } : l));
+    updateLeadInFirestore(id, { stage } as Partial<Lead>);
     if (old && old.stage !== stage) {
       pushNotification(setNotifications, 'Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
     }
-  }, [leads]);
+  }, [leads, updateLeadInFirestore]);
 
   const deleteLead = useCallback((id: string) => {
     const currentLeads = leads;
     const old = currentLeads.find(l => l.id === id);
-    setLeads(prev => prev.filter(l => l.id !== id));
+    removeLeadFromFirestore(id);
     if (old) {
       pushNotification(setNotifications, 'Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
     }
-  }, [leads]);
+  }, [leads, removeLeadFromFirestore]);
 
   const addEvent = useCallback((event: Omit<CalendarEvent, 'id'>) => {
-    const id = generateUUID();
-    setEvents(prev => [...prev, { ...event, id }]);
+    addEventToFirestore(event);
     pushNotification(setNotifications, 'Evento Criado', `${event.title} foi adicionado ao calendário.`, 'meeting');
-  }, []);
+  }, [addEventToFirestore]);
 
   const updateEvent = useCallback((id: string, fields: Partial<CalendarEvent>) => {
     const currentEvents = events;
     const old = currentEvents.find(e => e.id === id);
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...fields } : e));
+    updateEventInFirestore(id, fields);
     if (old) {
       pushNotification(setNotifications, 'Evento Atualizado', `${old.title} foi modificado.`, 'meeting');
     }
-  }, [events]);
+  }, [events, updateEventInFirestore]);
 
   const deleteEvent = useCallback((id: string) => {
     const currentEvents = events;
     const old = currentEvents.find(e => e.id === id);
-    setEvents(prev => prev.filter(e => e.id !== id));
+    removeEventFromFirestore(id);
     if (old) {
       pushNotification(setNotifications, 'Evento Removido', `${old.title} foi removido do calendário.`, 'meeting');
     }
-  }, [events]);
+  }, [events, removeEventFromFirestore]);
 
   const getLeadsByStage = useCallback((stage: string) => {
     return leads.filter(l => l.stage === stage);
