@@ -146,69 +146,96 @@ export function useCollectionSync<T extends { id: string }>(
   const add = useCallback(
     async (item: Omit<T, 'id'>): Promise<string> => {
       if (!isFirebaseConfigured) {
-        const stored = loadFromStorage<T[]>(storageKey);
-        const newId = generateUUID();
-        const newItem = { ...item, id: newId } as unknown as T;
-        saveToStorage(storageKey, [...stored, newItem]);
-        setState((prev) => ({ ...prev, data: [...prev.data, newItem] }));
-        return newId;
+        return addToLocal(item);
       }
 
-      const docRef = await addDoc(collection(db, collectionName), {
-        ...item,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        userId: userId || null,
-      });
-      return docRef.id;
+      try {
+        const docRef = await addDoc(collection(db, collectionName), {
+          ...item,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          userId: userId || null,
+        });
+        return docRef.id;
+      } catch (err) {
+        console.error(`[Sync] Error adding to ${collectionName}, falling back to localStorage:`, err);
+        return addToLocal(item);
+      }
     },
     [collectionName, storageKey, userId],
   );
 
+  function addToLocal(item: Omit<T, 'id'>): string {
+    const stored = loadFromStorage<T[]>(storageKey);
+    const newId = generateUUID();
+    const newItem = { ...item, id: newId } as unknown as T;
+    saveToStorage(storageKey, [...stored, newItem]);
+    setState((prev) => ({ ...prev, data: [...prev.data, newItem] }));
+    return newId;
+  }
+
   const update = useCallback(
     async (id: string, fields: Partial<T>) => {
       if (!isFirebaseConfigured) {
-        const stored = loadFromStorage<T[]>(storageKey);
-        const updated = stored.map((item) =>
-          item.id === id ? { ...item, ...fields } : item,
-        );
-        saveToStorage(storageKey, updated);
-        setState((prev) => ({
-          ...prev,
-          data: prev.data.map((item) =>
-            item.id === id ? { ...item, ...fields } : item,
-          ),
-        }));
+        updateLocal(id, fields);
         return;
       }
 
-      await updateDoc(doc(db, collectionName, id), {
-        ...fields,
-        updatedAt: serverTimestamp(),
-      });
+      try {
+        await updateDoc(doc(db, collectionName, id), {
+          ...fields,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error(`[Sync] Error updating ${id} in ${collectionName}, falling back to localStorage:`, err);
+        updateLocal(id, fields);
+      }
     },
     [collectionName, storageKey],
   );
+
+  function updateLocal(id: string, fields: Partial<T>) {
+    const stored = loadFromStorage<T[]>(storageKey);
+    const updated = stored.map((item) =>
+      item.id === id ? { ...item, ...fields } : item,
+    );
+    saveToStorage(storageKey, updated);
+    setState((prev) => ({
+      ...prev,
+      data: prev.data.map((item) =>
+        item.id === id ? { ...item, ...fields } : item,
+      ),
+    }));
+  }
 
   const remove = useCallback(
     async (id: string) => {
       if (!isFirebaseConfigured) {
-        const stored = loadFromStorage<T[]>(storageKey);
-        saveToStorage(
-          storageKey,
-          stored.filter((item) => item.id !== id),
-        );
-        setState((prev) => ({
-          ...prev,
-          data: prev.data.filter((item) => item.id !== id),
-        }));
+        removeLocal(id);
         return;
       }
 
-      await deleteDoc(doc(db, collectionName, id));
+      try {
+        await deleteDoc(doc(db, collectionName, id));
+      } catch (err) {
+        console.error(`[Sync] Error removing ${id} from ${collectionName}, falling back to localStorage:`, err);
+        removeLocal(id);
+      }
     },
     [collectionName, storageKey],
   );
+
+  function removeLocal(id: string) {
+    const stored = loadFromStorage<T[]>(storageKey);
+    saveToStorage(
+      storageKey,
+      stored.filter((item) => item.id !== id),
+    );
+    setState((prev) => ({
+      ...prev,
+      data: prev.data.filter((item) => item.id !== id),
+    }));
+  }
 
   const revalidate = useCallback(() => {
     if (unsubscribeRef.current) {

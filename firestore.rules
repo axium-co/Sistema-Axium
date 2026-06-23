@@ -29,5 +29,53 @@ service cloud.firestore {
       allow create: if true;
       allow update, delete: if false;
     }
+
+    // Leads (CRM) — leitura e escrita liberadas para o app funcionar
+    match /leads/{leadId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Events (CRM Calendar)
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // WhatsApp templates
+    match /whatsapp_templates/{templateId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Boards (Tarefas)
+    match /boards/{boardId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Invoices (Faturas)
+    match /invoices/{invoiceId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Expenses (Despesas)
+    match /expenses/{expenseId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Integrations
+    match /integrations/{integrationId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }
