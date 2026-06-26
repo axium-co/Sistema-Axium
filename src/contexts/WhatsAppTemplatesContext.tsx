@@ -9,12 +9,12 @@ const STORAGE_KEY = 'axium_whatsapp_templates_v1';
 
 interface WhatsAppTemplatesContextType {
   templates: WhatsAppTemplate[];
-  addTemplate: (template: Omit<WhatsAppTemplate, 'id'>) => void;
-  updateTemplate: (id: string, fields: Partial<WhatsAppTemplate>) => void;
-  deleteTemplate: (id: string) => void;
-  duplicateTemplate: (id: string) => void;
-  reorderTemplate: (id: string, direction: 'up' | 'down') => void;
-  toggleTemplateActive: (id: string) => void;
+  addTemplate: (template: Omit<WhatsAppTemplate, 'id'>) => Promise<void>;
+  updateTemplate: (id: string, fields: Partial<WhatsAppTemplate>) => Promise<void>;
+  deleteTemplate: (id: string) => Promise<void>;
+  duplicateTemplate: (id: string) => Promise<void>;
+  reorderTemplate: (id: string, direction: 'up' | 'down') => Promise<void>;
+  toggleTemplateActive: (id: string) => Promise<void>;
   activeTemplates: WhatsAppTemplate[];
 }
 
@@ -52,30 +52,46 @@ export const WhatsAppTemplatesProvider = ({ children }: { children: ReactNode })
 
   const templates = syncedTemplates.length > 0 ? syncedTemplates : fallbackTemplates;
 
-  const addTemplate = useCallback((template: Omit<WhatsAppTemplate, 'id'>) => {
-    addToFirestore(template);
+  const addTemplate = useCallback(async (template: Omit<WhatsAppTemplate, 'id'>) => {
+    try {
+      await addToFirestore(template);
+    } catch (error) {
+      console.error('Erro ao adicionar template:', error);
+    }
   }, [addToFirestore]);
 
-  const updateTemplate = useCallback((id: string, fields: Partial<WhatsAppTemplate>) => {
-    updateInFirestore(id, fields);
+  const updateTemplate = useCallback(async (id: string, fields: Partial<WhatsAppTemplate>) => {
+    try {
+      await updateInFirestore(id, fields);
+    } catch (error) {
+      console.error('Erro ao atualizar template:', error);
+    }
   }, [updateInFirestore]);
 
-  const deleteTemplate = useCallback((id: string) => {
-    removeFromFirestore(id);
+  const deleteTemplate = useCallback(async (id: string) => {
+    try {
+      await removeFromFirestore(id);
+    } catch (error) {
+      console.error('Erro ao remover template:', error);
+    }
   }, [removeFromFirestore]);
 
-  const duplicateTemplate = useCallback((id: string) => {
+  const duplicateTemplate = useCallback(async (id: string) => {
     const source = templates.find(t => t.id === id);
     if (!source) return;
     const maxOrder = Math.max(...templates.map(t => t.order), -1);
-    addToFirestore({
-      ...source,
-      name: `${source.name} (cópia)`,
-      order: maxOrder + 1,
-    });
+    try {
+      await addToFirestore({
+        ...source,
+        name: `${source.name} (cópia)`,
+        order: maxOrder + 1,
+      });
+    } catch (error) {
+      console.error('Erro ao duplicar template:', error);
+    }
   }, [templates, addToFirestore]);
 
-  const reorderTemplate = useCallback((id: string, direction: 'up' | 'down') => {
+  const reorderTemplate = useCallback(async (id: string, direction: 'up' | 'down') => {
     const sorted = [...templates].sort((a, b) => a.order - b.order);
     const idx = sorted.findIndex(t => t.id === id);
     if (idx === -1) return;
@@ -85,13 +101,21 @@ export const WhatsAppTemplatesProvider = ({ children }: { children: ReactNode })
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
     [sorted[idx], sorted[swapIdx]] = [sorted[swapIdx], sorted[idx]];
     const reordered = sorted.map((t, i) => ({ ...t, order: i }));
-    reordered.forEach(t => updateInFirestore(t.id, { order: t.order }));
+    try {
+      await Promise.all(reordered.map(t => updateInFirestore(t.id, { order: t.order })));
+    } catch (error) {
+      console.error('Erro ao reordenar templates:', error);
+    }
   }, [templates, updateInFirestore]);
 
-  const toggleTemplateActive = useCallback((id: string) => {
+  const toggleTemplateActive = useCallback(async (id: string) => {
     const t = templates.find(t => t.id === id);
     if (t) {
-      updateInFirestore(id, { active: !t.active });
+      try {
+        await updateInFirestore(id, { active: !t.active });
+      } catch (error) {
+        console.error('Erro ao alternar template:', error);
+      }
     }
   }, [templates, updateInFirestore]);
 

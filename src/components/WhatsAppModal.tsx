@@ -44,6 +44,12 @@ export default function WhatsAppModal({
     if (cleaned.length === 12) {
       return `+${cleaned.slice(0, 2)} (${cleaned.slice(2, 4)}) ${cleaned.slice(4, 8)}-${cleaned.slice(8)}`;
     }
+    if (cleaned.length === 11) {
+      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+    }
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
+    }
     return phone;
   };
 
@@ -85,7 +91,7 @@ export default function WhatsAppModal({
   }, [openWithoutMessage]);
 
   const handleOpenWhatsApp = () => {
-    const url = generateWhatsAppLink(leadPhone, editedMessage.trim() || undefined);
+    const url = generateWhatsAppLink(cleanedPhone, editedMessage.trim() || undefined);
     if (url) {
       window.open(url, '_blank');
     }
@@ -101,7 +107,7 @@ export default function WhatsAppModal({
             <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-1 block">Enviar Mensagem</span>
             <h2 className="text-xl font-black text-black tracking-tight">{leadName}</h2>
             <p className="text-sm text-neutral-500 font-medium mt-0.5">
-              {hasPhone ? formatPhone(leadPhone) : 'Nenhum telefone cadastrado'}
+              {hasPhone ? formatPhone(cleanedPhone) : 'Nenhum telefone cadastrado'}
             </p>
           </div>
           <button type="button" onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors text-neutral-300 hover:text-black cursor-pointer">

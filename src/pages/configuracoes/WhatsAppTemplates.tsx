@@ -74,7 +74,7 @@ const WhatsAppTemplatesPage = () => {
     [formData.message, previewVariables]
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       setErrorMessage('O nome do template é obrigatório.');
       return;
@@ -84,21 +84,30 @@ const WhatsAppTemplatesPage = () => {
       return;
     }
 
-    if (modalMode === 'add') {
-      const maxOrder = templates.length > 0 ? Math.max(...templates.map(t => t.order)) : -1;
-      addTemplate({ ...formData, name: formData.name.trim(), message: formData.message.trim(), order: maxOrder + 1 });
-      showSuccess('Template criado com sucesso!');
-    } else if (modalMode === 'edit' && editingId) {
-      updateTemplate(editingId, { ...formData, name: formData.name.trim(), message: formData.message.trim() });
-      showSuccess('Template atualizado com sucesso!');
+    try {
+      if (modalMode === 'add') {
+        const maxOrder = templates.length > 0 ? Math.max(...templates.map(t => t.order)) : -1;
+        await addTemplate({ ...formData, name: formData.name.trim(), message: formData.message.trim(), order: maxOrder + 1 });
+        showSuccess('Template criado com sucesso!');
+      } else if (modalMode === 'edit' && editingId) {
+        await updateTemplate(editingId, { ...formData, name: formData.name.trim(), message: formData.message.trim() });
+        showSuccess('Template atualizado com sucesso!');
+      }
+      closeModal();
+    } catch (err) {
+      console.error('Erro ao salvar template:', err);
+      setErrorMessage('Erro ao salvar template. Tente novamente.');
     }
-    closeModal();
   };
 
-  const handleDelete = (id: string) => {
-    deleteTemplate(id);
-    setDeleteConfirmId(null);
-    showSuccess('Template excluído com sucesso!');
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteTemplate(id);
+      setDeleteConfirmId(null);
+      showSuccess('Template excluído com sucesso!');
+    } catch (err) {
+      console.error('Erro ao excluir template:', err);
+    }
   };
 
   return (

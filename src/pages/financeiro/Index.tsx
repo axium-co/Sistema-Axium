@@ -394,7 +394,7 @@ const Financeiro = () => {
     setIsInvoiceModalOpen(true);
   };
 
-  const handleSaveInvoice = (e: React.FormEvent) => {
+  const handleSaveInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingInvoice) return;
 
@@ -403,22 +403,26 @@ const Financeiro = () => {
       lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário')
     };
 
-    if (isNewInvoice) {
-      addInvoiceToFirestore(modifiedInvoice);
-      setManualInvoices(prev => [modifiedInvoice, ...prev]);
-      pushNotification('Nova Fatura', `Fatura de ${modifiedInvoice.client} no valor de ${modifiedInvoice.amount} foi criada.`, 'meeting');
-    } else {
-      if (editingInvoice.source === 'lead') {
-        alert('Faturas vinculadas a leads devem ser editadas no módulo de Leads.');
-      } else if (editingInvoice.source === 'asaas') {
-        alert('Faturas do Asaas são sincronizadas automaticamente e não podem ser editadas manualmente.');
+    try {
+      if (isNewInvoice) {
+        await addInvoiceToFirestore(modifiedInvoice);
+        setManualInvoices(prev => [modifiedInvoice, ...prev]);
+        pushNotification('Nova Fatura', `Fatura de ${modifiedInvoice.client} no valor de ${modifiedInvoice.amount} foi criada.`, 'meeting');
       } else {
-        updateInvoiceInFirestore(editingInvoice.id, modifiedInvoice);
-        setManualInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? modifiedInvoice : inv));
-        pushNotification('Fatura Atualizada', `Fatura de ${modifiedInvoice.client} foi modificada.`, 'meeting');
+        if (editingInvoice.source === 'lead') {
+          alert('Faturas vinculadas a leads devem ser editadas no módulo de Leads.');
+        } else if (editingInvoice.source === 'asaas') {
+          alert('Faturas do Asaas são sincronizadas automaticamente e não podem ser editadas manualmente.');
+        } else {
+          await updateInvoiceInFirestore(editingInvoice.id, modifiedInvoice);
+          setManualInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? modifiedInvoice : inv));
+          pushNotification('Fatura Atualizada', `Fatura de ${modifiedInvoice.client} foi modificada.`, 'meeting');
+        }
       }
+      setIsInvoiceModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao salvar fatura:', err);
     }
-    setIsInvoiceModalOpen(false);
   };
 
   const handleDeleteInvoice = (id: string) => {
@@ -453,7 +457,7 @@ const Financeiro = () => {
     setIsExpenseModalOpen(true);
   };
 
-  const handleSaveExpense = (e: React.FormEvent) => {
+  const handleSaveExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingExpense) return;
 
@@ -462,16 +466,20 @@ const Financeiro = () => {
       lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário')
     };
 
-    if (isNewExpense) {
-      addExpenseToFirestore(modifiedExpense);
-      setExpenses(prev => [modifiedExpense, ...prev]);
-      pushNotification('Nova Despesa', `Despesa de ${modifiedExpense.category} - ${modifiedExpense.description} no valor de ${modifiedExpense.amount} foi criada.`, 'system');
-    } else {
-      updateExpenseInFirestore(editingExpense.id, modifiedExpense);
-      setExpenses(prev => prev.map(exp => exp.id === editingExpense.id ? modifiedExpense : exp));
-      pushNotification('Despesa Atualizada', `Despesa de ${modifiedExpense.category} foi modificada.`, 'system');
+    try {
+      if (isNewExpense) {
+        await addExpenseToFirestore(modifiedExpense);
+        setExpenses(prev => [modifiedExpense, ...prev]);
+        pushNotification('Nova Despesa', `Despesa de ${modifiedExpense.category} - ${modifiedExpense.description} no valor de ${modifiedExpense.amount} foi criada.`, 'system');
+      } else {
+        await updateExpenseInFirestore(editingExpense.id, modifiedExpense);
+        setExpenses(prev => prev.map(exp => exp.id === editingExpense.id ? modifiedExpense : exp));
+        pushNotification('Despesa Atualizada', `Despesa de ${modifiedExpense.category} foi modificada.`, 'system');
+      }
+      setIsExpenseModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao salvar despesa:', err);
     }
-    setIsExpenseModalOpen(false);
   };
 
   const handleDeleteExpense = (id: string) => {

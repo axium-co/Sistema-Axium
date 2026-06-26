@@ -293,21 +293,25 @@ const CRMImportar = () => {
   const selectAllRows = () => setSelectedRows(new Set(uploadState?.rawData.map((_, i) => i) ?? []));
   const deselectAllRows = () => setSelectedRows(new Set());
 
-  const confirmImport = () => {
+  const confirmImport = async () => {
     if (!uploadState) return;
     setIsImporting(true);
 
     let count = 0;
     const sortedRows = Array.from(selectedRows).sort((a, b) => a - b);
-    sortedRows.forEach(rowIndex => {
+    for (const rowIndex of sortedRows) {
       const row = uploadState.rawData[rowIndex];
-      if (!row) return;
+      if (!row) continue;
       const lead = mapRowToLead(row, mappings);
       if (lead) {
-        addLead(lead);
-        count++;
+        try {
+          await addLead(lead);
+          count++;
+        } catch (err) {
+          console.error('Erro ao importar lead:', err);
+        }
       }
-    });
+    }
 
     const newImport: ImportRecord = {
       name: uploadState.fileName,

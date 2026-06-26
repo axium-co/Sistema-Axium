@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Search, X, User, MessageSquare, Calendar as CalendarIcon, Clock, Menu, LogOut } from 'lucide-react';
+import { Bell, X, User, MessageSquare, Calendar as CalendarIcon, Clock, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCRM } from '../contexts/CRMContext'
 
@@ -63,7 +63,11 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
   }, []);
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await logout();
+    } catch {
+      // logout already handles errors internally
+    }
     navigate('/login');
   };
 

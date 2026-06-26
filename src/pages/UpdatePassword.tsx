@@ -66,8 +66,16 @@ const UpdatePassword = () => {
       await signOut(auth);
       localStorage.removeItem('axium_auth');
       setTimeout(() => navigate('/login'), 2000);
-    } catch (err) {
-      setError('Erro ao atualizar senha. Tente novamente.');
+    } catch (err: any) {
+      const code = err?.code;
+      const messages: Record<string, string> = {
+        'auth/expired-action-code': 'Este link de recuperação expirou. Solicite um novo.',
+        'auth/invalid-action-code': 'Link de recuperação inválido ou já utilizado.',
+        'auth/weak-password': 'A senha é muito fraca. Use pelo menos 6 caracteres.',
+        'auth/user-disabled': 'Esta conta foi desativada.',
+        'auth/user-not-found': 'Usuário não encontrado.',
+      };
+      setError(messages[code] || 'Erro ao atualizar senha. Tente novamente.');
     }
 
     setIsLoading(false);

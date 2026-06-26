@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AlertTriangle, X, ShieldAlert, Trash2,
   Save, CheckCircle2,
@@ -283,6 +283,8 @@ const Configuracoes = () => {
     }
   };
 
+  const avatarUploadAbortRef = useRef<AbortController | null>(null);
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -298,6 +300,10 @@ const Configuracoes = () => {
       return;
     }
 
+    avatarUploadAbortRef.current?.abort();
+    const abortController = new AbortController();
+    avatarUploadAbortRef.current = abortController;
+
     setIsUploadingAvatar(true);
     setProfileError('');
 
@@ -308,16 +314,23 @@ const Configuracoes = () => {
       const storageRef = ref(storage, fileName);
       await uploadBytes(storageRef, file);
 
+      if (abortController.signal.aborted) return;
+
       const publicUrl = await getDownloadURL(storageRef);
+
+      if (abortController.signal.aborted) return;
 
       setAvatarPreview(publicUrl);
       setProfileSuccess('Avatar atualizado! Clique em Salvar para confirmar.');
       setTimeout(() => setProfileSuccess(''), 3000);
     } catch (err: any) {
+      if (abortController.signal.aborted) return;
       console.error('[CONFIG] Erro ao fazer upload:', err);
       setProfileError('Erro ao fazer upload. Tente novamente.');
     } finally {
-      setIsUploadingAvatar(false);
+      if (!abortController.signal.aborted) {
+        setIsUploadingAvatar(false);
+      }
     }
   };
 

@@ -63,15 +63,15 @@ interface CRMContextType {
   clearNotifications: () => void;
   removeNotification: (id: string) => void;
   pushNotification: (title: string, description: string, type: Notification['type']) => void;
-  addLead: (lead: LeadInput) => void;
-  updateLead: (id: string, fields: LeadUpdate) => void;
-  updateLeadStage: (id: string, stage: string) => void;
-  deleteLead: (id: string) => void;
+  addLead: (lead: LeadInput) => Promise<void>;
+  updateLead: (id: string, fields: LeadUpdate) => Promise<void>;
+  updateLeadStage: (id: string, stage: string) => Promise<void>;
+  deleteLead: (id: string) => Promise<void>;
   getLeadsByStage: (stage: string) => Lead[];
   getTotalValueByStage: (stage: string) => number;
-  addEvent: (event: Omit<CalendarEvent, 'id'>) => void;
-  updateEvent: (id: string, event: Partial<CalendarEvent>) => void;
-  deleteEvent: (id: string) => void;
+  addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<void>;
+  updateEvent: (id: string, event: Partial<CalendarEvent>) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
   leadsByStage: Record<Stage, Lead[]>;
   totalPipelineValue: number;
 }
@@ -242,61 +242,89 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     pushNotification(setNotifications, title, description, type);
   }, []);
 
-  const addLead = useCallback((lead: LeadInput) => {
-    addLeadToFirestore(lead);
-    pushNotification(setNotifications, 'Novo Lead', `${lead.name} foi adicionado ao sistema.`, 'lead');
+  const addLead = useCallback(async (lead: LeadInput) => {
+    try {
+      await addLeadToFirestore(lead);
+      pushNotification(setNotifications, 'Novo Lead', `${lead.name} foi adicionado ao sistema.`, 'lead');
+    } catch (error) {
+      console.error('Erro ao adicionar lead:', error);
+    }
   }, [addLeadToFirestore]);
 
-  const updateLead = useCallback((id: string, fields: LeadUpdate) => {
-    const currentLeads = leads;
-    const old = currentLeads.find(l => l.id === id);
-    updateLeadInFirestore(id, fields);
-    if (old) {
-      const changedFields = Object.keys(fields).filter(k => (fields as any)[k] !== (old as any)[k]);
-      if (changedFields.length > 0) {
-        pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
+  const updateLead = useCallback(async (id: string, fields: LeadUpdate) => {
+    try {
+      await updateLeadInFirestore(id, fields);
+      const currentLeads = leads;
+      const old = currentLeads.find(l => l.id === id);
+      if (old) {
+        const changedFields = Object.keys(fields).filter(k => (fields as any)[k] !== (old as any)[k]);
+        if (changedFields.length > 0) {
+          pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
+        }
       }
+    } catch (error) {
+      console.error('Erro ao atualizar lead:', error);
     }
   }, [leads, updateLeadInFirestore]);
 
-  const updateLeadStage = useCallback((id: string, stage: string) => {
-    const currentLeads = leads;
-    const old = currentLeads.find(l => l.id === id);
-    updateLeadInFirestore(id, { stage } as Partial<Lead>);
-    if (old && old.stage !== stage) {
-      pushNotification(setNotifications, 'Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
+  const updateLeadStage = useCallback(async (id: string, stage: string) => {
+    try {
+      await updateLeadInFirestore(id, { stage } as Partial<Lead>);
+      const currentLeads = leads;
+      const old = currentLeads.find(l => l.id === id);
+      if (old && old.stage !== stage) {
+        pushNotification(setNotifications, 'Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
+      }
+    } catch (error) {
+      console.error('Erro ao mover lead:', error);
     }
   }, [leads, updateLeadInFirestore]);
 
-  const deleteLead = useCallback((id: string) => {
-    const currentLeads = leads;
-    const old = currentLeads.find(l => l.id === id);
-    removeLeadFromFirestore(id);
-    if (old) {
-      pushNotification(setNotifications, 'Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
+  const deleteLead = useCallback(async (id: string) => {
+    try {
+      await removeLeadFromFirestore(id);
+      const currentLeads = leads;
+      const old = currentLeads.find(l => l.id === id);
+      if (old) {
+        pushNotification(setNotifications, 'Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
+      }
+    } catch (error) {
+      console.error('Erro ao remover lead:', error);
     }
   }, [leads, removeLeadFromFirestore]);
 
-  const addEvent = useCallback((event: Omit<CalendarEvent, 'id'>) => {
-    addEventToFirestore(event);
-    pushNotification(setNotifications, 'Evento Criado', `${event.title} foi adicionado ao calendário.`, 'meeting');
+  const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id'>) => {
+    try {
+      await addEventToFirestore(event);
+      pushNotification(setNotifications, 'Evento Criado', `${event.title} foi adicionado ao calendário.`, 'meeting');
+    } catch (error) {
+      console.error('Erro ao criar evento:', error);
+    }
   }, [addEventToFirestore]);
 
-  const updateEvent = useCallback((id: string, fields: Partial<CalendarEvent>) => {
-    const currentEvents = events;
-    const old = currentEvents.find(e => e.id === id);
-    updateEventInFirestore(id, fields);
-    if (old) {
-      pushNotification(setNotifications, 'Evento Atualizado', `${old.title} foi modificado.`, 'meeting');
+  const updateEvent = useCallback(async (id: string, fields: Partial<CalendarEvent>) => {
+    try {
+      await updateEventInFirestore(id, fields);
+      const currentEvents = events;
+      const old = currentEvents.find(e => e.id === id);
+      if (old) {
+        pushNotification(setNotifications, 'Evento Atualizado', `${old.title} foi modificado.`, 'meeting');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar evento:', error);
     }
   }, [events, updateEventInFirestore]);
 
-  const deleteEvent = useCallback((id: string) => {
-    const currentEvents = events;
-    const old = currentEvents.find(e => e.id === id);
-    removeEventFromFirestore(id);
-    if (old) {
-      pushNotification(setNotifications, 'Evento Removido', `${old.title} foi removido do calendário.`, 'meeting');
+  const deleteEvent = useCallback(async (id: string) => {
+    try {
+      await removeEventFromFirestore(id);
+      const currentEvents = events;
+      const old = currentEvents.find(e => e.id === id);
+      if (old) {
+        pushNotification(setNotifications, 'Evento Removido', `${old.title} foi removido do calendário.`, 'meeting');
+      }
+    } catch (error) {
+      console.error('Erro ao remover evento:', error);
     }
   }, [events, removeEventFromFirestore]);
 

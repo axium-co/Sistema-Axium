@@ -164,7 +164,7 @@ const Board = ({
     switch (col.type) {
       case 'text':
       case 'people': {
-        const isPhone = typeof value === 'string' && /[\d\s\-()]+$/.test(value) && value.replace(/\D/g, '').length >= 10;
+                const isPhone = typeof value === 'string' && /[\d\s\-()]+$/.test(value) && value.replace(/\D/g, '').length >= 10;
         return (
           <div className="flex items-center gap-1 w-full">
             <input
@@ -180,7 +180,9 @@ const Board = ({
               <button
                 type="button"
                 onClick={() => {
-                  const link = generateWhatsAppLink(String(value), WHATSAPP_MESSAGE_TEMPLATES[0].template(row.values['col-1'] as string || 'Lead', employeeName || 'Usuário'));
+                  const template = WHATSAPP_MESSAGE_TEMPLATES[0]?.template;
+                  if (!template) return;
+                  const link = generateWhatsAppLink(String(value), template(row.values['col-1'] as string || 'Lead', employeeName || 'Usuário'));
                   window.open(link, '_blank');
                 }}
                 className="text-[#25D366] hover:text-green-600 transition-colors p-1"
@@ -626,7 +628,7 @@ const Tarefas = () => {
     return () => window.removeEventListener('openFileManager', handleOpenFileManager);
   }, []);
 
-  const handleUpdateBoard = useCallback((updatedBoard: BoardType) => {
+  const handleUpdateBoard = useCallback(async (updatedBoard: BoardType) => {
     const oldBoard = boards.find(b => b.id === updatedBoard.id);
     if (oldBoard) {
       if (updatedBoard.rows.length > oldBoard.rows.length) {
@@ -639,14 +641,22 @@ const Tarefas = () => {
         pushNotification('Tarefa Atualizada', `Tarefa atualizada no quadro "${updatedBoard.title}".`, 'system');
       }
     }
-    updateBoardInFirestore(updatedBoard.id, updatedBoard);
+    try {
+      await updateBoardInFirestore(updatedBoard.id, updatedBoard);
+    } catch (error) {
+      console.error('Erro ao atualizar quadro:', error);
+    }
     setBoards(prev => prev.map(b => b.id === updatedBoard.id ? updatedBoard : b));
   }, [boards, pushNotification, updateBoardInFirestore]);
 
-  const handleDeleteBoard = useCallback((id: string) => {
+  const handleDeleteBoard = useCallback(async (id: string) => {
     if (boards.length > 1 && confirm('Excluir quadro?')) {
       const board = boards.find(b => b.id === id);
-      removeBoardFromFirestore(id);
+      try {
+        await removeBoardFromFirestore(id);
+      } catch (error) {
+        console.error('Erro ao remover quadro:', error);
+      }
       setBoards(prev => prev.filter(b => b.id !== id));
       if (board) pushNotification('Quadro Excluído', `Quadro "${board.title}" foi removido.`, 'system');
     }
@@ -668,7 +678,7 @@ const Tarefas = () => {
     setShowCreateTaskModal(false);
   };
 
-  const handleCreateNewBoard = () => {
+  const handleCreateNewBoard = async () => {
     if (!newBoardTitle.trim()) return;
     
     const newBoard: BoardType = {
@@ -679,7 +689,11 @@ const Tarefas = () => {
       rows: [],
     };
     
-    addBoardToFirestore(newBoard);
+    try {
+      await addBoardToFirestore(newBoard);
+    } catch (error) {
+      console.error('Erro ao criar quadro:', error);
+    }
     setBoards(prev => [...prev, newBoard]);
     pushNotification('Novo Quadro', `Quadro "${newBoardTitle}" foi criado.`, 'system');
     setNewBoardTitle('');

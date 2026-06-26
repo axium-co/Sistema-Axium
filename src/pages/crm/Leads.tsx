@@ -145,19 +145,23 @@ const CRMLeads = () => {
   const openAdd = () => { setMode('add'); setCurrent(EMPTY_LEAD); setIsOpen(true); };
   const openEdit = (lead: Lead) => { setMode('edit'); setCurrent({ ...lead }); setIsOpen(true); };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const modifiedLead = {
       ...current,
       lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário')
     };
     
-    if (mode === 'add') {
-      addLead(modifiedLead as Omit<Lead, 'id'>);
-    } else {
-      updateLead(current.id!, modifiedLead);
+    try {
+      if (mode === 'add') {
+        await addLead(modifiedLead as Omit<Lead, 'id'>);
+      } else {
+        await updateLead(current.id!, modifiedLead);
+      }
+      setIsOpen(false);
+    } catch (err) {
+      console.error('Erro ao salvar lead:', err);
     }
-    setIsOpen(false);
   };
 
   const handleDelete = (id: string | undefined) => {

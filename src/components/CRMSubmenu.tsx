@@ -23,8 +23,9 @@ const CRMSubmenu = () => {
       {/* Mobile collapsible section */}
       <div className="md:hidden bg-white border-b border-neutral-200/60">
         <button
+          type="button"
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="flex items-center justify-between w-full px-3 py-2.5"
+          className="flex items-center justify-between w-full px-3 py-2.5 cursor-pointer"
         >
           <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
             {currentItem?.label || 'CRM'}

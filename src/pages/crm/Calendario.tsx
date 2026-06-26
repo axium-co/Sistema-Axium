@@ -111,14 +111,18 @@ const CRMCalendario = () => {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (modalMode === 'create') {
-      addEvent(formData);
-    } else if (selectedEvent) {
-      updateEvent(selectedEvent.id, formData);
+    try {
+      if (modalMode === 'create') {
+        await addEvent(formData);
+      } else if (selectedEvent) {
+        await updateEvent(selectedEvent.id, formData);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao salvar evento:', err);
     }
-    setIsModalOpen(false);
   };
 
   const handleDelete = () => {
@@ -139,8 +143,9 @@ const CRMCalendario = () => {
         </div>
         <div className="flex items-center gap-2">
           <button 
+            type="button"
             onClick={handlePrevMonth}
-            className="p-2 hover:bg-neutral-100 rounded-md transition-colors"
+            className="p-2 hover:bg-neutral-100 rounded-md transition-colors cursor-pointer"
           >
             <ChevronLeft size={20} className="text-neutral-600" />
           </button>
@@ -148,8 +153,9 @@ const CRMCalendario = () => {
             {monthNames[currentMonth]} {currentYear}
           </span>
           <button 
+            type="button"
             onClick={handleNextMonth}
-            className="p-2 hover:bg-neutral-100 rounded-md transition-colors"
+            className="p-2 hover:bg-neutral-100 rounded-md transition-colors cursor-pointer"
           >
             <ChevronRight size={20} className="text-neutral-600" />
           </button>
