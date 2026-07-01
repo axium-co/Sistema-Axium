@@ -6,8 +6,8 @@ import {
   signOut as firebaseSignOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, isFirebaseConfigured } from '../lib/firebase';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db, isFirebaseConfigured, USER_ROLES_COLLECTION } from '../lib/firebase';
 import { generateUUID, isValidUUID } from '../lib/uuid';
 
 type UserRole = 'admin' | 'manager' | 'user';
@@ -56,35 +56,6 @@ if (ADMIN_EMAIL && ADMIN_PASSWORD) {
   };
 }
 
-async function fetchUserFromFirestore(firebaseUser: FirebaseUser): Promise<{ role: UserRole; name: string } | null> {
-  try {
-    const docRef = doc(db, 'user_roles', firebaseUser.uid);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      const data = snap.data();
-      return {
-        role: data.role || 'user',
-        name: data.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
-      };
-    }
-    const email = firebaseUser.email?.toLowerCase() || '';
-    if (email === ADMIN_EMAIL) {
-      const roleData = { role: 'admin' as UserRole, name: 'Administrador' };
-      await setDoc(docRef, {
-        email,
-        role: roleData.role,
-        name: roleData.name,
-        createdAt: serverTimestamp(),
-      });
-      return roleData;
-    }
-    return null;
-  } catch (err) {
-    console.error('[AUTH] Error fetching Firestore user:', err);
-    return null;
-  }
-}
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -104,39 +75,82 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setFirebaseUser(firebaseUser);
-        const roleData = await fetchUserFromFirestore(firebaseUser);
-        if (roleData) {
-          const authUser: AuthUser = {
-            id: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            name: roleData.name,
-            role: roleData.role,
-            createdAt: firebaseUser.metadata.creationTime || undefined,
-            firebaseUid: firebaseUser.uid,
-          };
-          setUser(authUser);
-          setRole(roleData.role);
-          setEmployeeName(roleData.name);
-          setIsAuthenticated(true);
-        } else {
-          await firebaseSignOut(auth);
-          clearAuth();
-        }
+
+        const userRoleRef = doc(db, USER_ROLES_COLLECTION, firebaseUser.uid);
+
+        const unsubscribeRole = onSnapshot(
+          userRoleRef,
+          (snap) => {
+            if (!snap.exists()) {
+              const email = firebaseUser.email?.toLowerCase() || '';
+              if (email === ADMIN_EMAIL) {
+                const roleData = { role: 'admin' as UserRole, name: 'Administrador' };
+                setDoc(userRoleRef, {
+                  email,
+                  role: roleData.role,
+                  name: roleData.name,
+                  createdAt: serverTimestamp(),
+                }).catch((err) => {
+                  console.error('[AUTH] Erro ao criar role:', err);
+                });
+                const authUser: AuthUser = {
+                  id: firebaseUser.uid,
+                  email: firebaseUser.email || '',
+                  name: roleData.name,
+                  role: roleData.role,
+                  createdAt: firebaseUser.metadata.creationTime || undefined,
+                  firebaseUid: firebaseUser.uid,
+                };
+                setUser(authUser);
+                setRole(roleData.role);
+                setEmployeeName(roleData.name);
+                setIsAuthenticated(true);
+                setIsLoading(false);
+              }
+              return;
+            }
+
+            const data = snap.data();
+            const roleData = {
+              role: (data.role as UserRole) || 'user',
+              name: data.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
+            };
+            const authUser: AuthUser = {
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              name: roleData.name,
+              role: roleData.role,
+              createdAt: firebaseUser.metadata.creationTime || undefined,
+              firebaseUid: firebaseUser.uid,
+            };
+            setUser(authUser);
+            setRole(roleData.role);
+            setEmployeeName(roleData.name);
+            setIsAuthenticated(true);
+            setIsLoading(false);
+          },
+          (err) => {
+            console.error('[AUTH] Erro no listener user_roles:', err.code, err.message);
+          }
+        );
+
+        return () => {
+          unsubscribeRole();
+        };
       } else {
         setFirebaseUser(null);
         const localUser = loadLocalAuth();
         if (!localUser) {
           clearAuth();
         }
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function loadLocalAuth(): AuthUser | null {
@@ -189,14 +203,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (isFirebaseConfigured) {
         try {
           await signInWithEmailAndPassword(auth, normalizedEmail, password);
+          console.log('[AUTH] Login bem-sucedido via Firebase Auth:', normalizedEmail);
           return { success: true };
-        } catch (fbErr: any) {
-          const code = fbErr.code;
+        } catch (fbErr: unknown) {
+          const code = (fbErr as { code?: string }).code;
+          const msg = (fbErr as { message?: string }).message;
+          console.error('[AUTH] Firebase login error:', { code, message: msg });
+
           if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
             return { success: false, error: 'E-mail ou senha incorretos' };
           }
-          console.error('[AUTH] Firebase login error:', fbErr);
-          return { success: false, error: 'Erro ao conectar com servidor. Verifique sua internet.' };
+          if (code === 'auth/too-many-requests') {
+            return { success: false, error: 'Conta temporariamente bloqueada. Tente novamente mais tarde.' };
+          }
+          if (code === 'auth/user-disabled') {
+            return { success: false, error: 'Esta conta foi desativada.' };
+          }
+          if (code === 'auth/invalid-email') {
+            return { success: false, error: 'Formato de e-mail inválido.' };
+          }
+          if (code === 'auth/network-request-failed') {
+            return { success: false, error: 'Sem conexão com a internet.' };
+          }
+          return { success: false, error: `Erro de autenticação (${code || 'desconhecido'}). Verifique sua conexão.` };
         }
       }
 
@@ -227,9 +256,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: authUser.createdAt,
       }));
 
+      console.log('[AUTH] Login local bem-sucedido:', normalizedEmail);
       return { success: true };
     } catch (err) {
-      console.error('[AUTH] Login error:', err);
+      console.error('[AUTH] Login error (inesperado):', err);
       return { success: false, error: 'Erro ao fazer login' };
     }
   };

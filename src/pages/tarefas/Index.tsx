@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, X, Edit3, MessageCircle, Paperclip, Download } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCRM } from '../../contexts/CRMContext';
@@ -549,8 +549,6 @@ const Board = ({
 
 const Tarefas = () => {
   const { pushNotification } = useCRM();
-  const { user } = useAuth();
-  const isInitialSync = useRef(true);
 
   const {
     data: syncedBoards,
@@ -561,26 +559,9 @@ const Tarefas = () => {
     BOARDS_COLLECTION,
     'axium_boards_v3',
     [],
-    user?.id,
   );
 
-  const [boards, setBoards] = useState<BoardType[]>(() => {
-    const stored = localStorage.getItem('axium_boards_v3');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-    return [DEFAULT_BOARD];
-  });
-
-  useEffect(() => {
-    if (syncedBoards.length > 0 && isInitialSync.current) {
-      setBoards(syncedBoards);
-      isInitialSync.current = false;
-    } else if (syncedBoards.length > 0 && !isInitialSync.current) {
-      setBoards(syncedBoards);
-    }
-  }, [syncedBoards]);
+  const boards = syncedBoards;
 
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [showNewBoardModal, setShowNewBoardModal] = useState(false);
@@ -629,36 +610,30 @@ const Tarefas = () => {
   }, []);
 
   const handleUpdateBoard = useCallback(async (updatedBoard: BoardType) => {
-    const oldBoard = boards.find(b => b.id === updatedBoard.id);
-    if (oldBoard) {
-      if (updatedBoard.rows.length > oldBoard.rows.length) {
-        pushNotification('Nova Tarefa', `Tarefa adicionada ao quadro "${updatedBoard.title}".`, 'system');
-      } else if (updatedBoard.rows.length < oldBoard.rows.length) {
-        pushNotification('Tarefa Excluída', `Tarefa removida do quadro "${updatedBoard.title}".`, 'system');
-      } else if (updatedBoard.columns.length !== oldBoard.columns.length) {
-        pushNotification('Coluna Alterada', `Colunas do quadro "${updatedBoard.title}" foram modificadas.`, 'system');
-      } else {
-        pushNotification('Tarefa Atualizada', `Tarefa atualizada no quadro "${updatedBoard.title}".`, 'system');
-      }
-    }
+    pushNotification('Tarefa Atualizada', `Tarefa atualizada no quadro "${updatedBoard.title}".`, 'system');
     try {
       await updateBoardInFirestore(updatedBoard.id, updatedBoard);
+      console.log(`[Tarefas] Quadro atualizado: ${updatedBoard.id}`);
     } catch (error) {
-      console.error('Erro ao atualizar quadro:', error);
+      console.error('[Tarefas] Erro ao atualizar quadro:', error);
+      pushNotification('Erro', `Falha ao atualizar "${updatedBoard.title}". Tente novamente.`, 'system');
     }
-    setBoards(prev => prev.map(b => b.id === updatedBoard.id ? updatedBoard : b));
-  }, [boards, pushNotification, updateBoardInFirestore]);
+  }, [pushNotification, updateBoardInFirestore]);
 
   const handleDeleteBoard = useCallback(async (id: string) => {
-    if (boards.length > 1 && confirm('Excluir quadro?')) {
-      const board = boards.find(b => b.id === id);
-      try {
-        await removeBoardFromFirestore(id);
-      } catch (error) {
-        console.error('Erro ao remover quadro:', error);
-      }
-      setBoards(prev => prev.filter(b => b.id !== id));
-      if (board) pushNotification('Quadro Excluído', `Quadro "${board.title}" foi removido.`, 'system');
+    const board = boards.find(b => b.id === id);
+    if (!board) return;
+    if (boards.length <= 1) {
+      alert('Não é possível excluir o único quadro.');
+      return;
+    }
+    if (!confirm(`Excluir o quadro "${board.title}"?`)) return;
+    try {
+      await removeBoardFromFirestore(id);
+      pushNotification('Quadro Excluído', `Quadro "${board.title}" foi removido.`, 'system');
+    } catch (error) {
+      console.error('[Tarefas] Erro ao remover quadro:', error);
+      pushNotification('Erro', `Falha ao excluir "${board.title}". Tente novamente.`, 'system');
     }
   }, [boards, pushNotification, removeBoardFromFirestore]);
 
@@ -680,25 +655,21 @@ const Tarefas = () => {
 
   const handleCreateNewBoard = async () => {
     if (!newBoardTitle.trim()) return;
-    
-    const newBoard: BoardType = {
-      id: generateUUID(),
-      title: newBoardTitle,
-      color: newBoardColor,
-      columns: DEFAULT_BOARD.columns,
-      rows: [],
-    };
-    
     try {
-      await addBoardToFirestore(newBoard);
+      await addBoardToFirestore({
+        title: newBoardTitle,
+        color: newBoardColor,
+        columns: DEFAULT_BOARD.columns,
+        rows: [],
+      });
+      pushNotification('Novo Quadro', `Quadro "${newBoardTitle}" foi criado.`, 'system');
+      setNewBoardTitle('');
+      setNewBoardColor('#3b82f6');
+      setShowNewBoardModal(false);
     } catch (error) {
-      console.error('Erro ao criar quadro:', error);
+      console.error('[Tarefas] Erro ao criar quadro:', error);
+      pushNotification('Erro', `Falha ao criar "${newBoardTitle}". Tente novamente.`, 'system');
     }
-    setBoards(prev => [...prev, newBoard]);
-    pushNotification('Novo Quadro', `Quadro "${newBoardTitle}" foi criado.`, 'system');
-    setNewBoardTitle('');
-    setNewBoardColor('#3b82f6');
-    setShowNewBoardModal(false);
   };
 
   const handleAddColumn = (boardId: string) => {

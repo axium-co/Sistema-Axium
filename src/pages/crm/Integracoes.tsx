@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, MessageSquare, CreditCard, Shield, Key, Loader2, CheckCircle2, Share2, Globe } from 'lucide-react';
 import { useCollectionSync } from '../../lib/sync';
 import { INTEGRATIONS_COLLECTION, isFirebaseConfigured } from '../../lib/firebase';
@@ -31,31 +31,22 @@ const CRMIntegracoes = () => {
     data: syncedStatuses,
     add: addStatus,
     update: updateStatus,
-    remove: removeStatus,
   } = useCollectionSync<IntegrationStatus>(
     INTEGRATIONS_COLLECTION,
     'axium_integrations_status',
   );
 
-  const [integrations, setIntegrations] = useState<Integration[]>(() => {
-    return INTEGRATION_DEFS.map(def => {
-      const synced = syncedStatuses.find(s => s.id === def.id);
-      if (synced !== undefined) {
-        return { ...def, connected: synced.connected };
-      }
-      const local = localStorage.getItem(`axium_int_${def.id}`);
-      return { ...def, connected: local === 'true' };
-    });
-  });
+  const getConnected = (id: string): boolean => {
+    const synced = syncedStatuses.find(s => s.id === id);
+    if (synced !== undefined) return synced.connected;
+    if (!isFirebaseConfigured) return localStorage.getItem(`axium_int_${id}`) === 'true';
+    return false;
+  };
 
-  useEffect(() => {
-    if (syncedStatuses.length > 0) {
-      setIntegrations(prev => prev.map(int => {
-        const synced = syncedStatuses.find(s => s.id === int.id);
-        return synced !== undefined ? { ...int, connected: synced.connected } : int;
-      }));
-    }
-  }, [syncedStatuses]);
+  const integrations: Integration[] = INTEGRATION_DEFS.map(def => ({
+    ...def,
+    connected: getConnected(def.id),
+  }));
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
@@ -63,14 +54,18 @@ const CRMIntegracoes = () => {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const pushStatus = (id: string, connected: boolean) => {
-    const existing = syncedStatuses.find(s => s.id === id);
-    if (existing) {
-      updateStatus(existing.id, { connected });
-    } else {
-      addStatus({ id, connected });
+  const pushStatus = async (id: string, connected: boolean) => {
+    try {
+      const existing = syncedStatuses.find(s => s.id === id);
+      if (existing) {
+        await updateStatus(existing.id, { connected });
+      } else {
+        await addStatus({ id, connected });
+      }
+      localStorage.setItem(`axium_int_${id}`, connected ? 'true' : 'false');
+    } catch (err) {
+      console.error('[Integracoes] Erro ao atualizar status:', err);
     }
-    localStorage.setItem(`axium_int_${id}`, connected ? 'true' : 'false');
   };
 
   const handleConnectClick = (integration: Integration) => {
@@ -78,7 +73,6 @@ const CRMIntegracoes = () => {
       localStorage.removeItem(`axium_key_${integration.id}`);
       if (integration.type === 'n8n') localStorage.removeItem('axium_webhook_n8n');
       pushStatus(integration.id, false);
-      setIntegrations(prev => prev.map(int => int.id === integration.id ? { ...int, connected: false } : int));
       return;
     }
     setSelectedIntegration(integration);
@@ -87,21 +81,20 @@ const CRMIntegracoes = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveConnection = () => {
+  const handleSaveConnection = async () => {
     if (!selectedIntegration || !apiKey) return;
     if (selectedIntegration.type === 'n8n' && !webhookUrl) return;
     
     setIsSaving(true);
     
-    setTimeout(() => {
-      localStorage.setItem(`axium_key_${selectedIntegration.id}`, apiKey);
-      if (selectedIntegration.type === 'n8n') localStorage.setItem('axium_webhook_n8n', webhookUrl);
-      pushStatus(selectedIntegration.id, true);
-      setIntegrations(prev => prev.map(int => int.id === selectedIntegration.id ? { ...int, connected: true } : int));
-      setIsSaving(false);
-      setIsModalOpen(false);
-      setSelectedIntegration(null);
-    }, 1500);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    localStorage.setItem(`axium_key_${selectedIntegration.id}`, apiKey);
+    if (selectedIntegration.type === 'n8n') localStorage.setItem('axium_webhook_n8n', webhookUrl);
+    await pushStatus(selectedIntegration.id, true);
+    setIsSaving(false);
+    setIsModalOpen(false);
+    setSelectedIntegration(null);
   };
 
   return (

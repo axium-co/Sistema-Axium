@@ -1,19 +1,13 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle, FileText, Filter, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useCRM, type Lead } from '../../contexts/CRMContext';
+import { useCRM } from '../../contexts/CRMContext';
 import { useActivityLogs } from '../../contexts/ActivityContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFilters } from '../../contexts/FilterContext';
 import { STAGES } from '../../lib/crmHelpers';
 
-// Dados iniciais como fallback
-const INITIAL_LEADS: Lead[] = [
-  { id: '1', name: 'João Silva', niche: 'Odontologia', whatsapp: '11 99999-9999', email: 'joao@example.com', instagram: '@joaosilva', stage: 'Reunião Agendada', firstContact: '2026-04-01', closingDate: '2026-04-30', followUpReminder: '2026-04-22', address: 'São Paulo - SP', gmnReviews: '248', gmnStars: '4.7', notes: 'Cliente interessado.', value: 'R$ 5.000' },
-  { id: '2', name: 'Maria Santos', niche: 'Dermatologia', whatsapp: '11 88888-8888', email: 'maria@example.com', instagram: '@mariasan', stage: 'Novos Leads', firstContact: '2026-04-10', closingDate: '', followUpReminder: '2026-04-25', address: 'Rio de Janeiro - RJ', gmnReviews: '89', gmnStars: '4.2', notes: '', value: 'R$ 8.000' },
-  { id: '3', name: 'Pedro Oliveira', niche: 'Clínica Geral', whatsapp: '11 77777-7777', email: 'pedro@example.com', instagram: '@pedrooli', stage: 'Proposta Enviada', firstContact: '2026-03-20', closingDate: '2026-05-15', followUpReminder: '2026-04-23', address: 'Belo Horizonte - MG', gmnReviews: '312', gmnStars: '4.9', notes: 'Aguardando aprovação.', value: 'R$ 12.000' },
-  { id: '4', name: 'Clínica Sorriso', niche: 'Odontologia', whatsapp: '11 5555-5555', email: 'contato@sorriso.com', instagram: '@clinicasorriso', stage: 'Contrato Fechado', firstContact: '2026-03-10', closingDate: '2026-04-15', followUpReminder: '', address: 'Curitiba - PR', gmnReviews: '150', gmnStars: '4.8', notes: 'Contrato fechado!', value: 'R$ 15.000' },
-];
+
 
 interface Stat {
   title: string;
@@ -126,18 +120,10 @@ const calculateStats = (leads: Lead[], icons: typeof CHART_ICONS) => {
 const CHART_ICONS = { Users, Calendar, MessageSquare, Clock, FileText, UserX, CheckCircle };
 
 const CRMDashboard = () => {
-  const { leads: contextLeads } = useCRM();
+  const { leads } = useCRM();
   const { filters, hasActiveFilters } = useFilters();
   const { activityLogs, isLoadingLogs, fetchActivityLogsError, fetchActivityLogs } = useActivityLogs();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  // Fallback defensivo: usar dados locais se contexto estiver vazio
-  const leads = useMemo(() => {
-    if (contextLeads && Array.isArray(contextLeads) && contextLeads.length > 0) {
-      return contextLeads;
-    }
-    return INITIAL_LEADS;
-  }, [contextLeads]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape' && isSidebarOpen) {

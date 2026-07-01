@@ -7,8 +7,8 @@ import {
   AlertCircle, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { db, storage, PROFILES_COLLECTION, isFirebaseConfigured } from '../../lib/firebase';
-import { doc, getDoc, setDoc, collection, query, where, orderBy, getDocs, addDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { db, storage, PROFILES_COLLECTION, EMPLOYEES_COLLECTION, isFirebaseConfigured } from '../../lib/firebase';
+import { doc, setDoc, collection, query, where, orderBy, addDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { isValidUUID } from '../../lib/uuid';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,41 @@ interface Employee {
 }
 
 type ModalType = 'perfil' | 'equipe';
+
+const PROFILE_STORAGE_KEY = 'axium_profile_v1';
+const EMPLOYEES_STORAGE_KEY = 'axium_employees_v1';
+
+function loadProfileFromStorage(): { name: string; email: string; phone: string; avatar: string } | null {
+  try {
+    const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return null;
+}
+
+function loadEmployeesFromStorage(): Employee[] {
+  try {
+    const stored = localStorage.getItem(EMPLOYEES_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function saveToProfileStorage(data: Record<string, unknown>) {
+  try {
+    const existing = loadProfileFromStorage() || {};
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify({ ...existing, ...data }));
+  } catch {}
+}
+
+function saveEmployeesToStorage(emps: Employee[]) {
+  try {
+    localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(emps));
+  } catch {}
+}
 
 const Configuracoes = () => {
   const { user, logout } = useAuth();
@@ -39,7 +74,10 @@ const Configuracoes = () => {
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
 
-  const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', avatar: '' });
+  const [profileData, setProfileData] = useState<{ name: string; email: string; phone: string; avatar: string }>(() => {
+    const stored = loadProfileFromStorage();
+    return stored || { name: '', email: '', phone: '(11) 99999-9999', avatar: '' };
+  });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
@@ -52,104 +90,76 @@ const Configuracoes = () => {
   });
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!user?.id) return;
-      if (!isFirebaseConfigured) {
-        setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
-        return;
-      }
-      try {
-        const docRef = doc(db, PROFILES_COLLECTION, user.id);
-        const docSnap = await getDoc(docRef);
+    if (!user?.id) return;
+    if (!isFirebaseConfigured) {
+      const stored = loadProfileFromStorage();
+      setProfileData(stored || { name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
+      if (stored?.avatar) setAvatarPreview(stored.avatar);
+      return;
+    }
 
+    const docRef = doc(db, PROFILES_COLLECTION, user.id);
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
         if (!docSnap.exists()) {
-          console.warn('Profile document not found, using defaults');
-          setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
+          const stored = loadProfileFromStorage();
+          setProfileData(stored || { name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
+          if (stored?.avatar) setAvatarPreview(stored.avatar);
           return;
         }
-
         const data = docSnap.data();
-        setProfileData({
+        const profile = {
           name: data.nome || '',
           email: user.email || '',
           phone: data.telefone || '(11) 99999-9999',
           avatar: data.avatar || ''
-        });
+        };
+        setProfileData(profile);
+        saveToProfileStorage(profile);
         if (data.avatar) {
           setAvatarPreview(data.avatar);
         }
-      } catch (err) {
-        console.error('[CONFIG] Erro ao carregar perfil:', err);
-        setProfileData({ name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
-      }
-    };
-    loadData();
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (!user?.id || !isFirebaseConfigured) return;
-
-    const docRef = doc(db, PROFILES_COLLECTION, user.id);
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (!docSnap.exists()) return;
-      const updated = docSnap.data();
-      setProfileData(prev => ({
-        ...prev,
-        name: updated.nome ?? prev.name,
-        phone: updated.telefone ?? prev.phone,
-        avatar: updated.avatar ?? prev.avatar,
-      }));
-      if (updated.avatar) setAvatarPreview(updated.avatar);
-    });
+      },
+      (err) => {
+        console.error('[CONFIG] Erro no listener de perfil:', err.code, err.message);
+        const stored = loadProfileFromStorage();
+        setProfileData(stored || { name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
+        if (stored?.avatar) setAvatarPreview(stored.avatar);
+      },
+    );
 
     return () => unsubscribe();
   }, [user?.id]);
 
-  const loadEmployees = async () => {
+  useEffect(() => {
     if (!user?.id) return;
     if (!isFirebaseConfigured) {
-      setEmployees([]);
+      setEmployees(loadEmployeesFromStorage());
       return;
     }
-    try {
-      const q = query(
-        collection(db, 'employees'),
-        where('user_id', '==', user.id),
-        orderBy('created_at', 'asc'),
-      );
-      const querySnapshot = await getDocs(q);
-      const emps = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Employee[];
-      setEmployees(emps);
-    } catch (err) {
-      console.error('[CONFIG] Erro ao carregar funcionários:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.id) {
-      loadEmployees();
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (!user?.id || !isFirebaseConfigured) return;
 
     const q = query(
-      collection(db, 'employees'),
+      collection(db, EMPLOYEES_COLLECTION),
       where('user_id', '==', user.id),
       orderBy('created_at', 'asc'),
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const emps = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Employee[];
-      setEmployees(emps);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const emps = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Employee[];
+        setEmployees(emps);
+        saveEmployeesToStorage(emps);
+      },
+      (err) => {
+        console.error('[CONFIG] Erro no listener de funcionários:', err.code, err.message);
+        setEmployees(loadEmployeesFromStorage());
+      },
+    );
 
     return () => unsubscribe();
   }, [user?.id]);
@@ -165,55 +175,62 @@ const Configuracoes = () => {
       return;
     }
 
-    if (!isFirebaseConfigured) {
-      setInviteError('Firebase não configurado. Configure as variáveis de ambiente.');
-      return;
-    }
-
     if (!user?.id || !isValidUUID(user.id)) {
       setInviteError('ID de usuário inválido. Faça logout e login novamente.');
       console.error('[CONFIG] user.id inválido:', user?.id);
       return;
     }
 
+    const employeeData = {
+      user_id: user.id,
+      email: newEmployee.email.trim(),
+      name: newEmployee.name.trim(),
+      role: newEmployee.role,
+      created_at: new Date().toISOString(),
+    };
+
     try {
-      const docRef = await addDoc(collection(db, 'employees'), {
-        user_id: user.id,
-        email: newEmployee.email.trim(),
-        name: newEmployee.name.trim(),
-        role: newEmployee.role,
-        created_at: new Date().toISOString(),
-      });
-
-      const newEmp: Employee = {
-        id: docRef.id,
-        email: newEmployee.email.trim(),
-        name: newEmployee.name.trim(),
-        role: newEmployee.role,
-        createdAt: new Date().toISOString(),
-      };
-
-      setEmployees([...employees, newEmp]);
-      setNewEmployee({ email: '', name: '', role: 'funcionario' });
-      setInviteSuccess('Funcionário adicionado!');
-      setInviteError('');
-      setTimeout(() => setInviteSuccess(''), 3000);
-    } catch (err: any) {
-      console.error('[CONFIG] Erro ao adicionar funcionário:', err);
-      setInviteError(err.message || 'Erro ao adicionar funcionário');
+      if (isFirebaseConfigured) {
+        await addDoc(collection(db, EMPLOYEES_COLLECTION), employeeData);
+        console.log('[CONFIG] Funcionário adicionado ao Firestore');
+      } else {
+        const localEmp: Employee = { id: crypto.randomUUID(), ...employeeData };
+        setEmployees(prev => {
+          const updated = [...prev, localEmp];
+          saveEmployeesToStorage(updated);
+          return updated;
+        });
+      }
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      console.error('[CONFIG] Erro ao adicionar funcionário:', error);
+      setInviteError('Erro ao adicionar funcionário. Verifique sua conexão.');
+      return;
     }
+
+    setNewEmployee({ email: '', name: '', role: 'funcionario' });
+    setInviteSuccess('Funcionário adicionado!');
+    setInviteError('');
+    setTimeout(() => setInviteSuccess(''), 3000);
   };
 
   const handleRemoveEmployee = async (id: string) => {
     if (!confirm('Remover funcionário?')) return;
-    if (!isFirebaseConfigured) return;
 
     try {
-      await deleteDoc(doc(db, 'employees', id));
-      setEmployees(employees.filter(emp => emp.id !== id));
-    } catch (err: any) {
-      console.error('[CONFIG] Erro ao remover funcionário:', err);
-      setInviteError(err.message || 'Erro ao remover funcionário');
+      if (isFirebaseConfigured) {
+        await deleteDoc(doc(db, EMPLOYEES_COLLECTION, id));
+        console.log('[CONFIG] Funcionário removido do Firestore:', id);
+      } else {
+        setEmployees(prev => {
+          const updated = prev.filter(emp => emp.id !== id);
+          saveEmployeesToStorage(updated);
+          return updated;
+        });
+      }
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      console.error('[CONFIG] Erro ao remover funcionário:', error);
     }
   };
 
@@ -238,47 +255,41 @@ const Configuracoes = () => {
       return;
     }
 
-    if (!isFirebaseConfigured) {
-      setProfileSuccess('Perfil atualizado (apenas local, Firebase não configurado)');
-      setTimeout(() => { setProfileSuccess(''); setActiveModal(null); }, 1500);
-      return;
-    }
-
     setIsSavingProfile(true);
     setProfileError('');
     setProfileSuccess('');
 
+    const updateData: Record<string, unknown> = {
+      nome: profileData.name.trim(),
+      telefone: profileData.phone.trim()
+    };
+
+    if (avatarPreview && avatarPreview !== profileData.avatar) {
+      updateData.avatar = avatarPreview;
+    }
+
+    saveToProfileStorage(updateData);
+
+    if (!isFirebaseConfigured) {
+      setProfileSuccess('Perfil salvo localmente');
+      setTimeout(() => { setProfileSuccess(''); setActiveModal(null); }, 1500);
+      setIsSavingProfile(false);
+      return;
+    }
+
     try {
-      console.log('[CONFIG] Tentando salvar no Firestore...');
-
-      const updateData: Record<string, unknown> = {
-        nome: profileData.name.trim(),
-        telefone: profileData.phone.trim()
-      };
-
-      if (avatarPreview && avatarPreview !== profileData.avatar) {
-        updateData.avatar = avatarPreview;
-      }
-
-      console.log('[CONFIG] Dados a salvar:', updateData);
-
       const docRef = doc(db, PROFILES_COLLECTION, user.id);
       await setDoc(docRef, updateData, { merge: true });
-
-      console.log('[CONFIG] Perfil salvo com sucesso!');
       setProfileSuccess('Perfil atualizado com sucesso!');
-      setProfileData(prev => ({ ...prev, avatar: avatarPreview || prev.avatar, email: profileData.email.trim() || prev.email }));
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      console.error('[CONFIG] Erro ao salvar perfil no Firestore:', error);
+      setProfileSuccess('Perfil salvo localmente (Firestore indisponível)');
+    } finally {
       setTimeout(() => {
-        console.log('[CONFIG] Fechando modal...');
         setProfileSuccess('');
         setActiveModal(null);
       }, 1500);
-    } catch (err: any) {
-      console.error('[CONFIG] Erro ao salvar perfil:', err);
-      const errorMessage = err.message || 'Erro ao salvar perfil. Tente novamente.';
-      setProfileError(errorMessage);
-    } finally {
-      console.log('[CONFIG] Finalizando, isSavingProfile:', false);
       setIsSavingProfile(false);
     }
   };

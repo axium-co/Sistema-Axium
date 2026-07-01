@@ -35,7 +35,7 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { searchTerm, setSearchTerm, notifications, markNotificationsAsRead, clearNotifications, removeNotification } = useCRM();
+  const { searchTerm, setSearchTerm, notifications, markNotificationsAsRead, clearNotifications, removeNotification, syncStatus } = useCRM();
   
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -95,6 +95,13 @@ const TopHeader = ({ onMenuClick }: TopHeaderProps) => {
           <p className="text-[10px] md:text-xs text-neutral-400 font-medium mt-0.5 truncate">{route.subtitle}</p>
         )}
       </div>
+
+      {syncStatus === 'offline' && (
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-red-50 border border-red-200 rounded-md mr-1" title="Sem conexão com o servidor">
+          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+          <span className="text-[9px] font-black text-red-600 uppercase tracking-widest hidden md:inline">Offline</span>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 md:gap-3">
         {/* Notification bell */}

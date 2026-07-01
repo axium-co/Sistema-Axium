@@ -1,8 +1,6 @@
 import { useEffect, useCallback } from 'react';
-import { db, isFirebaseConfigured } from '../../lib/firebase';
+import { db, isFirebaseConfigured, PAGE_EVENTS_COLLECTION } from '../../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-
-const PAGE_EVENTS_COLLECTION = 'page_events';
 
 function trackEvent(eventType: 'page_view' | 'button_click', label?: string) {
   if (!isFirebaseConfigured) return;

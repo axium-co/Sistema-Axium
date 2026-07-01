@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { db, isFirebaseConfigured } from '../../lib/firebase';
+import { db, isFirebaseConfigured, PAGE_EVENTS_COLLECTION } from '../../lib/firebase';
 import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -15,8 +15,6 @@ interface DayView {
   date: string;
   views: number;
 }
-
-const PAGE_EVENTS_COLLECTION = 'page_events';
 
 function buildViewsByDay(events: PageEvent[], now: number): DayView[] {
   const grouped: Record<string, number> = {};

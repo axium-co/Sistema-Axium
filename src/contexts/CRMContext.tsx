@@ -1,14 +1,11 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { STAGES, STAGE_CONFIG, parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
+import { parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
 import { generateUUID } from '../lib/uuid';
 import { useCollectionSync } from '../lib/sync';
-import { useAuth } from './AuthContext';
 import {
   LEADS_COLLECTION,
   EVENTS_COLLECTION,
-  NOTIFICATIONS_COLLECTION,
-  isFirebaseConfigured,
 } from '../lib/firebase';
 
 export interface Lead {
@@ -74,82 +71,11 @@ interface CRMContextType {
   deleteEvent: (id: string) => Promise<void>;
   leadsByStage: Record<Stage, Lead[]>;
   totalPipelineValue: number;
+  syncError: string | null;
+  syncStatus: string;
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
-
-const INITIAL_LEADS: Lead[] = [
-  {
-    id: '1', name: 'João Silva', niche: 'Odontologia', whatsapp: '11 99999-9999',
-    email: 'joao@example.com', instagram: '@joaosilva', stage: 'Reunião Agendada',
-    firstContact: '2026-04-01', closingDate: '2026-04-30', followUpReminder: '2026-04-22',
-    address: 'São Paulo - SP', gmnReviews: '248', gmnStars: '4.7',
-    notes: 'Cliente interessado no plano premium.', value: 'R$ 5.000',
-  },
-  {
-    id: '2', name: 'Maria Santos', niche: 'Dermatologia', whatsapp: '11 88888-8888',
-    email: 'maria@example.com', instagram: '@mariasan', stage: 'Novos Leads',
-    firstContact: '2026-04-10', closingDate: '', followUpReminder: '2026-04-25',
-    address: 'Rio de Janeiro - RJ', gmnReviews: '89', gmnStars: '4.2',
-    notes: '', value: 'R$ 8.000',
-  },
-  {
-    id: '3', name: 'Pedro Oliveira', niche: 'Clínica Geral', whatsapp: '11 77777-7777',
-    email: 'pedro@example.com', instagram: '@pedrooli', stage: 'Proposta Enviada',
-    firstContact: '2026-03-20', closingDate: '2026-05-15', followUpReminder: '2026-04-23',
-    address: 'Belo Horizonte - MG', gmnReviews: '312', gmnStars: '4.9',
-    notes: 'Aguardando aprovação da proposta.', value: 'R$ 12.000',
-  },
-  {
-    id: '4', name: 'Clínica Sorriso', niche: 'Odontologia', whatsapp: '11 5555-5555',
-    email: 'contato@sorriso.com', instagram: '@clinicasorriso', stage: 'Contrato Fechado',
-    firstContact: '2026-03-10', closingDate: '2026-04-15', followUpReminder: '',
-    address: 'Curitiba - PR', gmnReviews: '150', gmnStars: '4.8',
-    notes: 'Contrato fechado!', value: 'R$ 15.000',
-  }
-];
-
-const INITIAL_EVENTS: CalendarEvent[] = [
-  {
-    id: '1',
-    title: 'Reunião com Cliente A',
-    createdBy: 'Admin',
-    activityType: 'Reunião',
-    dateTime: '2026-04-21T10:00:00',
-    meetingLink: 'https://meet.google.com/abc-defg-hij',
-    description: 'Apresentação do plano premium.'
-  },
-  {
-    id: '2',
-    title: 'Follow-up Leads',
-    createdBy: 'Vendedor 1',
-    activityType: 'Ligação',
-    dateTime: '2026-04-21T14:00:00',
-    description: 'Retornar contato para leads qualificados.'
-  },
-  {
-    id: '3',
-    title: 'Revisão de Pipeline',
-    createdBy: 'Gerente',
-    activityType: 'Treinamento',
-    dateTime: '2026-04-22T16:00:00',
-    description: 'Alinhamento de metas semanais.'
-  }
-];
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  
-  try {
-    const stored = localStorage.getItem(key);
-    if (!stored) return fallback;
-    
-    const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 function now(): string {
   return new Date().toISOString();
@@ -173,13 +99,13 @@ function pushNotification(
 }
 
 export const CRMProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [notifications, setNotifications] = useState<Notification[]>(() => loadFromStorage('axium_notifications_v1', []));
-  const localMutationRef = useRef(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const {
     data: firestoreLeads,
+    status: leadsStatus,
+    error: leadsError,
     add: addLeadToFirestore,
     update: updateLeadInFirestore,
     remove: removeLeadFromFirestore,
@@ -187,11 +113,12 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     LEADS_COLLECTION,
     'axium_leads_v2',
     [],
-    user?.id,
   );
 
   const {
     data: firestoreEvents,
+    status: eventsStatus,
+    error: eventsError,
     add: addEventToFirestore,
     update: updateEventInFirestore,
     remove: removeEventFromFirestore,
@@ -199,30 +126,15 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     EVENTS_COLLECTION,
     'axium_events_v2',
     [],
-    user?.id,
   );
 
-  const leads = firestoreLeads.length > 0
-    ? firestoreLeads
-    : loadFromStorage<Lead[]>('axium_leads_v2', INITIAL_LEADS);
-  const events = firestoreEvents.length > 0
-    ? firestoreEvents
-    : loadFromStorage<CalendarEvent[]>('axium_events_v2', INITIAL_EVENTS);
+  const leads = firestoreLeads;
+  const events = firestoreEvents;
 
-  useEffect(() => {
-    localStorage.setItem('axium_leads_v2', JSON.stringify(leads));
-  }, [leads]);
-
-  useEffect(() => {
-    localStorage.setItem('axium_events_v2', JSON.stringify(events));
-  }, [events]);
-
-  useEffect(() => {
-    localStorage.setItem('axium_notifications_v1', JSON.stringify(notifications));
-  }, [notifications]);
+  const syncError = leadsError || eventsError;
+  const syncStatus = leadsStatus === 'offline' || eventsStatus === 'offline' ? 'offline' : leadsStatus;
 
   const leadsByStage = useMemo(() => groupLeadsByStage(leads), [leads]);
-  
   const totalPipelineValue = useMemo(() => calculateTotalValue(leads), [leads]);
 
   const markNotificationsAsRead = useCallback(() => {
@@ -231,7 +143,6 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
 
   const clearNotifications = useCallback(() => {
     setNotifications([]);
-    localStorage.removeItem('axium_notifications_v1');
   }, []);
 
   const removeNotification = useCallback((id: string) => {
@@ -248,48 +159,49 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
       pushNotification(setNotifications, 'Novo Lead', `${lead.name} foi adicionado ao sistema.`, 'lead');
     } catch (error) {
       console.error('Erro ao adicionar lead:', error);
+      throw error;
     }
   }, [addLeadToFirestore]);
 
   const updateLead = useCallback(async (id: string, fields: LeadUpdate) => {
     try {
       await updateLeadInFirestore(id, fields);
-      const currentLeads = leads;
-      const old = currentLeads.find(l => l.id === id);
+      const old = leads.find(l => l.id === id);
       if (old) {
-        const changedFields = Object.keys(fields).filter(k => (fields as any)[k] !== (old as any)[k]);
+        const changedFields = Object.keys(fields).filter(k => (fields as Record<string, unknown>)[k] !== (old as Record<string, unknown>)[k]);
         if (changedFields.length > 0) {
           pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
         }
       }
     } catch (error) {
       console.error('Erro ao atualizar lead:', error);
+      throw error;
     }
   }, [leads, updateLeadInFirestore]);
 
   const updateLeadStage = useCallback(async (id: string, stage: string) => {
     try {
       await updateLeadInFirestore(id, { stage } as Partial<Lead>);
-      const currentLeads = leads;
-      const old = currentLeads.find(l => l.id === id);
+      const old = leads.find(l => l.id === id);
       if (old && old.stage !== stage) {
         pushNotification(setNotifications, 'Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
       }
     } catch (error) {
       console.error('Erro ao mover lead:', error);
+      throw error;
     }
   }, [leads, updateLeadInFirestore]);
 
   const deleteLead = useCallback(async (id: string) => {
     try {
       await removeLeadFromFirestore(id);
-      const currentLeads = leads;
-      const old = currentLeads.find(l => l.id === id);
+      const old = leads.find(l => l.id === id);
       if (old) {
         pushNotification(setNotifications, 'Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
       }
     } catch (error) {
       console.error('Erro ao remover lead:', error);
+      throw error;
     }
   }, [leads, removeLeadFromFirestore]);
 
@@ -299,32 +211,33 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
       pushNotification(setNotifications, 'Evento Criado', `${event.title} foi adicionado ao calendário.`, 'meeting');
     } catch (error) {
       console.error('Erro ao criar evento:', error);
+      throw error;
     }
   }, [addEventToFirestore]);
 
   const updateEvent = useCallback(async (id: string, fields: Partial<CalendarEvent>) => {
     try {
       await updateEventInFirestore(id, fields);
-      const currentEvents = events;
-      const old = currentEvents.find(e => e.id === id);
+      const old = events.find(e => e.id === id);
       if (old) {
         pushNotification(setNotifications, 'Evento Atualizado', `${old.title} foi modificado.`, 'meeting');
       }
     } catch (error) {
       console.error('Erro ao atualizar evento:', error);
+      throw error;
     }
   }, [events, updateEventInFirestore]);
 
   const deleteEvent = useCallback(async (id: string) => {
     try {
       await removeEventFromFirestore(id);
-      const currentEvents = events;
-      const old = currentEvents.find(e => e.id === id);
+      const old = events.find(e => e.id === id);
       if (old) {
         pushNotification(setNotifications, 'Evento Removido', `${old.title} foi removido do calendário.`, 'meeting');
       }
     } catch (error) {
       console.error('Erro ao remover evento:', error);
+      throw error;
     }
   }, [events, removeEventFromFirestore]);
 
@@ -359,6 +272,8 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     deleteEvent,
     leadsByStage,
     totalPipelineValue,
+    syncError,
+    syncStatus,
   }), [
     leads,
     events,
@@ -379,6 +294,8 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     deleteEvent,
     leadsByStage,
     totalPipelineValue,
+    syncError,
+    syncStatus,
   ]);
 
   return (

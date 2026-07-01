@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, enableNetwork, disableNetwork, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -27,6 +27,8 @@ if (!isConfigured) {
     '\n  VITE_FIREBASE_MESSAGING_SENDER_ID=...',
     '\n  VITE_FIREBASE_APP_ID=...',
   );
+} else {
+  console.log('[Firebase] Firebase configurado com o projeto:', firebaseConfig.projectId);
 }
 
 const app = initializeApp(firebaseConfig);
@@ -34,7 +36,52 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-export { app, auth, db, storage, isConfigured as isFirebaseConfigured };
+let isOnline = navigator.onLine;
+let firestoreReady = false;
+
+if (import.meta.env.VITE_USE_FIRESTORE_EMULATOR === 'true') {
+  console.warn('[Firebase] Usando Firestore Emulator (localhost:8080).');
+  connectFirestoreEmulator(db, 'localhost', 8080);
+}
+
+window.addEventListener('online', () => {
+  isOnline = true;
+  console.log('[Firebase] Conexão de rede restaurada. Reativando Firestore...');
+  if (isConfigured) {
+    enableNetwork(db)
+      .then(() => {
+        firestoreReady = true;
+        console.log('[Firebase] Firestore online e sincronizando.');
+      })
+      .catch((err) =>
+        console.error('[Firebase] Erro ao reativar rede:', err.code, err.message)
+      );
+  }
+});
+
+window.addEventListener('offline', () => {
+  isOnline = false;
+  console.warn('[Firebase] Conexão de rede perdida. Operações serão pausadas até reconectar.');
+  if (isConfigured) {
+    disableNetwork(db).catch((err) =>
+      console.error('[Firebase] Erro ao desativar rede:', err.code, err.message)
+    );
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    console.log('[Firebase] Usuário autenticado:', user.email);
+  }
+});
+
+console.log('[Firebase] Módulo inicializado. Coleções disponíveis:', [
+  'profiles', 'activity_logs', 'leads', 'events', 'notifications',
+  'whatsapp_templates', 'boards', 'invoices', 'expenses', 'integrations',
+  'employees', 'user_roles', 'page_events',
+].join(', '));
+
+export { app, auth, db, storage, isConfigured as isFirebaseConfigured, isOnline };
 
 export interface Profile {
   id: string;
@@ -63,3 +110,6 @@ export const BOARDS_COLLECTION = 'boards';
 export const INVOICES_COLLECTION = 'invoices';
 export const EXPENSES_COLLECTION = 'expenses';
 export const INTEGRATIONS_COLLECTION = 'integrations';
+export const EMPLOYEES_COLLECTION = 'employees';
+export const USER_ROLES_COLLECTION = 'user_roles';
+export const PAGE_EVENTS_COLLECTION = 'page_events';

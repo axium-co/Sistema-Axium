@@ -1,11 +1,9 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { type WhatsAppTemplate, DEFAULT_TEMPLATES } from '../lib/whatsapp';
 import { generateUUID } from '../lib/uuid';
 import { useCollectionSync } from '../lib/sync';
 import { WHATSAPP_TEMPLATES_COLLECTION } from '../lib/firebase';
-
-const STORAGE_KEY = 'axium_whatsapp_templates_v1';
 
 interface WhatsAppTemplatesContextType {
   templates: WhatsAppTemplate[];
@@ -20,24 +18,13 @@ interface WhatsAppTemplatesContextType {
 
 const WhatsAppTemplatesContext = createContext<WhatsAppTemplatesContextType | undefined>(undefined);
 
-function loadFallbackTemplates(): WhatsAppTemplate[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch {}
-  return DEFAULT_TEMPLATES.map((t, i) => ({
-    ...t,
-    id: generateUUID(),
-  }));
-}
-
 export const WhatsAppTemplatesProvider = ({ children }: { children: ReactNode }) => {
-  const fallbackTemplates = useMemo(() => loadFallbackTemplates(), []);
+  const fallbackTemplates = useMemo(() =>
+    DEFAULT_TEMPLATES.map((t, i) => ({
+      ...t,
+      id: generateUUID(),
+    })),
+  []);
 
   const {
     data: syncedTemplates,
@@ -46,49 +33,33 @@ export const WhatsAppTemplatesProvider = ({ children }: { children: ReactNode })
     remove: removeFromFirestore,
   } = useCollectionSync<WhatsAppTemplate>(
     WHATSAPP_TEMPLATES_COLLECTION,
-    STORAGE_KEY,
+    'axium_whatsapp_templates_v1',
     [],
   );
 
   const templates = syncedTemplates.length > 0 ? syncedTemplates : fallbackTemplates;
 
   const addTemplate = useCallback(async (template: Omit<WhatsAppTemplate, 'id'>) => {
-    try {
-      await addToFirestore(template);
-    } catch (error) {
-      console.error('Erro ao adicionar template:', error);
-    }
+    await addToFirestore(template);
   }, [addToFirestore]);
 
   const updateTemplate = useCallback(async (id: string, fields: Partial<WhatsAppTemplate>) => {
-    try {
-      await updateInFirestore(id, fields);
-    } catch (error) {
-      console.error('Erro ao atualizar template:', error);
-    }
+    await updateInFirestore(id, fields);
   }, [updateInFirestore]);
 
   const deleteTemplate = useCallback(async (id: string) => {
-    try {
-      await removeFromFirestore(id);
-    } catch (error) {
-      console.error('Erro ao remover template:', error);
-    }
+    await removeFromFirestore(id);
   }, [removeFromFirestore]);
 
   const duplicateTemplate = useCallback(async (id: string) => {
     const source = templates.find(t => t.id === id);
     if (!source) return;
     const maxOrder = Math.max(...templates.map(t => t.order), -1);
-    try {
-      await addToFirestore({
-        ...source,
-        name: `${source.name} (cópia)`,
-        order: maxOrder + 1,
-      });
-    } catch (error) {
-      console.error('Erro ao duplicar template:', error);
-    }
+    await addToFirestore({
+      ...source,
+      name: `${source.name} (cópia)`,
+      order: maxOrder + 1,
+    });
   }, [templates, addToFirestore]);
 
   const reorderTemplate = useCallback(async (id: string, direction: 'up' | 'down') => {
@@ -101,21 +72,13 @@ export const WhatsAppTemplatesProvider = ({ children }: { children: ReactNode })
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
     [sorted[idx], sorted[swapIdx]] = [sorted[swapIdx], sorted[idx]];
     const reordered = sorted.map((t, i) => ({ ...t, order: i }));
-    try {
-      await Promise.all(reordered.map(t => updateInFirestore(t.id, { order: t.order })));
-    } catch (error) {
-      console.error('Erro ao reordenar templates:', error);
-    }
+    await Promise.all(reordered.map(t => updateInFirestore(t.id, { order: t.order })));
   }, [templates, updateInFirestore]);
 
   const toggleTemplateActive = useCallback(async (id: string) => {
     const t = templates.find(t => t.id === id);
     if (t) {
-      try {
-        await updateInFirestore(id, { active: !t.active });
-      } catch (error) {
-        console.error('Erro ao alternar template:', error);
-      }
+      await updateInFirestore(id, { active: !t.active });
     }
   }, [templates, updateInFirestore]);
 
