@@ -14,6 +14,7 @@ interface Integration {
 
 interface IntegrationStatus {
   id: string;
+  integrationId: string;
   connected: boolean;
 }
 
@@ -37,7 +38,7 @@ const CRMIntegracoes = () => {
   );
 
   const getConnected = (id: string): boolean => {
-    const synced = syncedStatuses.find(s => s.id === id);
+    const synced = syncedStatuses.find(s => s.integrationId === id);
     if (synced !== undefined) return synced.connected;
     if (!isFirebaseConfigured) return localStorage.getItem(`axium_int_${id}`) === 'true';
     return false;
@@ -56,11 +57,11 @@ const CRMIntegracoes = () => {
 
   const pushStatus = async (id: string, connected: boolean) => {
     try {
-      const existing = syncedStatuses.find(s => s.id === id);
+      const existing = syncedStatuses.find(s => s.integrationId === id);
       if (existing) {
         await updateStatus(existing.id, { connected });
       } else {
-        await addStatus({ id, connected });
+        await addStatus({ integrationId: id, connected });
       }
       localStorage.setItem(`axium_int_${id}`, connected ? 'true' : 'false');
     } catch (err) {

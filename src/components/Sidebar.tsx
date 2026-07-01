@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BarChart3, DollarSign, CheckCircle, BarChart4, Settings, LogOut, X, User } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, type UserRole } from '../contexts/AuthContext';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -21,7 +21,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   ];
 
   const visibleMenuItems = mainMenuItems.filter(item => 
-    hasPermission && item.allowedRoles.includes(user?.role as any)
+    hasPermission(item.allowedRoles as unknown as UserRole[])
   );
 
   const isActive = (path: string) => location.pathname.startsWith(path);

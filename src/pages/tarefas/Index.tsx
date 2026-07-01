@@ -443,10 +443,10 @@ const Board = ({
       <div className="flex items-center gap-3 mb-3">
         <div className="w-3 h-8 rounded-full" style={{ backgroundColor: board.color }} />
         <h2 className="text-xl font-black text-black">{board.title}</h2>
-        <button onClick={onAddColumn} className="px-3 py-1 text-xs font-bold text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-md transition-colors">
+        <button onClick={() => onAddColumn(board.id)} className="px-3 py-1 text-xs font-bold text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-md transition-colors">
           + Coluna
         </button>
-        <button onClick={onDeleteBoard} className="ml-auto text-neutral-400 hover:text-red-500"><Trash2 size={16} /></button>
+        <button onClick={() => onDeleteBoard()} className="ml-auto text-neutral-400 hover:text-red-500"><Trash2 size={16} /></button>
       </div>
       {/* Desktop Table */}
       <div className="hidden md:block border rounded-2xl border-neutral-200 bg-white overflow-hidden flex flex-col">

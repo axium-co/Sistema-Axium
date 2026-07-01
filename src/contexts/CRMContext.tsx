@@ -168,7 +168,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
       await updateLeadInFirestore(id, fields);
       const old = leads.find(l => l.id === id);
       if (old) {
-        const changedFields = Object.keys(fields).filter(k => (fields as Record<string, unknown>)[k] !== (old as Record<string, unknown>)[k]);
+        const changedFields = Object.keys(fields).filter(k => (fields as unknown as Record<string, unknown>)[k] !== (old as unknown as Record<string, unknown>)[k]);
         if (changedFields.length > 0) {
           pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
         }

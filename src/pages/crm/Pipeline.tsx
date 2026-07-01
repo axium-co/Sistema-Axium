@@ -209,8 +209,8 @@ function applyFilters(leads: Lead[], filters: { stages?: string[]; niches?: stri
   const { stages, niches, dateFilter } = filters;
   
   return leads.filter(lead => {
-    if (stages?.length > 0 && !stages.includes(lead.stage)) return false;
-    if (niches?.length > 0 && !niches.includes(lead.niche)) return false;
+    if (stages && stages.length > 0 && !stages.includes(lead.stage)) return false;
+    if (niches && niches.length > 0 && !niches.includes(lead.niche)) return false;
     if (!isDateInRange(lead, dateFilter)) return false;
     
     if (searchTerm) {

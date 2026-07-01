@@ -213,7 +213,7 @@ const CRMImportar = () => {
         skipEmptyLines: true,
         complete: (results) => {
           try {
-            const rawColumns = results.data.length > 0 ? Object.keys(results.data[0]) : [];
+            const rawColumns = results.data.length > 0 ? Object.keys(results.data[0] as Record<string, unknown>) : [];
             processColumns(rawColumns, results.data);
           } catch {
             setNotification({ type: 'error', message: 'Erro ao processar CSV.' });
@@ -234,7 +234,7 @@ const CRMImportar = () => {
           const wb = XLSX.read(bstr, { type: 'binary' });
           const ws = wb.Sheets[wb.SheetNames[0]];
           const data = XLSX.utils.sheet_to_json(ws);
-          const rawColumns = data.length > 0 ? Object.keys(data[0]) : [];
+          const rawColumns = data.length > 0 ? Object.keys(data[0] as Record<string, unknown>) : [];
           processColumns(rawColumns, data);
         } catch {
           setNotification({ type: 'error', message: 'Erro ao processar Excel.' });
@@ -383,7 +383,7 @@ const CRMImportar = () => {
             <ArrowLeft size={16} /> Voltar
           </button>
           <div className="flex items-center gap-2 text-sm">
-            <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${step === 'upload' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>1. Upload</span>
+            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-neutral-100 text-neutral-500">1. Upload</span>
             <span className="text-neutral-300">→</span>
             <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${step === 'mapping' ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>2. Mapeamento</span>
             <span className="text-neutral-300">→</span>

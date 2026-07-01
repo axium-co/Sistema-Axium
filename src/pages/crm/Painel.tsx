@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle, FileText, Filter, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useCRM } from '../../contexts/CRMContext';
+import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useActivityLogs } from '../../contexts/ActivityContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFilters } from '../../contexts/FilterContext';
@@ -122,7 +122,7 @@ const CHART_ICONS = { Users, Calendar, MessageSquare, Clock, FileText, UserX, Ch
 const CRMDashboard = () => {
   const { leads } = useCRM();
   const { filters, hasActiveFilters } = useFilters();
-  const { activityLogs, isLoadingLogs, fetchActivityLogsError, fetchActivityLogs } = useActivityLogs();
+  const { activityLogs, isLoadingLogs, fetchActivityLogsError } = useActivityLogs();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -135,12 +135,6 @@ const CRMDashboard = () => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
-
-  useEffect(() => {
-    fetchActivityLogs(15).catch(err => {
-      console.error('Error fetching activity logs:', err);
-    });
-  }, [fetchActivityLogs]);
 
   const filteredLeads = useMemo(() => filterLeads(leads, {
     stages: filters.stages,

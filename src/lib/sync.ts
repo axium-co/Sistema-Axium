@@ -34,7 +34,7 @@ export function useCollectionSync<T extends { id: string }>(
   const initialState = (): SyncState<T> => {
     const stored = loadFromStorage<T[]>(storageKey);
     if (!isFirebaseConfigured) {
-      return { data: stored, status: 'offline', error: null };
+      return { data: stored || [], status: 'offline', error: null };
     }
     return { data: stored || [], status: 'loading', error: null };
   };

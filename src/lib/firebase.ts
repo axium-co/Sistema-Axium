@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, enableNetwork, disableNetwork, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyAdTYc8gSr005T5QeFVB2m1Nxg0pUpwko8',
@@ -35,6 +36,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+let analytics = null;
+if (typeof window !== 'undefined') {
+  analytics = getAnalytics(app);
+}
 
 let isOnline = navigator.onLine;
 let firestoreReady = false;
@@ -81,7 +86,7 @@ console.log('[Firebase] Módulo inicializado. Coleções disponíveis:', [
   'employees', 'user_roles', 'page_events',
 ].join(', '));
 
-export { app, auth, db, storage, isConfigured as isFirebaseConfigured, isOnline };
+export { app, auth, db, storage, analytics, isConfigured as isFirebaseConfigured, isOnline };
 
 export interface Profile {
   id: string;

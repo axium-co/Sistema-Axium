@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Filter, XCircle, ChevronDown, ChevronUp, AlertCircle, MessageCircle } from 'lucide-react';
 import { useCRM, type Lead } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
@@ -225,7 +225,7 @@ const CRMLeads = () => {
     }
 
     if (filters.origins && filters.origins.length > 0) {
-      result = result.filter(lead => filters.origins.includes(lead.origin));
+      result = result.filter(lead => lead.origin !== undefined && filters.origins.includes(lead.origin));
     }
 
     if (filters.niches && filters.niches.length > 0) {

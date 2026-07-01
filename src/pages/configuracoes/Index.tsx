@@ -186,7 +186,7 @@ const Configuracoes = () => {
       email: newEmployee.email.trim(),
       name: newEmployee.name.trim(),
       role: newEmployee.role,
-      created_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
 
     try {

@@ -1,3 +1,6 @@
+import type { ReactNode } from 'react';
+import type { Lead } from '../contexts/CRMContext';
+
 export const STAGES = [
   'Novos Leads',
   'Primeiro Contato',
@@ -30,7 +33,7 @@ export const STAGE_CONFIG: Record<Stage, StageConfig> = {
 
 export interface DroppableColumnProps {
   stage: Stage;
-  children: React.ReactNode;
+  children: ReactNode;
   count: number;
   totalValue: number;
 }
