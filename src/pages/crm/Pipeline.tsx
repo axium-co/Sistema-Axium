@@ -1,6 +1,6 @@
 import { 
   DndContext, 
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor, 
   useSensors,
@@ -10,7 +10,7 @@ import {
   closestCorners
 } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
-import { useState, useMemo, useCallback, memo } from 'react';
+import { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import type { Lead } from '../../contexts/CRMContext';
@@ -43,6 +43,13 @@ const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed, onWhatsAppClick
     zIndex: isDragging ? 50 : undefined,
   } : undefined;
 
+  const cardClasses = useMemo(() => [
+    'bg-white p-2 md:p-4 rounded-md border border-neutral-200',
+    'shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md',
+    'transition-all cursor-grab active:cursor-grabbing group',
+    isDragging ? 'opacity-50 grayscale' : '',
+  ].filter(Boolean).join(' '), [isDragging]);
+
   
   return (
     <div
@@ -50,7 +57,7 @@ const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed, onWhatsAppClick
       style={style}
       {...listeners}
       {...attributes}
-      className={`bg-white p-2 md:p-4 rounded-md border border-neutral-200 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md transition-all cursor-grab active:cursor-grabbing group ${isDragging ? 'opacity-50 grayscale' : ''}`}
+      className={cardClasses}
     >
       <div className="font-bold text-[11px] md:text-[13px] text-black mb-0.5">{lead.name}</div>
       <div className="text-[9px] md:text-[10px] text-neutral-500 font-semibold mb-2 md:mb-3">{lead.niche}</div>
@@ -248,14 +255,14 @@ const CRMPipeline = () => {
   const [whatsAppTarget, setWhatsAppTarget] = useState<{ name: string; phone: string } | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
+        delay: 150,
         tolerance: 5,
       },
     })
@@ -264,6 +271,12 @@ const CRMPipeline = () => {
   const filteredLeads = useMemo(() => {
     return applyFilters(leads || [], filters, '');
   }, [leads, filters]);
+
+  const leadsRef = useRef(leads);
+  const updateLeadRef = useRef(updateLead);
+
+  useEffect(() => { leadsRef.current = leads; }, [leads]);
+  useEffect(() => { updateLeadRef.current = updateLead; }, [updateLead]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event;
@@ -274,24 +287,35 @@ const CRMPipeline = () => {
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveLead(null);
-    
+
     if (!over) return;
-    
+
     const leadId = active.id as string;
     const newStage = over.id as string;
-    
+
     if (!isValidStage(newStage)) {
-      console.error('Estágio inválido:', newStage);
+      console.error('[Pipeline] Estágio inválido:', newStage);
       return;
     }
-    
-    const lead = leads?.find(l => l.id === leadId);
-    if (!lead) return;
-    
-    if (lead.stage !== newStage) {
-      updateLead(leadId, { stage: newStage });
+
+    const currentLeads = leadsRef.current;
+    const currentUpdate = updateLeadRef.current;
+    const lead = currentLeads?.find(l => l.id === leadId);
+    if (!lead) {
+      console.warn('[Pipeline] Lead não encontrado:', leadId);
+      return;
     }
-  }, [leads, updateLead]);
+
+    if (lead.stage !== newStage) {
+      currentUpdate(leadId, { stage: newStage })
+        .then(() => {
+          console.log(`[Pipeline] Lead ${lead.name} movido para "${newStage}"`);
+        })
+        .catch((err: unknown) => {
+          console.error('[Pipeline] Erro ao mover lead:', err);
+        });
+    }
+  }, []);
 
   const columnData = useMemo(() => {
     return STAGES.map(stage => {
