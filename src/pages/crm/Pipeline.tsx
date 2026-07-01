@@ -1,67 +1,75 @@
-import { 
-  DndContext, 
-  MouseSensor,
-  TouchSensor,
-  useSensor, 
-  useSensors,
-  useDraggable,
-  useDroppable,
-  DragOverlay,
-  closestCorners
-} from '@dnd-kit/core';
-import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import type { Lead } from '../../contexts/CRMContext';
-import { Filter, XCircle } from 'lucide-react';
-import { 
-  STAGES, 
-  type Stage, 
-  STAGE_CONFIG, 
-  formatCurrency, 
+import { Filter, XCircle, ChevronDown } from 'lucide-react';
+import {
+  STAGES,
+  type Stage,
+  STAGE_CONFIG,
+  formatCurrency,
   isValidStage,
-  calculateTotalValue
+  calculateTotalValue,
 } from '../../lib/crmHelpers';
 import { MessageCircle } from 'lucide-react';
 import WhatsAppModal from '../../components/WhatsAppModal';
 
+// =============================================================================
+// Components
+// =============================================================================
+
 interface LeadCardProps {
   lead: Lead;
   isClosed: boolean;
+  onStageChange: (leadId: string, newStage: Stage) => void;
   onWhatsAppClick?: (name: string, phone: string) => void;
 }
 
-const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed, onWhatsAppClick }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: lead.id,
-    data: { lead }
-  });
+const StageMenu = memo<{
+  lead: Lead;
+  onSelect: (stage: Stage) => void;
+  onClose: () => void;
+}>(({ lead, onSelect, onClose }) => {
+  const availableStages = STAGES.filter((s) => s !== lead.stage);
 
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    zIndex: isDragging ? 50 : undefined,
-  } : undefined;
-
-  const cardClasses = useMemo(() => [
-    'bg-white p-2 md:p-4 rounded-md border border-neutral-200',
-    'shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md',
-    'transition-all cursor-grab active:cursor-grabbing group',
-    isDragging ? 'opacity-50 grayscale' : '',
-  ].filter(Boolean).join(' '), [isDragging]);
-
-  
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={cardClasses}
-    >
+    <>
+      <div
+        className="fixed inset-0 z-40"
+        onClick={onClose}
+      />
+      <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-neutral-200 rounded-xl shadow-xl py-1 min-w-[180px]">
+        <div className="px-3 py-2 text-[9px] font-black text-neutral-400 uppercase tracking-widest border-b border-neutral-100">
+          Mover para
+        </div>
+        {availableStages.map((stage) => (
+          <button
+            key={stage}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(stage);
+            }}
+            className="w-full text-left px-3 py-2 text-[12px] font-medium text-neutral-700 hover:bg-neutral-50 hover:text-black transition-colors"
+          >
+            {stage}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+});
+
+StageMenu.displayName = 'StageMenu';
+
+const LeadCard = memo<LeadCardProps>(({ lead, isClosed, onStageChange, onWhatsAppClick }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="bg-white p-2 md:p-4 rounded-md border border-neutral-200 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md transition-all group relative">
       <div className="font-bold text-[11px] md:text-[13px] text-black mb-0.5">{lead.name}</div>
       <div className="text-[9px] md:text-[10px] text-neutral-500 font-semibold mb-2 md:mb-3">{lead.niche}</div>
-      
+
       {lead.whatsapp && (
         <div className="flex items-center gap-1 mb-2">
           <span className="text-[9px] md:text-[10px] text-neutral-600">{lead.whatsapp}</span>
@@ -94,56 +102,48 @@ const DraggableLeadCard = memo<LeadCardProps>(({ lead, isClosed, onWhatsAppClick
       )}
 
       {!isClosed && (
-        <div className="flex justify-end">
-          <div className="w-6 h-6 rounded-full bg-neutral-50 flex items-center justify-center text-[10px] font-bold text-neutral-400 group-hover:bg-black group-hover:text-white transition-colors">
-            →
-          </div>
+        <div className="flex justify-end relative">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((prev) => !prev);
+            }}
+            className="w-6 h-6 rounded-full bg-neutral-50 flex items-center justify-center text-[10px] font-bold text-neutral-400 group-hover:bg-black group-hover:text-white transition-colors cursor-pointer"
+            title="Mover lead para outro estágio"
+          >
+            <ChevronDown size={12} />
+          </button>
+          {menuOpen && (
+            <StageMenu
+              lead={lead}
+              onSelect={(stage) => {
+                onStageChange(lead.id, stage);
+                setMenuOpen(false);
+              }}
+              onClose={() => setMenuOpen(false)}
+            />
+          )}
         </div>
       )}
     </div>
   );
 });
 
-DraggableLeadCard.displayName = 'DraggableLeadCard';
+LeadCard.displayName = 'LeadCard';
 
-const StaticLeadCard = memo<LeadCardProps>(({ lead, isClosed }) => (
-  <div className="bg-white p-4 rounded-md border border-black shadow-xl rotate-3 scale-105 pointer-events-none">
-    <div className="font-bold text-[13px] text-black mb-0.5">{lead.name}</div>
-    <div className="text-[10px] text-neutral-500 font-semibold mb-3">{lead.niche}</div>
-    {isClosed && (
-      <div className="pt-3 border-t border-neutral-100 mt-3">
-        <div className="flex justify-between items-center">
-          <div className="flex flex-col">
-            <span className="text-[8px] text-neutral-400 font-bold uppercase tracking-[0.1em]">Valor do Contrato</span>
-            <span className="text-xs font-black text-black mt-0.5">{lead.value || 'R$ 0,00'}</span>
-          </div>
-          <div className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold">
-            ✓
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-));
-
-StaticLeadCard.displayName = 'StaticLeadCard';
-
-interface DroppableColumnProps {
+interface ColumnProps {
   stage: Stage;
   children: React.ReactNode;
   count: number;
   totalValue: number;
 }
 
-const DroppableColumn = memo<DroppableColumnProps>(({ stage, children, count, totalValue }) => {
-  const { setNodeRef, isOver } = useDroppable({ id: stage });
+const Column = memo<ColumnProps>(({ stage, children, count, totalValue }) => {
   const config = STAGE_CONFIG[stage];
 
   return (
-    <div 
-      ref={setNodeRef}
-      className={`bg-neutral-50/50 border-2 rounded-md w-[300px] shrink-0 flex flex-col max-h-full transition-colors ${isOver ? 'border-black bg-neutral-100/50' : 'border-transparent'}`}
-    >
+    <div className="bg-neutral-50/50 border-2 border-transparent rounded-md w-[300px] shrink-0 flex flex-col max-h-full transition-colors">
       <div className="bg-neutral-50 border-b border-neutral-200 rounded-t-xl">
         <div className="p-5 border-b border-neutral-200 bg-white rounded-t-xl">
           <div className="flex items-center justify-between mb-3">
@@ -152,7 +152,7 @@ const DroppableColumn = memo<DroppableColumnProps>(({ stage, children, count, to
               {count}
             </span>
           </div>
-          
+
           {config.isClosed ? (
             <div className="flex flex-col">
               <span className="text-lg font-black text-black tracking-tight">{formatCurrency(totalValue)}</span>
@@ -160,16 +160,16 @@ const DroppableColumn = memo<DroppableColumnProps>(({ stage, children, count, to
             </div>
           ) : (
             <div className="h-[38px] flex items-center">
-              <div className="h-1.5 w-12 bg-neutral-100 rounded-full"></div>
+              <div className="h-1.5 w-12 bg-neutral-100 rounded-full" />
             </div>
           )}
         </div>
 
         <div className="p-3 space-y-3 overflow-y-auto min-h-[200px]">
           {children}
-          {count === 0 && !isOver && (
+          {count === 0 && (
             <div className="py-12 border-2 border-dashed border-neutral-200 rounded-md flex flex-col items-center justify-center opacity-40">
-              <div className="w-8 h-8 rounded-full bg-neutral-100 mb-2"></div>
+              <div className="w-8 h-8 rounded-full bg-neutral-100 mb-2" />
               <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-widest">Sem leads</span>
             </div>
           )}
@@ -179,12 +179,11 @@ const DroppableColumn = memo<DroppableColumnProps>(({ stage, children, count, to
   );
 });
 
-DroppableColumn.displayName = 'DroppableColumn';
+Column.displayName = 'Column';
 
-interface DateFilterParams {
-  dateFilter?: string;
-  firstContact?: string;
-}
+// =============================================================================
+// Helpers
+// =============================================================================
 
 function isDateInRange(lead: Lead, dateFilter: string | undefined): boolean {
   if (!dateFilter) return true;
@@ -212,14 +211,18 @@ function isDateInRange(lead: Lead, dateFilter: string | undefined): boolean {
   }
 }
 
-function applyFilters(leads: Lead[], filters: { stages?: string[]; niches?: string[]; dateFilter?: string }, searchTerm: string): Lead[] {
+function applyFilters(
+  leads: Lead[],
+  filters: { stages?: string[]; niches?: string[]; dateFilter?: string },
+  searchTerm: string,
+): Lead[] {
   const { stages, niches, dateFilter } = filters;
-  
-  return leads.filter(lead => {
+
+  return leads.filter((lead) => {
     if (stages && stages.length > 0 && !stages.includes(lead.stage)) return false;
     if (niches && niches.length > 0 && !niches.includes(lead.niche)) return false;
     if (!isDateInRange(lead, dateFilter)) return false;
-    
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       return (
@@ -228,97 +231,57 @@ function applyFilters(leads: Lead[], filters: { stages?: string[]; niches?: stri
         lead.email?.toLowerCase().includes(term)
       );
     }
-    
+
     return true;
   });
 }
 
 function searchLeads(leads: Lead[], stage: Stage, searchTerm: string): Lead[] {
-  if (!searchTerm) return leads.filter(l => l.stage === stage);
-  
+  if (!searchTerm) return leads.filter((l) => l.stage === stage);
+
   const term = searchTerm.toLowerCase();
-  return leads.filter(l => 
-    l.stage === stage && (
-      l.name?.toLowerCase().includes(term) ||
-      l.niche?.toLowerCase().includes(term) ||
-      l.email?.toLowerCase().includes(term)
-    )
+  return leads.filter(
+    (l) =>
+      l.stage === stage &&
+      (l.name?.toLowerCase().includes(term) ||
+        l.niche?.toLowerCase().includes(term) ||
+        l.email?.toLowerCase().includes(term)),
   );
 }
+
+// =============================================================================
+// Page Component
+// =============================================================================
 
 const CRMPipeline = () => {
   const { leads, updateLead } = useCRM();
   const { filters, hasActiveFilters } = useFilters();
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [whatsAppTarget, setWhatsAppTarget] = useState<{ name: string; phone: string } | null>(null);
 
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 150,
-        tolerance: 5,
-      },
-    })
-  );
+  const updateLeadRef = useRef(updateLead);
+  useEffect(() => { updateLeadRef.current = updateLead; }, [updateLead]);
 
   const filteredLeads = useMemo(() => {
     return applyFilters(leads || [], filters, '');
   }, [leads, filters]);
 
-  const leadsRef = useRef(leads);
-  const updateLeadRef = useRef(updateLead);
-
-  useEffect(() => { leadsRef.current = leads; }, [leads]);
-  useEffect(() => { updateLeadRef.current = updateLead; }, [updateLead]);
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const { active } = event;
-    const lead = leads?.find(l => l.id === active.id);
-    setActiveLead(lead ?? null);
-  }, [leads]);
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveLead(null);
-
-    if (!over) return;
-
-    const leadId = active.id as string;
-    const newStage = over.id as string;
-
-    if (!isValidStage(newStage)) {
-      console.error('[Pipeline] Estágio inválido:', newStage);
-      return;
-    }
-
-    const currentLeads = leadsRef.current;
-    const currentUpdate = updateLeadRef.current;
-    const lead = currentLeads?.find(l => l.id === leadId);
-    if (!lead) {
-      console.warn('[Pipeline] Lead não encontrado:', leadId);
-      return;
-    }
-
-    if (lead.stage !== newStage) {
-      currentUpdate(leadId, { stage: newStage })
+  const handleStageChange = useCallback(
+    (leadId: string, newStage: Stage) => {
+      updateLeadRef.current(leadId, { stage: newStage })
         .then(() => {
-          console.log(`[Pipeline] Lead ${lead.name} movido para "${newStage}"`);
+          console.log(`[Pipeline] Lead ${leadId} movido para "${newStage}"`);
         })
         .catch((err: unknown) => {
           console.error('[Pipeline] Erro ao mover lead:', err);
         });
-    }
-  }, []);
+    },
+    [],
+  );
 
   const columnData = useMemo(() => {
-    return STAGES.map(stage => {
+    return STAGES.map((stage) => {
       const stageLeads = searchLeads(filteredLeads, stage, searchTerm);
       const totalValue = calculateTotalValue(stageLeads);
       return {
@@ -350,10 +313,10 @@ const CRMPipeline = () => {
       <div className="mb-4 flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-black text-black tracking-tight mb-1">Pipeline</h1>
-          <p className="text-neutral-500 text-sm">Visualize o progresso das suas oportunidades. Arraste e solte para mover entre etapas.</p>
+          <p className="text-neutral-500 text-sm">Visualize o progresso das suas oportunidades. Clique na seta em um card para mover entre etapas.</p>
         </div>
         <div className="relative group">
-          <button 
+          <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className={`p-2 rounded-lg border transition-all relative ${hasActiveFilters ? 'bg-neutral-100 text-black border-neutral-200' : 'bg-transparent border-transparent text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50'}`}
           >
@@ -368,43 +331,23 @@ const CRMPipeline = () => {
         </div>
       </div>
 
-      <DndContext 
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex-1 overflow-x-auto pb-6">
-          <div className="flex gap-5 min-w-max h-full items-start">
-            {columnData.map(({ stage, leads: columnLeads, count, totalValue }) => (
-              <DroppableColumn 
-                key={stage} 
-                stage={stage}
-                count={count}
-                totalValue={totalValue}
-              >
-                {columnLeads.map(lead => (
-                  <DraggableLeadCard 
-                    key={lead.id} 
-                    lead={lead} 
-                    isClosed={STAGE_CONFIG[stage].isClosed}
-                    onWhatsAppClick={(name, phone) => setWhatsAppTarget({ name, phone })}
-                  />
-                ))}
-              </DroppableColumn>
-            ))}
-          </div>
+      <div className="flex-1 overflow-x-auto pb-6">
+        <div className="flex gap-5 min-w-max h-full items-start">
+          {columnData.map(({ stage, leads: columnLeads, count, totalValue }) => (
+            <Column key={stage} stage={stage} count={count} totalValue={totalValue}>
+              {columnLeads.map((lead) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  isClosed={STAGE_CONFIG[stage].isClosed}
+                  onStageChange={handleStageChange}
+                  onWhatsAppClick={(name, phone) => setWhatsAppTarget({ name, phone })}
+                />
+              ))}
+            </Column>
+          ))}
         </div>
-
-        <DragOverlay>
-          {activeLead ? (
-            <StaticLeadCard 
-              lead={activeLead} 
-              isClosed={activeLead.stage === 'Contrato Fechado'} 
-            />
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      </div>
 
       {whatsAppTarget && (
         <WhatsAppModal
