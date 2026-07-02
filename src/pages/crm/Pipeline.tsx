@@ -131,10 +131,10 @@ const CRMPipeline = () => {
 
   // ─── Optimistic updates ──────────────────────────────────
   // Garante que o card se mova visualmente na tela antes mesmo
-  // do Firebase responder (optimistic update).
+  // da API responder (optimistic update).
   const [optimisticStages, setOptimisticStages] = useState<Record<string, Stage>>({});
 
-  // Limpa overrides quando o Firebase sincronizar de volta
+  // Limpa overrides quando a API sincronizar de volta
   useEffect(() => {
     if (!leads || Object.keys(optimisticStages).length === 0) return;
     const next = { ...optimisticStages };
@@ -166,7 +166,7 @@ const CRMPipeline = () => {
 
   // ─── onDragEnd ────────────────────────────────────────────
   // 1. Aplica optimistic update no estado local (movimento fluido imediato)
-  // 2. Persiste no Firebase em background
+  // 2. Persiste na API em background
   const handleDragEnd = useCallback(
     (result: DropResult) => {
       const { source, destination, draggableId } = result;
@@ -185,7 +185,7 @@ const CRMPipeline = () => {
       // ── Optimistic update ──────────────────────────────
       setOptimisticStages((prev) => ({ ...prev, [draggableId]: newStage }));
 
-      // ── Persistência no Firebase ───────────────────────
+      // ── Persistência na API ────────────────────────────
       updateLeadRef
         .current(draggableId, { stage: newStage })
         .then(() => {

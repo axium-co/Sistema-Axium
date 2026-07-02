@@ -3,8 +3,7 @@ import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateUUID } from '../../lib/uuid';
-import { useCollectionSync } from '../../lib/sync';
-import { INVOICES_COLLECTION, EXPENSES_COLLECTION } from '../../lib/firebase';
+import { useApiCrud } from '../../lib/use-api-crud';
 import { Plus, Pencil, Save, X, TrendingUp, TrendingDown, DollarSign, PieChart, CreditCard, User, Calendar, CheckCircle2, Clock, AlertTriangle, RefreshCw, ExternalLink, Receipt, Wallet, Filter, XCircle, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 
 interface Invoice {
@@ -94,8 +93,6 @@ const Financeiro = () => {
   const { filters } = useFilters();
   const { role, employeeName, user } = useAuth();
 
-  const EXPENSES_KEY = 'axium_expenses_v1';
-
   const [activeTab, setActiveTab] = useState<'receitas' | 'fluxo'>('receitas');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -153,49 +150,21 @@ const Financeiro = () => {
     return date >= range.start && date <= range.end;
   };
   
-  const [isAsaasConnected] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSync, setLastSync] = useState<string | null>(null);
-
-  useEffect(() => {
-    const legacy = localStorage.getItem('axium_finance_v1');
-    if (legacy) {
-      const parsed = JSON.parse(legacy);
-      const invoices = parsed.manualInvoices ?? [];
-      if (invoices.length > 0) {
-        const current = localStorage.getItem('axium_invoices_v2');
-        if (!current || JSON.parse(current).length === 0) {
-          localStorage.setItem('axium_invoices_v2', JSON.stringify(invoices));
-        }
-      }
-      localStorage.removeItem('axium_finance_v1');
-    }
-  }, []);
-
   const {
     data: syncedManualInvoices,
-    add: addInvoiceToFirestore,
-    update: updateInvoiceInFirestore,
-    remove: removeInvoiceFromFirestore,
-  } = useCollectionSync<Invoice>(
-    INVOICES_COLLECTION,
-    'axium_invoices_v2',
-    [],
-  );
+    add: addInvoiceToApi,
+    update: updateInvoiceInApi,
+    remove: removeInvoiceFromApi,
+  } = useApiCrud<Invoice>('/invoices');
 
   const {
     data: syncedExpenses,
-    add: addExpenseToFirestore,
-    update: updateExpenseInFirestore,
-    remove: removeExpenseFromFirestore,
-  } = useCollectionSync<Expense>(
-    EXPENSES_COLLECTION,
-    EXPENSES_KEY,
-    [],
-  );
+    add: addExpenseToApi,
+    update: updateExpenseInApi,
+    remove: removeExpenseFromApi,
+  } = useApiCrud<Expense>('/expenses');
 
   const [manualInvoices, setManualInvoices] = useState<Invoice[]>([]);
-  const [asaasInvoices, setAsaasInvoices] = useState<Invoice[]>([]);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
@@ -216,20 +185,8 @@ const Financeiro = () => {
   const [isNewExpense, setIsNewExpense] = useState(false);
 
   const syncAsaasData = useCallback(async () => {
-    setIsSyncing(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const mockAsaas: Invoice[] = [
-      { id: 'PAY-827364', client: 'Clínica Sorriso', amount: 'R$ 15.000,00', date: '2026-04-20', status: 'Pago', source: 'asaas' },
-      { id: 'PAY-918273', client: 'João Silva', amount: 'R$ 5.000,00', date: '2026-04-21', status: 'Pago', source: 'asaas' },
-      { id: 'PAY-102938', client: 'Maria Santos', amount: 'R$ 8.000,00', date: '2026-04-25', status: 'Pendente', source: 'asaas' },
-      { id: 'PAY-445566', client: 'Pedro Oliveira', amount: 'R$ 12.000,00', date: '2026-04-15', status: 'Vencida', source: 'asaas' },
-      { id: 'PAY-778899', client: 'Odonto Master', amount: 'R$ 22.500,00', date: '2026-04-18', status: 'Pago', source: 'asaas' },
-    ];
-
-    setAsaasInvoices(mockAsaas);
-    setLastSync(new Date().toLocaleTimeString());
-    setIsSyncing(false);
+    // Asaas sync will be implemented when the integration is available
+    console.log('[Financeiro] Asaas sync not yet implemented');
   }, []);
 
   const computedLeadInvoices: Invoice[] = (leads || [])
@@ -244,9 +201,9 @@ const Financeiro = () => {
     }));
 
   const allInvoices = useMemo(() => 
-    [...asaasInvoices, ...manualInvoices, ...computedLeadInvoices].sort((a, b) => 
+    [...manualInvoices, ...computedLeadInvoices].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
-    ), [asaasInvoices, manualInvoices, leads]);
+    ), [manualInvoices, leads]);
 
   const filteredInvoices = useMemo(() => {
     let result = allInvoices || [];
@@ -373,7 +330,7 @@ const Financeiro = () => {
 
     try {
       if (isNewInvoice) {
-        await addInvoiceToFirestore(modifiedInvoice);
+        await addInvoiceToApi(modifiedInvoice);
         pushNotification('Nova Fatura', `Fatura de ${modifiedInvoice.client} no valor de ${modifiedInvoice.amount} foi criada.`, 'meeting');
       } else {
         if (editingInvoice.source === 'lead') {
@@ -381,7 +338,7 @@ const Financeiro = () => {
         } else if (editingInvoice.source === 'asaas') {
           alert('Faturas do Asaas são sincronizadas automaticamente e não podem ser editadas manualmente.');
         } else {
-          await updateInvoiceInFirestore(editingInvoice.id, modifiedInvoice);
+          await updateInvoiceInApi(editingInvoice.id, modifiedInvoice);
           pushNotification('Fatura Atualizada', `Fatura de ${modifiedInvoice.client} foi modificada.`, 'meeting');
         }
       }
@@ -398,7 +355,7 @@ const Financeiro = () => {
       return;
     }
     if (confirm('Excluir esta fatura manual?')) {
-      removeInvoiceFromFirestore(id);
+      removeInvoiceFromApi(id);
       pushNotification('Fatura Excluída', `Fatura de ${inv.client} foi removida.`, 'meeting');
       setIsInvoiceModalOpen(false);
     }
@@ -433,10 +390,10 @@ const Financeiro = () => {
 
     try {
       if (isNewExpense) {
-        await addExpenseToFirestore(modifiedExpense);
+        await addExpenseToApi(modifiedExpense);
         pushNotification('Nova Despesa', `Despesa de ${modifiedExpense.category} - ${modifiedExpense.description} no valor de ${modifiedExpense.amount} foi criada.`, 'system');
       } else {
-        await updateExpenseInFirestore(editingExpense.id, modifiedExpense);
+        await updateExpenseInApi(editingExpense.id, modifiedExpense);
         pushNotification('Despesa Atualizada', `Despesa de ${modifiedExpense.category} foi modificada.`, 'system');
       }
       setIsExpenseModalOpen(false);
@@ -448,7 +405,7 @@ const Financeiro = () => {
   const handleDeleteExpense = (id: string) => {
     if (confirm('Excluir esta despesa?')) {
       const exp = expenses.find(e => e.id === id);
-      removeExpenseFromFirestore(id);
+      removeExpenseFromApi(id);
       if (exp) pushNotification('Despesa Excluída', `Despesa de ${exp.category} foi removida.`, 'system');
       setIsExpenseModalOpen(false);
     }
@@ -638,13 +595,6 @@ const Financeiro = () => {
             <div>
               <div className="flex items-center gap-2 md:gap-3 mb-1">
                 <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight">Financeiro</h1>
-                {isAsaasConnected && (
-                  <span className="flex items-center gap-1 px-2 md:px-2.5 py-0.5 md:py-1 bg-emerald-50 text-emerald-600 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full animate-in fade-in slide-in-from-left-2 duration-500">
-                    <CheckCircle2 size={10} strokeWidth={3} />
-                    <span className="hidden sm:inline">Asaas Conectado</span>
-                    <span className="sm:hidden">Conectado</span>
-                  </span>
-                )}
               </div>
               <p className="text-neutral-500 text-xs md:text-sm font-medium">
                 {hasActiveFilters 
@@ -655,17 +605,6 @@ const Financeiro = () => {
           </div>
           
           <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto">
-            {isAsaasConnected && (
-              <button 
-                onClick={syncAsaasData}
-                disabled={isSyncing}
-                className="flex-1 sm:flex-none px-3 md:px-4 py-2 md:py-3 rounded-md border border-neutral-200 text-neutral-400 font-black text-[9px] md:text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:border-black hover:text-black transition-all active:scale-[0.98] bg-white"
-              >
-                <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
-                <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Atualizar'}</span>
-                <span className="sm:hidden">{isSyncing ? 'Sync...' : 'Atualizar'}</span>
-              </button>
-            )}
             <button 
               onClick={() => activeTab === 'receitas' ? handleOpenInvoiceModal() : handleOpenExpenseModal()}
               className="flex-1 sm:flex-none bg-black text-white px-3 md:px-6 py-2 md:py-3 rounded-md font-black text-[9px] md:text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
@@ -738,15 +677,8 @@ const Financeiro = () => {
                 </div>
                 <div>
                   <h2 className="text-[10px] md:text-[11px] font-black text-black uppercase tracking-widest">Faturas Recentes</h2>
-                  {lastSync && <p className="text-[8px] md:text-[9px] text-neutral-400 font-bold uppercase tracking-tighter mt-0.5">Última sincronização: {lastSync}</p>}
                 </div>
               </div>
-              {isAsaasConnected && (
-                <div className="flex items-center gap-2 px-2 md:px-3 py-1 md:py-1.5 bg-white border border-neutral-200 rounded-md shadow-xs whitespace-nowrap">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                  <span className="text-[8px] md:text-[9px] font-black text-black uppercase tracking-widest">Live: Asaas</span>
-                </div>
-              )}
             </div>
             <table className="w-full text-xs md:text-sm">
               <thead>

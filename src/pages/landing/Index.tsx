@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { db, isFirebaseConfigured, PAGE_EVENTS_COLLECTION } from '../../lib/firebase';
-import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { api } from '../../lib/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface PageEvent {
@@ -40,50 +39,28 @@ function buildViewsByDay(events: PageEvent[], now: number): DayView[] {
 }
 
 const LandingAnalytics = () => {
-  const [events, setEvents] = useState<PageEvent[] | null>(
-    () => isFirebaseConfigured ? null : [],
-  );
+  const [events, setEvents] = useState<PageEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
-
-  const isLoading = events === null && !error;
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) return;
-
-    const thirtyDaysAgo = new Date(now - 60 * 24 * 60 * 60 * 1000).toISOString();
-
-    const q = query(
-      collection(db, PAGE_EVENTS_COLLECTION),
-      where('created_at', '>=', thirtyDaysAgo),
-      orderBy('created_at', 'desc'),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const docs = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as PageEvent[];
-        setEvents(docs);
-      },
-      (err) => {
+    api.get<PageEvent[]>('/page-events?days=60')
+      .then(setEvents)
+      .catch((err) => {
         console.error('[Landing Analytics] Erro ao buscar eventos:', err);
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados.');
-      },
-    );
-
-    return () => unsubscribe();
-  }, [now]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const totalViews = useMemo(
-    () => (events ?? []).filter(e => e.event_type === 'page_view').length,
+    () => events.filter(e => e.event_type === 'page_view').length,
     [events],
   );
 
   const clickEvents: PageEvent[] = useMemo(
-    () => (events ?? [])
+    () => events
       .filter(e => e.event_type === 'button_click')
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     [events],
@@ -100,7 +77,7 @@ const LandingAnalytics = () => {
   );
 
   const viewsByDay: DayView[] = useMemo(
-    () => buildViewsByDay(events ?? [], now),
+    () => buildViewsByDay(events, now),
     [events, now],
   );
 
@@ -114,19 +91,7 @@ const LandingAnalytics = () => {
     );
   }
 
-  if (!isFirebaseConfigured) {
-    return (
-      <div className="p-6">
-        <h1 className="text-4xl font-black text-black tracking-tighter mb-2">Landing Page</h1>
-        <p className="text-neutral-500 text-sm font-medium mb-6">Analytics de eventos da landing page.</p>
-        <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-2xl text-yellow-700 text-sm font-medium">
-          Firebase não configurado. Configure as variáveis de ambiente para visualizar os dados.
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="p-6">
         <h1 className="text-4xl font-black text-black tracking-tighter mb-2">Landing Page</h1>
@@ -140,7 +105,7 @@ const LandingAnalytics = () => {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-4xl font-black text-black tracking-tighter mb-1">Landing Page</h1>
-          <p className="text-neutral-500 text-sm font-medium">Analytics de eventos da landing page — atualizado em tempo real.</p>
+          <p className="text-neutral-500 text-sm font-medium">Analytics de eventos da landing page.</p>
         </div>
         <a
           href={import.meta.env.VITE_LANDING_URL || 'https://axiumcompany.com.br/'}

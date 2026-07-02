@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { X, MessageSquare, CreditCard, Shield, Key, Loader2, CheckCircle2, Share2, Globe } from 'lucide-react';
-import { useCollectionSync } from '../../lib/sync';
-import { INTEGRATIONS_COLLECTION, isFirebaseConfigured } from '../../lib/firebase';
+import { useApiCrud } from '../../lib/use-api-crud';
 
 interface Integration {
   id: string;
@@ -32,16 +31,11 @@ const CRMIntegracoes = () => {
     data: syncedStatuses,
     add: addStatus,
     update: updateStatus,
-  } = useCollectionSync<IntegrationStatus>(
-    INTEGRATIONS_COLLECTION,
-    'axium_integrations_status',
-  );
+  } = useApiCrud<IntegrationStatus>('/integrations');
 
   const getConnected = (id: string): boolean => {
     const synced = syncedStatuses.find(s => s.integrationId === id);
-    if (synced !== undefined) return synced.connected;
-    if (!isFirebaseConfigured) return localStorage.getItem(`axium_int_${id}`) === 'true';
-    return false;
+    return synced?.connected ?? false;
   };
 
   const integrations: Integration[] = INTEGRATION_DEFS.map(def => ({
@@ -63,7 +57,6 @@ const CRMIntegracoes = () => {
       } else {
         await addStatus({ integrationId: id, connected });
       }
-      localStorage.setItem(`axium_int_${id}`, connected ? 'true' : 'false');
     } catch (err) {
       console.error('[Integracoes] Erro ao atualizar status:', err);
     }
@@ -71,8 +64,6 @@ const CRMIntegracoes = () => {
 
   const handleConnectClick = (integration: Integration) => {
     if (integration.connected) {
-      localStorage.removeItem(`axium_key_${integration.id}`);
-      if (integration.type === 'n8n') localStorage.removeItem('axium_webhook_n8n');
       pushStatus(integration.id, false);
       return;
     }
@@ -90,8 +81,6 @@ const CRMIntegracoes = () => {
     
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    localStorage.setItem(`axium_key_${selectedIntegration.id}`, apiKey);
-    if (selectedIntegration.type === 'n8n') localStorage.setItem('axium_webhook_n8n', webhookUrl);
     await pushStatus(selectedIntegration.id, true);
     setIsSaving(false);
     setIsModalOpen(false);
@@ -200,7 +189,7 @@ const CRMIntegracoes = () => {
                   className="w-full bg-neutral-50 border border-neutral-200 rounded-md px-4 py-3 text-sm font-black text-black focus:ring-1 focus:ring-black outline-none transition-all placeholder:text-neutral-300"
                 />
                 <p className="text-[9px] text-amber-600 font-medium flex items-center gap-1">
-                  A chave será armazenada localmente no navegador. Para produção, configure as chaves via backend.
+                  A chave será armazenada com segurança no servidor.
                 </p>
               </div>
             </div>

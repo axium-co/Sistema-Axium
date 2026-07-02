@@ -7,9 +7,7 @@ import {
   AlertCircle, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { db, storage, PROFILES_COLLECTION, EMPLOYEES_COLLECTION, isFirebaseConfigured } from '../../lib/firebase';
-import { doc, setDoc, collection, query, where, orderBy, addDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { api } from '../../lib/api';
 import { isValidUUID } from '../../lib/uuid';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,41 +20,6 @@ interface Employee {
 }
 
 type ModalType = 'perfil' | 'equipe';
-
-const PROFILE_STORAGE_KEY = 'axium_profile_v1';
-const EMPLOYEES_STORAGE_KEY = 'axium_employees_v1';
-
-function loadProfileFromStorage(): { name: string; email: string; phone: string; avatar: string } | null {
-  try {
-    const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch {}
-  return null;
-}
-
-function loadEmployeesFromStorage(): Employee[] {
-  try {
-    const stored = localStorage.getItem(EMPLOYEES_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch {}
-  return [];
-}
-
-function saveToProfileStorage(data: Record<string, unknown>) {
-  try {
-    const existing = loadProfileFromStorage() || {};
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify({ ...existing, ...data }));
-  } catch {}
-}
-
-function saveEmployeesToStorage(emps: Employee[]) {
-  try {
-    localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(emps));
-  } catch {}
-}
 
 const Configuracoes = () => {
   const { user, logout } = useAuth();
@@ -74,10 +37,7 @@ const Configuracoes = () => {
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
 
-  const [profileData, setProfileData] = useState<{ name: string; email: string; phone: string; avatar: string }>(() => {
-    const stored = loadProfileFromStorage();
-    return stored || { name: '', email: '', phone: '(11) 99999-9999', avatar: '' };
-  });
+  const [profileData, setProfileData] = useState<{ name: string; email: string; phone: string; avatar: string }>({ name: '', email: '', phone: '(11) 99999-9999', avatar: '' });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
@@ -91,77 +51,34 @@ const Configuracoes = () => {
 
   useEffect(() => {
     if (!user?.id) return;
-    if (!isFirebaseConfigured) {
-      const stored = loadProfileFromStorage();
-      setProfileData(stored || { name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
-      if (stored?.avatar) setAvatarPreview(stored.avatar);
-      return;
-    }
 
-    const docRef = doc(db, PROFILES_COLLECTION, user.id);
-    const unsubscribe = onSnapshot(
-      docRef,
-      (docSnap) => {
-        if (!docSnap.exists()) {
-          const stored = loadProfileFromStorage();
-          setProfileData(stored || { name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
-          if (stored?.avatar) setAvatarPreview(stored.avatar);
-          return;
-        }
-        const data = docSnap.data();
-        const profile = {
+    api.get<{ nome?: string; telefone?: string; avatar?: string }>(`/profiles/${user.id}`)
+      .then((data) => {
+        setProfileData({
           name: data.nome || '',
           email: user.email || '',
           phone: data.telefone || '(11) 99999-9999',
           avatar: data.avatar || ''
-        };
-        setProfileData(profile);
-        saveToProfileStorage(profile);
+        });
         if (data.avatar) {
           setAvatarPreview(data.avatar);
         }
-      },
-      (err) => {
-        console.error('[CONFIG] Erro no listener de perfil:', err.code, err.message);
-        const stored = loadProfileFromStorage();
-        setProfileData(stored || { name: '', email: user.email || '', phone: '(11) 99999-9999', avatar: '' });
-        if (stored?.avatar) setAvatarPreview(stored.avatar);
-      },
-    );
-
-    return () => unsubscribe();
+      })
+      .catch((err) => {
+        console.error('[CONFIG] Erro ao carregar perfil:', err);
+      });
   }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
-    if (!isFirebaseConfigured) {
-      setEmployees(loadEmployeesFromStorage());
-      return;
-    }
 
-    const q = query(
-      collection(db, EMPLOYEES_COLLECTION),
-      where('user_id', '==', user.id),
-      orderBy('created_at', 'asc'),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const emps = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Employee[];
+    api.get<Employee[]>('/employees')
+      .then((emps) => {
         setEmployees(emps);
-        saveEmployeesToStorage(emps);
-      },
-      (err) => {
-        console.error('[CONFIG] Erro no listener de funcionários:', err.code, err.message);
-        setEmployees(loadEmployeesFromStorage());
-      },
-    );
-
-    return () => unsubscribe();
+      })
+      .catch((err) => {
+        console.error('[CONFIG] Erro ao carregar funcionários:', err);
+      });
   }, [user?.id]);
 
   const handleAddEmployee = async () => {
@@ -181,30 +98,19 @@ const Configuracoes = () => {
       return;
     }
 
-    const employeeData = {
-      user_id: user.id,
-      email: newEmployee.email.trim(),
-      name: newEmployee.name.trim(),
-      role: newEmployee.role,
-      createdAt: new Date().toISOString(),
-    };
-
     try {
-      if (isFirebaseConfigured) {
-        await addDoc(collection(db, EMPLOYEES_COLLECTION), employeeData);
-        console.log('[CONFIG] Funcionário adicionado ao Firestore');
-      } else {
-        const localEmp: Employee = { id: crypto.randomUUID(), ...employeeData };
-        setEmployees(prev => {
-          const updated = [...prev, localEmp];
-          saveEmployeesToStorage(updated);
-          return updated;
-        });
-      }
+      const newEmp = await api.post<Employee>('/employees', {
+        name: newEmployee.name.trim(),
+        email: newEmployee.email.trim(),
+        role: newEmployee.role,
+        userId: user.id,
+      });
+
+      setEmployees(prev => [...prev, newEmp]);
     } catch (err: unknown) {
       const error = err as { code?: string; message?: string };
       console.error('[CONFIG] Erro ao adicionar funcionário:', error);
-      setInviteError('Erro ao adicionar funcionário. Verifique sua conexão.');
+      setInviteError('Erro ao adicionar funcionário. Tente novamente.');
       return;
     }
 
@@ -218,16 +124,8 @@ const Configuracoes = () => {
     if (!confirm('Remover funcionário?')) return;
 
     try {
-      if (isFirebaseConfigured) {
-        await deleteDoc(doc(db, EMPLOYEES_COLLECTION, id));
-        console.log('[CONFIG] Funcionário removido do Firestore:', id);
-      } else {
-        setEmployees(prev => {
-          const updated = prev.filter(emp => emp.id !== id);
-          saveEmployeesToStorage(updated);
-          return updated;
-        });
-      }
+      await api.delete(`/employees/${id}`);
+      setEmployees(prev => prev.filter(emp => emp.id !== id));
     } catch (err: unknown) {
       const error = err as { code?: string; message?: string };
       console.error('[CONFIG] Erro ao remover funcionário:', error);
@@ -268,23 +166,13 @@ const Configuracoes = () => {
       updateData.avatar = avatarPreview;
     }
 
-    saveToProfileStorage(updateData);
-
-    if (!isFirebaseConfigured) {
-      setProfileSuccess('Perfil salvo localmente');
-      setTimeout(() => { setProfileSuccess(''); setActiveModal(null); }, 1500);
-      setIsSavingProfile(false);
-      return;
-    }
-
     try {
-      const docRef = doc(db, PROFILES_COLLECTION, user.id);
-      await setDoc(docRef, updateData, { merge: true });
+      await api.put(`/profiles/${user.id}`, updateData);
       setProfileSuccess('Perfil atualizado com sucesso!');
     } catch (err: unknown) {
       const error = err as { code?: string; message?: string };
-      console.error('[CONFIG] Erro ao salvar perfil no Firestore:', error);
-      setProfileSuccess('Perfil salvo localmente (Firestore indisponível)');
+      console.error('[CONFIG] Erro ao salvar perfil na API:', error);
+      setProfileError('Erro ao salvar perfil. Tente novamente.');
     } finally {
       setTimeout(() => {
         setProfileSuccess('');
@@ -294,16 +182,9 @@ const Configuracoes = () => {
     }
   };
 
-  const avatarUploadAbortRef = useRef<AbortController | null>(null);
-
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!isFirebaseConfigured) {
-      setProfileError('Firebase não configurado. Configure as variáveis de ambiente.');
-      return;
-    }
 
     const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!validTypes.includes(file.type)) {
@@ -311,37 +192,25 @@ const Configuracoes = () => {
       return;
     }
 
-    avatarUploadAbortRef.current?.abort();
-    const abortController = new AbortController();
-    avatarUploadAbortRef.current = abortController;
-
     setIsUploadingAvatar(true);
     setProfileError('');
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `avatars/${user?.id}/avatar-${Date.now()}.${fileExt}`;
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-      const storageRef = ref(storage, fileName);
-      await uploadBytes(storageRef, file);
-
-      if (abortController.signal.aborted) return;
-
-      const publicUrl = await getDownloadURL(storageRef);
-
-      if (abortController.signal.aborted) return;
-
-      setAvatarPreview(publicUrl);
+      setAvatarPreview(dataUrl);
       setProfileSuccess('Avatar atualizado! Clique em Salvar para confirmar.');
       setTimeout(() => setProfileSuccess(''), 3000);
-    } catch (err: any) {
-      if (abortController.signal.aborted) return;
-      console.error('[CONFIG] Erro ao fazer upload:', err);
-      setProfileError('Erro ao fazer upload. Tente novamente.');
+    } catch (err) {
+      console.error('[CONFIG] Erro ao ler arquivo:', err);
+      setProfileError('Erro ao processar imagem. Tente novamente.');
     } finally {
-      if (!abortController.signal.aborted) {
-        setIsUploadingAvatar(false);
-      }
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -349,8 +218,6 @@ const Configuracoes = () => {
     if (confirmationText !== 'DELETE') return;
     setIsDeleting(true);
     await new Promise(resolve => setTimeout(resolve, 2000));
-    const keysToRemove = Object.keys(localStorage).filter(key => key.startsWith('axium_'));
-    keysToRemove.forEach(key => localStorage.removeItem(key));
     logout();
     navigate('/login');
   };

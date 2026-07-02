@@ -1,14 +1,10 @@
 import { useEffect, useCallback } from 'react';
-import { db, isFirebaseConfigured, PAGE_EVENTS_COLLECTION } from '../../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { api } from '../../lib/api';
 
 function trackEvent(eventType: 'page_view' | 'button_click', label?: string) {
-  if (!isFirebaseConfigured) return;
-
-  addDoc(collection(db, PAGE_EVENTS_COLLECTION), {
+  api.post('/page-events', {
     event_type: eventType,
     label: label || null,
-    created_at: new Date().toISOString(),
   }).catch((error) => {
     console.error('[Landing Page] Erro ao registrar evento:', error);
   });

@@ -1,85 +1,10 @@
 import { useState } from 'react';
-import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
-import { auth } from '../lib/firebase';
-import { confirmPasswordReset, signOut } from 'firebase/auth';
-
-const getOobCode = () => {
-  return new URLSearchParams(window.location.search).get('oobCode');
-};
-
-const getInitialError = () => {
-  const params = new URLSearchParams(window.location.search);
-  const mode = params.get('mode');
-  const code = params.get('oobCode');
-  if (mode !== 'resetPassword' || !code) {
-    return 'Link de recuperação expirado ou inválido. Por favor, solicite um novo link.';
-  }
-  return '';
-};
+import { Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 const UpdatePassword = () => {
   const navigate = useNavigate();
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(getInitialError);
-  const [success, setSuccess] = useState('');
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setIsLoading(true);
-
-    try {
-      if (!password || !confirmPassword) {
-        setError('Por favor, preencha todos os campos.');
-        setIsLoading(false);
-        return;
-      }
-
-      if (password.length < 6) {
-        setError('A senha deve ter pelo menos 6 caracteres.');
-        setIsLoading(false);
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        setError('As senhas não conferem.');
-        setIsLoading(false);
-        return;
-      }
-
-      const code = getOobCode();
-      if (!code) {
-        setError('Código de recuperação inválido.');
-        setIsLoading(false);
-        return;
-      }
-
-      await confirmPasswordReset(auth, code, password);
-
-      setSuccess('Senha atualizada com sucesso!');
-      await signOut(auth);
-      localStorage.removeItem('axium_auth');
-      setTimeout(() => navigate('/login'), 2000);
-    } catch (err: any) {
-      const code = err?.code;
-      const messages: Record<string, string> = {
-        'auth/expired-action-code': 'Este link de recuperação expirou. Solicite um novo.',
-        'auth/invalid-action-code': 'Link de recuperação inválido ou já utilizado.',
-        'auth/weak-password': 'A senha é muito fraca. Use pelo menos 6 caracteres.',
-        'auth/user-disabled': 'Esta conta foi desativada.',
-        'auth/user-not-found': 'Usuário não encontrado.',
-      };
-      setError(messages[code] || 'Erro ao atualizar senha. Tente novamente.');
-    }
-
-    setIsLoading(false);
-  };
 
   return (
     <div className="min-h-screen bg-neutral-50 flex">
@@ -111,73 +36,17 @@ const UpdatePassword = () => {
           </button>
 
           <div className="mb-6 md:mb-8">
-            <h2 className="text-xl md:text-2xl font-black text-black tracking-tight mb-1">Nova Senha</h2>
-            <p className="text-neutral-500 text-xs md:text-sm">Digite sua nova senha abaixo.</p>
+            <h2 className="text-xl md:text-2xl font-black text-black tracking-tight mb-1">Recuperação de Senha</h2>
+            <p className="text-neutral-500 text-xs md:text-sm">
+              A recuperação de senha será implementada em breve. Entre em contato com o administrador.
+            </p>
           </div>
 
-          {(error || success) && (
-            <div className={`mb-4 md:mb-6 p-2 md:p-3.5 ${success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'} rounded-md`}>
-              <p className={`${success ? 'text-green-600' : 'text-red-600'} text-xs md:text-sm font-medium`}>{success || error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-5">
-            <div className="space-y-1.5">
-              <label htmlFor="new-password" className="block text-[10px] md:text-xs font-bold text-neutral-600 uppercase tracking-wider">
-                Nova Senha
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                <input
-                  id="new-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  className="w-full border border-neutral-200 rounded-md py-3 pl-11 pr-12 text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black transition-colors"
-                  disabled={isLoading}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="confirm-password" className="block text-[10px] md:text-xs font-bold text-neutral-600 uppercase tracking-wider">
-                Confirmar Senha
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                <input
-                  id="confirm-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repita a senha"
-                  className="w-full border border-neutral-200 rounded-md py-3 pl-11 pr-12 text-sm placeholder-neutral-400 focus:outline-none focus:border-black transition-colors bg-white"
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-black hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-md transition-colors flex items-center justify-center gap-2 text-sm"
-            >
-              {isLoading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Atualizando...</>
-              ) : (
-                'Atualizar senha'
-              )}
-            </button>
-          </form>
+          <div className="p-6 bg-yellow-50 border border-yellow-100 rounded-2xl">
+            <p className="text-yellow-800 text-sm font-medium text-center">
+              Para redefinir sua senha, solicite um novo link ao administrador do sistema.
+            </p>
+          </div>
         </div>
       </div>
     </div>

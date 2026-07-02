@@ -1,12 +1,9 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
 import { generateUUID } from '../lib/uuid';
-import { useCollectionSync } from '../lib/sync';
-import {
-  LEADS_COLLECTION,
-  EVENTS_COLLECTION,
-} from '../lib/firebase';
+import { api } from '../lib/api';
+import { useApiCrud } from '../lib/use-api-crud';
 
 export interface Lead {
   id: string;
@@ -101,37 +98,37 @@ function pushNotification(
 export const CRMProvider = ({ children }: { children: ReactNode }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [eventsData, setEventsData] = useState<CalendarEvent[]>([]);
+  const [eventsStatus, setEventsStatus] = useState<string>('loading');
 
   const {
-    data: firestoreLeads,
+    data: leads,
     status: leadsStatus,
     error: leadsError,
-    add: addLeadToFirestore,
-    update: updateLeadInFirestore,
-    remove: removeLeadFromFirestore,
-  } = useCollectionSync<Lead>(
-    LEADS_COLLECTION,
-    'axium_leads_v2',
-    [],
-  );
+    add: addLeadApi,
+    update: updateLeadApi,
+    remove: removeLeadApi,
+  } = useApiCrud<Lead>('/leads');
 
-  const {
-    data: firestoreEvents,
-    status: eventsStatus,
-    error: eventsError,
-    add: addEventToFirestore,
-    update: updateEventInFirestore,
-    remove: removeEventFromFirestore,
-  } = useCollectionSync<CalendarEvent>(
-    EVENTS_COLLECTION,
-    'axium_events_v2',
-    [],
-  );
+  const eventsLoadedRef = useRef(false);
 
-  const leads = firestoreLeads;
-  const events = firestoreEvents;
+  useEffect(() => {
+    if (eventsLoadedRef.current) return;
+    eventsLoadedRef.current = true;
 
-  const syncError = leadsError || eventsError;
+    api.get<CalendarEvent[]>('/events')
+      .then(data => {
+        setEventsData(data);
+        setEventsStatus('synced');
+      })
+      .catch(err => {
+        console.error('[CRM] Erro ao carregar eventos:', err);
+        setEventsStatus('error');
+      });
+  }, []);
+
+  const events = eventsData;
+  const syncError = leadsError;
   const syncStatus = leadsStatus === 'offline' || eventsStatus === 'offline' ? 'offline' : leadsStatus;
 
   const leadsByStage = useMemo(() => groupLeadsByStage(leads), [leads]);
@@ -155,20 +152,22 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
 
   const addLead = useCallback(async (lead: LeadInput) => {
     try {
-      await addLeadToFirestore(lead);
+      await addLeadApi(lead);
       pushNotification(setNotifications, 'Novo Lead', `${lead.name} foi adicionado ao sistema.`, 'lead');
     } catch (error) {
       console.error('Erro ao adicionar lead:', error);
       throw error;
     }
-  }, [addLeadToFirestore]);
+  }, [addLeadApi]);
 
   const updateLead = useCallback(async (id: string, fields: LeadUpdate) => {
     try {
-      await updateLeadInFirestore(id, fields);
+      await updateLeadApi(id, fields);
       const old = leads.find(l => l.id === id);
       if (old) {
-        const changedFields = Object.keys(fields).filter(k => (fields as unknown as Record<string, unknown>)[k] !== (old as unknown as Record<string, unknown>)[k]);
+        const changedFields = Object.keys(fields).filter(k =>
+          (fields as unknown as Record<string, unknown>)[k] !== (old as unknown as Record<string, unknown>)[k]
+        );
         if (changedFields.length > 0) {
           pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
         }
@@ -177,11 +176,11 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
       console.error('Erro ao atualizar lead:', error);
       throw error;
     }
-  }, [leads, updateLeadInFirestore]);
+  }, [leads, updateLeadApi]);
 
   const updateLeadStage = useCallback(async (id: string, stage: string) => {
     try {
-      await updateLeadInFirestore(id, { stage } as Partial<Lead>);
+      await updateLeadApi(id, { stage } as Partial<Lead>);
       const old = leads.find(l => l.id === id);
       if (old && old.stage !== stage) {
         pushNotification(setNotifications, 'Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
@@ -190,11 +189,11 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
       console.error('Erro ao mover lead:', error);
       throw error;
     }
-  }, [leads, updateLeadInFirestore]);
+  }, [leads, updateLeadApi]);
 
   const deleteLead = useCallback(async (id: string) => {
     try {
-      await removeLeadFromFirestore(id);
+      await removeLeadApi(id);
       const old = leads.find(l => l.id === id);
       if (old) {
         pushNotification(setNotifications, 'Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
@@ -203,21 +202,23 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
       console.error('Erro ao remover lead:', error);
       throw error;
     }
-  }, [leads, removeLeadFromFirestore]);
+  }, [leads, removeLeadApi]);
 
   const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id'>) => {
     try {
-      await addEventToFirestore(event);
+      const created = await api.post<CalendarEvent>('/events', event);
+      setEventsData(prev => [...prev, created]);
       pushNotification(setNotifications, 'Evento Criado', `${event.title} foi adicionado ao calendário.`, 'meeting');
     } catch (error) {
       console.error('Erro ao criar evento:', error);
       throw error;
     }
-  }, [addEventToFirestore]);
+  }, []);
 
   const updateEvent = useCallback(async (id: string, fields: Partial<CalendarEvent>) => {
     try {
-      await updateEventInFirestore(id, fields);
+      const updated = await api.put<CalendarEvent>(`/events/${id}`, fields);
+      setEventsData(prev => prev.map(e => e.id === id ? updated : e));
       const old = events.find(e => e.id === id);
       if (old) {
         pushNotification(setNotifications, 'Evento Atualizado', `${old.title} foi modificado.`, 'meeting');
@@ -226,11 +227,12 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
       console.error('Erro ao atualizar evento:', error);
       throw error;
     }
-  }, [events, updateEventInFirestore]);
+  }, [events]);
 
   const deleteEvent = useCallback(async (id: string) => {
     try {
-      await removeEventFromFirestore(id);
+      await api.delete(`/events/${id}`);
+      setEventsData(prev => prev.filter(e => e.id !== id));
       const old = events.find(e => e.id === id);
       if (old) {
         pushNotification(setNotifications, 'Evento Removido', `${old.title} foi removido do calendário.`, 'meeting');
@@ -239,7 +241,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
       console.error('Erro ao remover evento:', error);
       throw error;
     }
-  }, [events, removeEventFromFirestore]);
+  }, [events]);
 
   const getLeadsByStage = useCallback((stage: string) => {
     return leads.filter(l => l.stage === stage);
@@ -275,27 +277,12 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     syncError,
     syncStatus,
   }), [
-    leads,
-    events,
-    searchTerm,
-    notifications,
-    markNotificationsAsRead,
-    clearNotifications,
-    removeNotification,
-    pushNotificationCb,
-    addLead,
-    updateLead,
-    updateLeadStage,
-    deleteLead,
-    getLeadsByStage,
-    getTotalValueByStage,
-    addEvent,
-    updateEvent,
-    deleteEvent,
-    leadsByStage,
-    totalPipelineValue,
-    syncError,
-    syncStatus,
+    leads, events, searchTerm, notifications, markNotificationsAsRead,
+    clearNotifications, removeNotification, pushNotificationCb,
+    addLead, updateLead, updateLeadStage, deleteLead,
+    getLeadsByStage, getTotalValueByStage,
+    addEvent, updateEvent, deleteEvent,
+    leadsByStage, totalPipelineValue, syncError, syncStatus,
   ]);
 
   return (

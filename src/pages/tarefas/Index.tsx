@@ -4,8 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCRM } from '../../contexts/CRMContext';
 import { generateUUID } from '../../lib/uuid';
 import { cleanPhoneNumber, generateWhatsAppLink, WHATSAPP_MESSAGE_TEMPLATES } from '../../lib/whatsapp';
-import { useCollectionSync } from '../../lib/sync';
-import { BOARDS_COLLECTION } from '../../lib/firebase';
+import { useApiCrud } from '../../lib/use-api-crud';
 
 interface ColumnOption {
   id: string;
@@ -552,14 +551,10 @@ const Tarefas = () => {
 
   const {
     data: syncedBoards,
-    add: addBoardToFirestore,
-    update: updateBoardInFirestore,
-    remove: removeBoardFromFirestore,
-  } = useCollectionSync<BoardType>(
-    BOARDS_COLLECTION,
-    'axium_boards_v3',
-    [],
-  );
+    add: addBoardToApi,
+    update: updateBoardInApi,
+    remove: removeBoardFromApi,
+  } = useApiCrud<BoardType>('/boards');
 
   const boards = syncedBoards;
 
@@ -612,13 +607,13 @@ const Tarefas = () => {
   const handleUpdateBoard = useCallback(async (updatedBoard: BoardType) => {
     pushNotification('Tarefa Atualizada', `Tarefa atualizada no quadro "${updatedBoard.title}".`, 'system');
     try {
-      await updateBoardInFirestore(updatedBoard.id, updatedBoard);
+      await updateBoardInApi(updatedBoard.id, updatedBoard);
       console.log(`[Tarefas] Quadro atualizado: ${updatedBoard.id}`);
     } catch (error) {
       console.error('[Tarefas] Erro ao atualizar quadro:', error);
       pushNotification('Erro', `Falha ao atualizar "${updatedBoard.title}". Tente novamente.`, 'system');
     }
-  }, [pushNotification, updateBoardInFirestore]);
+  }, [pushNotification, updateBoardInApi]);
 
   const handleDeleteBoard = useCallback(async (id: string) => {
     const board = boards.find(b => b.id === id);
@@ -629,13 +624,13 @@ const Tarefas = () => {
     }
     if (!confirm(`Excluir o quadro "${board.title}"?`)) return;
     try {
-      await removeBoardFromFirestore(id);
+      await removeBoardFromApi(id);
       pushNotification('Quadro Excluído', `Quadro "${board.title}" foi removido.`, 'system');
     } catch (error) {
       console.error('[Tarefas] Erro ao remover quadro:', error);
       pushNotification('Erro', `Falha ao excluir "${board.title}". Tente novamente.`, 'system');
     }
-  }, [boards, pushNotification, removeBoardFromFirestore]);
+  }, [boards, pushNotification, removeBoardFromApi]);
 
   const handleCreateNewTask = (boardId: string) => {
     const board = boards.find(b => b.id === boardId);
@@ -656,7 +651,7 @@ const Tarefas = () => {
   const handleCreateNewBoard = async () => {
     if (!newBoardTitle.trim()) return;
     try {
-      await addBoardToFirestore({
+      await addBoardToApi({
         title: newBoardTitle,
         color: newBoardColor,
         columns: DEFAULT_BOARD.columns,

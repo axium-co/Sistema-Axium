@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  manager
+  user
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(user)
+  avatar       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  profiles     Profile[]
+  activityLogs ActivityLog[]
+  events       Event[]
+  notifications Notification[]
+  boards       Board[]
+  invoices     Invoice[]
+  expenses     Expense[]
+  integrations Integration[]
+  employees    Employee[]
+  userRoles    UserRoleAssignment[]
+  leadsCreated Lead[]       @relation("lead_creator")
+  leadsModified Lead[]      @relation("lead_modifier")
+
+  @@map("users")
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  nome      String
+  cargo     String?
+  telefone  String?
+  avatar    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("profiles")
+}
+
+model Lead {
+  id              String   @id @default(uuid())
+  name            String
+  niche           String?
+  whatsapp        String?
+  email           String?
+  instagram       String?
+  stage           String   @default("Novos Leads")
+  origin          String?
+  firstContact    String?  @map("first_contact")
+  closingDate     String?  @map("closing_date")
+  followUpReminder String? @map("follow_up_reminder")
+  address         String?
+  gmnReviews      String?  @map("gmn_reviews")
+  gmnStars        String?  @map("gmn_stars")
+  notes           String?
+  value           String?
+  lastModifiedBy  String?  @map("last_modified_by")
+  createdById     String?  @map("created_by_id")
+  modifiedById    String?  @map("modified_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  createdBy  User?  @relation("lead_creator", fields: [createdById], references: [id])
+  modifiedBy User?  @relation("lead_modifier", fields: [modifiedById], references: [id])
+
+  @@index([stage])
+  @@index([createdById])
+  @@index([modifiedById])
+  @@map("leads")
+}
+
+model Event {
+  id           String   @id @default(uuid())
+  title        String
+  createdBy    String?  @map("created_by")
+  activityType String?  @map("activity_type")
+  dateTime     DateTime @map("date_time")
+  meetingLink  String?  @map("meeting_link")
+  description  String?
+  userId       String?  @map("user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([dateTime])
+  @@map("events")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  acao      String
+  descricao String?
+  timestamp DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("activity_logs")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  time        DateTime @default(now())
+  isRead      Boolean  @default(false) @map("is_read")
+  type        String
+  userId      String?  @map("user_id")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([time])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model WhatsAppTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  template  String
+  category  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("whatsapp_templates")
+}
+
+model Board {
+  id        String   @id @default(uuid())
+  title     String
+  color     String   @default("#3b82f6")
+  userId    String?  @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User?         @relation(fields: [userId], references: [id])
+  columns BoardColumn[]
+  rows    BoardRow[]
+
+  @@map("boards")
+}
+
+model BoardColumn {
+  id        String  @id @default(uuid())
+  boardId   String  @map("board_id")
+  title     String
+  type      String  @default("text")
+  width     Int     @default(150)
+  options   Json?
+  sortOrder Int     @default(0) @map("sort_order")
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId])
+  @@map("board_columns")
+}
+
+model BoardRow {
+  id             String   @id @default(uuid())
+  boardId        String   @map("board_id")
+  values         Json     @default("{}")
+  lastModifiedBy String?  @map("last_modified_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId])
+  @@map("board_rows")
+}
+
+model Invoice {
+  id             String   @id @default(uuid())
+  client         String
+  amount         String
+  date           String?
+  status         String   @default("Pendente")
+  source         String   @default("manual")
+  lastModifiedBy String?  @map("last_modified_by")
+  userId         String?  @map("user_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Expense {
+  id             String   @id @default(uuid())
+  category       String
+  description    String?
+  amount         String
+  date           String?
+  status         String   @default("Pendente")
+  lastModifiedBy String?  @map("last_modified_by")
+  userId         String?  @map("user_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([category])
+  @@index([status])
+  @@map("expenses")
+}
+
+model Integration {
+  id        String   @id @default(uuid())
+  type      String
+  config    Json?
+  enabled   Boolean  @default(false)
+  userId    String?  @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("integrations")
+}
+
+model Employee {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  role      String   @default("funcionario")
+  userId    String?  @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("employees")
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  email     String?
+  role      String   @default("user")
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([email])
+  @@index([userId])
+  @@map("user_roles")
+}
+
+model PageEvent {
+  id        String   @id @default(uuid())
+  eventType String?  @map("event_type")
+  page      String?
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("page_events")
+}

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { db, ACTIVITY_LOGS_COLLECTION, isFirebaseConfigured, type ActivityLog } from '../lib/firebase';
-import { collection, query, orderBy, limit, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { api } from '../lib/api';
+import type { ActivityLog } from '../types/activity';
 
 interface ActivityLogsContextType {
   activityLogs: ActivityLog[];
@@ -24,50 +24,22 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
   const [fetchActivityLogsError, setFetchActivityLogsError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setIsLoadingLogs(false);
-      return;
-    }
-
-    const q = query(
-      collection(db, ACTIVITY_LOGS_COLLECTION),
-      orderBy('timestamp', 'desc'),
-      limit(20),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const logs = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as ActivityLog[];
+    api.get<ActivityLog[]>('/activity-logs')
+      .then((logs) => {
         setActivityLogs(logs);
         setIsLoadingLogs(false);
         setFetchActivityLogsError(null);
-      },
-      (err) => {
-        console.error('[ActivityLogs] Erro no listener:', err.code, err.message);
-        setFetchActivityLogsError('Erro ao carregar atividades em tempo real. Verifique sua conexão.');
+      })
+      .catch((err) => {
+        console.error('[ActivityLogs] Erro ao carregar:', err);
+        setFetchActivityLogsError('Erro ao carregar atividades.');
         setIsLoadingLogs(false);
-      },
-    );
-
-    return () => unsubscribe();
+      });
   }, []);
 
   const logActivity = useCallback(async (acao: ActivityLog['acao'], descricao: string) => {
-    if (!isFirebaseConfigured) return;
-
     try {
-      await addDoc(collection(db, ACTIVITY_LOGS_COLLECTION), {
-        acao,
-        descricao,
-        user_id: '',
-        timestamp: new Date().toISOString(),
-        createdAt: serverTimestamp(),
-      });
-      console.log(`[ActivityLogs] Atividade registrada: ${acao} - ${descricao}`);
+      await api.post('/activity-logs', { acao, descricao });
     } catch (err) {
       console.error('[ActivityLogs] Erro ao registrar atividade:', err);
     }
