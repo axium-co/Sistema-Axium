@@ -1,11 +1,11 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authenticate);
 
-router.get('/', async (_req, res) => {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const templates = await prisma.whatsAppTemplate.findMany({ orderBy: { createdAt: 'desc' } });
     res.json(templates);
@@ -15,7 +15,7 @@ router.get('/', async (_req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const template = await prisma.whatsAppTemplate.create({ data: req.body });
     res.status(201).json(template);
@@ -25,7 +25,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const template = await prisma.whatsAppTemplate.update({ where: { id: req.params.id }, data: req.body });
     res.json(template);
@@ -35,7 +35,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req: Request<{ id: string }>, res: Response) => {
   try {
     await prisma.whatsAppTemplate.delete({ where: { id: req.params.id } });
     res.json({ success: true });
