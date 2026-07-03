@@ -37,7 +37,7 @@ const Configuracoes = () => {
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
 
-  const [profileData, setProfileData] = useState<{ name: string; email: string; phone: string; avatar: string }>({ name: '', email: '', phone: '(11) 99999-9999', avatar: '' });
+  const [profileData, setProfileData] = useState<{ name: string; email: string; phone: string; avatar: string }>({ name: '', email: '', phone: '', avatar: '' });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
@@ -55,9 +55,9 @@ const Configuracoes = () => {
     api.get<{ nome?: string; telefone?: string; avatar?: string }>(`/profiles/${user.id}`)
       .then((data) => {
         setProfileData({
-          name: data.nome || '',
+          name: data.nome || user.name || '',
           email: user.email || '',
-          phone: data.telefone || '(11) 99999-9999',
+          phone: data.telefone || '',
           avatar: data.avatar || ''
         });
         if (data.avatar) {
@@ -66,6 +66,7 @@ const Configuracoes = () => {
       })
       .catch((err) => {
         console.error('[CONFIG] Erro ao carregar perfil:', err);
+        setProfileError('Erro ao carregar perfil. Verifique sua conexão.');
       });
   }, [user?.id]);
 
@@ -78,6 +79,7 @@ const Configuracoes = () => {
       })
       .catch((err) => {
         console.error('[CONFIG] Erro ao carregar funcionários:', err);
+        setInviteError('Erro ao carregar funcionários. Verifique sua conexão.');
       });
   }, [user?.id]);
 

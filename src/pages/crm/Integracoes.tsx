@@ -11,10 +11,11 @@ interface Integration {
   type?: 'default' | 'n8n';
 }
 
-interface IntegrationStatus {
+interface BackendIntegration {
   id: string;
-  integrationId: string;
-  connected: boolean;
+  type: string;
+  enabled: boolean;
+  config: { apiKey?: string; webhookUrl?: string } | null;
 }
 
 const INTEGRATION_DEFS: Integration[] = [
@@ -31,11 +32,11 @@ const CRMIntegracoes = () => {
     data: syncedStatuses,
     add: addStatus,
     update: updateStatus,
-  } = useApiCrud<IntegrationStatus>('/integrations');
+  } = useApiCrud<BackendIntegration>('/integrations');
 
   const getConnected = (id: string): boolean => {
-    const synced = syncedStatuses.find(s => s.integrationId === id);
-    return synced?.connected ?? false;
+    const synced = syncedStatuses.find(s => s.type === id);
+    return synced?.enabled ?? false;
   };
 
   const integrations: Integration[] = INTEGRATION_DEFS.map(def => ({
@@ -49,13 +50,13 @@ const CRMIntegracoes = () => {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const pushStatus = async (id: string, connected: boolean) => {
+  const pushStatus = async (id: string, enabled: boolean, config?: { apiKey?: string; webhookUrl?: string }) => {
     try {
-      const existing = syncedStatuses.find(s => s.integrationId === id);
+      const existing = syncedStatuses.find(s => s.type === id);
       if (existing) {
-        await updateStatus(existing.id, { connected });
+        await updateStatus(existing.id, { enabled, config } as any);
       } else {
-        await addStatus({ integrationId: id, connected });
+        await addStatus({ type: id, enabled, config: config || {} } as any);
       }
     } catch (err) {
       console.error('[Integracoes] Erro ao atualizar status:', err);
@@ -76,12 +77,10 @@ const CRMIntegracoes = () => {
   const handleSaveConnection = async () => {
     if (!selectedIntegration || !apiKey) return;
     if (selectedIntegration.type === 'n8n' && !webhookUrl) return;
-    
+
     setIsSaving(true);
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    await pushStatus(selectedIntegration.id, true);
+
+    await pushStatus(selectedIntegration.id, true, { apiKey, webhookUrl });
     setIsSaving(false);
     setIsModalOpen(false);
     setSelectedIntegration(null);

@@ -39,7 +39,8 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
 
   const logActivity = useCallback(async (acao: ActivityLog['acao'], descricao: string) => {
     try {
-      await api.post('/activity-logs', { acao, descricao });
+      const created = await api.post<ActivityLog>('/activity-logs', { acao, descricao });
+      setActivityLogs(prev => [created, ...prev]);
     } catch (err) {
       console.error('[ActivityLogs] Erro ao registrar atividade:', err);
     }

@@ -20,6 +20,8 @@ export function useApiCrud<T extends { id: string }>(
 
   const mountedRef = useRef(true);
 
+  const dataRef = useRef<T[]>([]);
+
   useEffect(() => {
     mountedRef.current = true;
     fetchAll();
@@ -30,12 +32,13 @@ export function useApiCrud<T extends { id: string }>(
     try {
       const data = await api.get<T[]>(endpoint);
       if (mountedRef.current) {
+        dataRef.current = data;
         setState({ data, status: 'synced', error: null });
       }
     } catch (err) {
       if (mountedRef.current) {
         setState({
-          data: [],
+          data: dataRef.current,
           status: 'error',
           error: err instanceof ApiError ? err.message : 'Erro ao carregar dados',
         });

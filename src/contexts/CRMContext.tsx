@@ -111,6 +111,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   } = useApiCrud<Lead>('/leads');
 
   const eventsLoadedRef = useRef(false);
+  const notifLoadedRef = useRef(false);
 
   useEffect(() => {
     if (eventsLoadedRef.current) return;
@@ -127,6 +128,19 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
       });
   }, []);
 
+  useEffect(() => {
+    if (notifLoadedRef.current) return;
+    notifLoadedRef.current = true;
+
+    api.get<Notification[]>('/notifications')
+      .then(data => {
+        setNotifications(data);
+      })
+      .catch(err => {
+        console.error('[CRM] Erro ao carregar notificações:', err);
+      });
+  }, []);
+
   const events = eventsData;
   const syncError = leadsError;
   const syncStatus = leadsStatus === 'offline' || eventsStatus === 'offline' ? 'offline' : leadsStatus;
@@ -135,19 +149,35 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   const totalPipelineValue = useMemo(() => calculateTotalValue(leads), [leads]);
 
   const markNotificationsAsRead = useCallback(() => {
+    api.put('/notifications/read-all', {}).catch(err =>
+      console.error('[CRM] Erro ao marcar notificações como lidas:', err)
+    );
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
   }, []);
 
   const clearNotifications = useCallback(() => {
+    api.put('/notifications/read-all', {}).catch(err =>
+      console.error('[CRM] Erro ao limpar notificações:', err)
+    );
     setNotifications([]);
   }, []);
 
   const removeNotification = useCallback((id: string) => {
+    api.delete(`/notifications/${id}`).catch(err =>
+      console.error('[CRM] Erro ao remover notificação:', err)
+    );
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
   const pushNotificationCb = useCallback((title: string, description: string, type: Notification['type']) => {
-    pushNotification(setNotifications, title, description, type);
+    api.post<Notification>('/notifications', { title, description, type, time: new Date().toISOString() })
+      .then(created => {
+        setNotifications(prev => [created, ...prev]);
+      })
+      .catch(err => {
+        console.error('[CRM] Erro ao criar notificação:', err);
+        pushNotification(setNotifications, title, description, type);
+      });
   }, []);
 
   const addLead = useCallback(async (lead: LeadInput) => {

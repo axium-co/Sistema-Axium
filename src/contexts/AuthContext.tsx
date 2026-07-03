@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { loginApi, ApiError, setAuthToken, getMe } from '../lib/api';
+import { loginApi, ApiError, setAuthToken, getMe, api } from '../lib/api';
 
 type UserRole = 'admin' | 'manager' | 'user';
 export type { UserRole };
@@ -31,14 +31,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const EMPLOYEES = ['Maria', 'João', 'Pedro', 'Ana'];
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [employeeName, setEmployeeName] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<string[]>([]);
 
   const hasPermission = useCallback((allowedRoles: UserRole[]): boolean => {
     if (!isAuthenticated || !user) return false;
@@ -46,11 +45,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('auth_token');
-    if (savedToken) {
-      setAuthToken(savedToken);
-      getMe()
-        .then((res) => {
+    async function init() {
+      const savedToken = localStorage.getItem('auth_token');
+      if (savedToken) {
+        setAuthToken(savedToken);
+        try {
+          const res = await getMe();
           const authUser: AuthUser = {
             id: res.user.id,
             email: res.user.email,
@@ -62,17 +62,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setRole(authUser.role);
           setEmployeeName(authUser.name);
           setIsAuthenticated(true);
-        })
-        .catch(() => {
+        } catch {
           localStorage.removeItem('auth_token');
           setAuthToken(null);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    } else {
+        }
+      }
+
+      try {
+        const emps = await api.get<{ id: string; name: string }[]>('/employees');
+        setEmployees(emps.map(e => e.name));
+      } catch {
+        console.warn('[Auth] Não foi possível carregar funcionários da API');
+      }
+
       setIsLoading(false);
     }
+    init();
   }, []);
 
   function clearAuth() {
@@ -120,7 +125,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const selectEmployee = (name: string) => {
-    if (!EMPLOYEES.includes(name)) return;
+    if (!employees.includes(name)) return;
 
     setEmployeeName(name);
     setUser(prev => prev ? { ...prev, name } : null);
@@ -138,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         role,
         employeeName,
-        availableEmployees: EMPLOYEES,
+        availableEmployees: employees,
         hasPermission,
         login,
         selectEmployee,
