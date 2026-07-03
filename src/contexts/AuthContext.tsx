@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { loginApi } from '../lib/api';
+import { loginApi, ApiError, setAuthToken } from '../lib/api';
 
 type UserRole = 'admin' | 'manager' | 'user';
 export type { UserRole };
@@ -31,7 +31,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'auth_user';
 const EMPLOYEES = ['Maria', 'João', 'Pedro', 'Ana'];
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -47,29 +46,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const authData = JSON.parse(stored);
-        if (authData?.email && authData?.id && authData?.token) {
-          const loadedUser: AuthUser = {
-            id: authData.id,
-            email: authData.email,
-            name: authData.name || 'Usuário',
-            role: authData.role || 'user',
-            createdAt: authData.createdAt,
-          };
-          setUser(loadedUser);
-          setRole(loadedUser.role);
-          setEmployeeName(authData.name || authData.employeeName || 'Usuário');
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          return;
-        }
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    }
     setIsLoading(false);
   }, []);
 
@@ -78,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRole(null);
     setEmployeeName(null);
     setIsAuthenticated(false);
-    localStorage.removeItem(STORAGE_KEY);
+    setAuthToken(null);
   }
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
@@ -98,20 +74,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setRole(authUser.role);
         setEmployeeName(authUser.name);
         setIsAuthenticated(true);
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          id: authUser.id,
-          email: authUser.email,
-          name: authUser.name,
-          role: authUser.role,
-          employeeName: authUser.name,
-          createdAt: authUser.createdAt,
-          token: result.token,
-        }));
+        setAuthToken(result.token);
 
         return { success: true };
       } catch (apiErr: unknown) {
         console.error('[AUTH] API login error:', apiErr);
+        if (apiErr instanceof ApiError) {
+          return { success: false, error: apiErr.message };
+        }
+        if (apiErr instanceof TypeError) {
+          return { success: false, error: 'Servidor indisponível. Verifique se o backend está rodando.' };
+        }
         return { success: false, error: 'E-mail ou senha incorretos' };
       }
     } catch (err) {
@@ -125,16 +98,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     setEmployeeName(name);
     setUser(prev => prev ? { ...prev, name } : null);
-
-    if (role) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        id: user?.id,
-        email: user?.email,
-        name,
-        role,
-        employeeName: name,
-      }));
-    }
   };
 
   const logout = async () => {

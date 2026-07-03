@@ -1,5 +1,15 @@
 const API_BASE = import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.startsWith('http') ? import.meta.env.VITE_API_URL : `http://localhost:3001${import.meta.env.VITE_API_URL || ''}`;
 
+let _authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  _authToken = token;
+}
+
+export function getAuthToken(): string | null {
+  return _authToken;
+}
+
 class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -9,31 +19,17 @@ class ApiError extends Error {
   }
 }
 
-function getToken(): string | null {
-  try {
-    const stored = localStorage.getItem('auth_user');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.token || null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (_authToken) {
+    headers['Authorization'] = `Bearer ${_authToken}`;
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
