@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2, X, Edit3, MessageCircle, Paperclip, Download } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCRM } from '../../contexts/CRMContext';
@@ -101,32 +101,49 @@ const Board = ({
 }) => {
   const { role, employeeName } = useAuth();
 
+  const [localBoard, setLocalBoard] = useState(board);
+  const initialLoad = useRef(true);
+
+  useEffect(() => {
+    if (initialLoad.current) {
+      initialLoad.current = false;
+      return;
+    }
+    setLocalBoard(board);
+  }, [board]);
+
   const handleAddRow = () => {
     const newRow: Row = {
       id: generateUUID(),
-      values: board.columns.reduce((acc, col) => {
+      values: localBoard.columns.reduce((acc, col) => {
         acc[col.id] = col.type === 'number' ? 0 : '';
         return acc;
       }, {} as Record<string, unknown>),
       lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário'),
     };
-    onUpdateBoard({ ...board, rows: [...board.rows, newRow] });
+    const updated = { ...localBoard, rows: [...localBoard.rows, newRow] };
+    setLocalBoard(updated);
+    onUpdateBoard(updated);
   };
 
   const handleDeleteRow = (rowId: string) => {
     if (!confirm('Excluir esta linha?')) return;
-    onUpdateBoard({ ...board, rows: board.rows.filter(r => r.id !== rowId) });
+    const updated = { ...localBoard, rows: localBoard.rows.filter(r => r.id !== rowId) };
+    setLocalBoard(updated);
+    onUpdateBoard(updated);
   };
 
   const handleCellChange = (rowId: string, colId: string, value: unknown) => {
-    const updated = board.rows.map(r => 
+    const updated = localBoard.rows.map(r => 
       r.id === rowId ? { ...r, values: { ...r.values, [colId]: value }, lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário') } : r
     );
-    onUpdateBoard({ ...board, rows: updated });
+    const updatedBoard = { ...localBoard, rows: updated };
+    setLocalBoard(updatedBoard);
+    onUpdateBoard(updatedBoard);
   };
 
   const getOptionColor = (colId: string, value: string) => {
-    const col = board.columns.find(c => c.id === colId);
+    const col = localBoard.columns.find(c => c.id === colId);
     if (!col?.options) return '#6b7280';
     return col.options.find(o => o.label === value)?.color || '#6b7280';
   };
@@ -142,15 +159,15 @@ const Board = ({
     }
     
     const updatedBoard = {
-      ...board,
-      columns: board.columns.filter(c => c.id !== colId),
-      rows: board.rows.map(row => {
+      ...localBoard,
+      columns: localBoard.columns.filter(c => c.id !== colId),
+      rows: localBoard.rows.map(row => {
         const newValues = { ...row.values };
         delete newValues[colId];
         return { ...row, values: newValues };
       }),
     };
-    
+    setLocalBoard(updatedBoard);
     onUpdateBoard(updatedBoard);
   };
 
@@ -252,14 +269,16 @@ const Board = ({
           
           const newOption = { id: generateUUID(), label: tagName, color: tagColor };
           const updatedOptions = [...options, newOption];
-          const updatedColumns = board.columns.map(c =>
+          const updatedColumns = localBoard.columns.map(c =>
             c.id === col.id ? { ...c, options: updatedOptions } : c
           );
           const newTags = [...currentTags, tagName];
-          const updatedRows = board.rows.map(r =>
+          const updatedRows = localBoard.rows.map(r =>
             r.id === row.id ? { ...r, values: { ...r.values, [col.id]: newTags } } : r
           );
-          onUpdateBoard({ ...board, columns: updatedColumns, rows: updatedRows });
+          const updatedBoard = { ...localBoard, columns: updatedColumns, rows: updatedRows };
+          setLocalBoard(updatedBoard);
+          onUpdateBoard(updatedBoard);
           
           if (input) input.value = '';
           if (colorInput) colorInput.value = '#6b7280';
@@ -440,9 +459,9 @@ const Board = ({
   return (
     <div className="mb-8">
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-3 h-8 rounded-full" style={{ backgroundColor: board.color }} />
-        <h2 className="text-xl font-black text-black">{board.title}</h2>
-        <button onClick={() => onAddColumn(board.id)} className="px-3 py-1 text-xs font-bold text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-md transition-colors">
+        <div className="w-3 h-8 rounded-full" style={{ backgroundColor: localBoard.color }} />
+        <h2 className="text-xl font-black text-black">{localBoard.title}</h2>
+        <button onClick={() => onAddColumn(localBoard.id)} className="px-3 py-1 text-xs font-bold text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-md transition-colors">
           + Coluna
         </button>
         <button onClick={() => onDeleteBoard()} className="ml-auto text-neutral-400 hover:text-red-500"><Trash2 size={16} /></button>
@@ -454,7 +473,7 @@ const Board = ({
             <thead className="sticky top-0 z-10">
               <tr className="border-b border-neutral-200 bg-neutral-100">
                 <th className="w-10 p-3 border-r border-neutral-200 text-black">#</th>
-                {board.columns.map(col => (
+                {localBoard.columns.map(col => (
                   <th 
                     key={col.id} 
                     className="p-3 border-l border-neutral-200 text-left text-[10px] font-black uppercase tracking-widest text-neutral-600 whitespace-nowrap group hover:bg-neutral-50 transition-colors" 
@@ -482,12 +501,12 @@ const Board = ({
               </tr>
             </thead>
             <tbody>
-              {board.rows.map(row => (
+              {localBoard.rows.map(row => (
                 <tr key={row.id} className="border-b border-neutral-200 hover:bg-neutral-50">
                   <td className="p-3 border-r border-neutral-200 text-center">
                     <button onClick={() => handleDeleteRow(row.id)} className="text-neutral-400 hover:text-red-500"><Trash2 size={14} /></button>
                   </td>
-                  {board.columns.map(col => (
+                  {localBoard.columns.map(col => (
                     <td key={col.id} className="p-0 border-l border-neutral-200">
                       {renderCell(row, col)}
                     </td>
@@ -511,7 +530,7 @@ const Board = ({
 
       {/* Mobile Cards */}
       <div className="block md:hidden space-y-3">
-        {board.rows.map(row => (
+        {localBoard.rows.map(row => (
           <div key={row.id} className="border border-neutral-200 rounded-2xl bg-white overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 bg-neutral-50">
               <span className="text-xs font-black text-neutral-500 uppercase tracking-widest">Linha</span>
@@ -520,7 +539,7 @@ const Board = ({
               </button>
             </div>
             <div className="divide-y divide-neutral-100">
-              {board.columns.map(col => {
+              {localBoard.columns.map(col => {
                 const label = col.title;
                 return (
                   <div key={col.id} className="px-4 py-2">
