@@ -26,7 +26,15 @@ import Configuracoes from './pages/configuracoes/Index';
 import WhatsAppTemplatesPage from './pages/configuracoes/WhatsAppTemplates';
 
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-white">
+        <div className="w-8 h-8 border-4 border-black/10 border-t-black rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <Routes>

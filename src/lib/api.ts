@@ -4,6 +4,11 @@ let _authToken: string | null = null;
 
 export function setAuthToken(token: string | null) {
   _authToken = token;
+  if (token) {
+    localStorage.setItem('auth_token', token);
+  } else {
+    localStorage.removeItem('auth_token');
+  }
 }
 
 export function getAuthToken(): string | null {

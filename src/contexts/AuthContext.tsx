@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { loginApi, ApiError, setAuthToken } from '../lib/api';
+import { loginApi, ApiError, setAuthToken, getMe } from '../lib/api';
 
 type UserRole = 'admin' | 'manager' | 'user';
 export type { UserRole };
@@ -46,7 +46,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    setIsLoading(false);
+    const savedToken = localStorage.getItem('auth_token');
+    if (savedToken) {
+      setAuthToken(savedToken);
+      getMe()
+        .then((res) => {
+          const authUser: AuthUser = {
+            id: res.user.id,
+            email: res.user.email,
+            name: res.user.name,
+            role: res.user.role as UserRole,
+            createdAt: res.user.createdAt,
+          };
+          setUser(authUser);
+          setRole(authUser.role);
+          setEmployeeName(authUser.name);
+          setIsAuthenticated(true);
+        })
+        .catch(() => {
+          localStorage.removeItem('auth_token');
+          setAuthToken(null);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
+    }
   }, []);
 
   function clearAuth() {
