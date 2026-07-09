@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, UserPlus, ArrowRight, CheckSquare, Activity, AlertCircle, FileText, Filter, XCircle } from 'lucide-react';
+import { Users, Calendar, MessageSquare, Clock, UserX, CheckCircle, FileText, Filter, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useCRM, type Lead } from '../../contexts/CRMContext';
-import { useActivityLogs } from '../../contexts/ActivityContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFilters } from '../../contexts/FilterContext';
 import { STAGES } from '../../lib/crmHelpers';
@@ -21,17 +20,6 @@ interface ChartDataPoint {
   value: number;
 }
 
-interface ActionIconConfig {
-  [key: string]: LucideIcon;
-}
-
-const ACTION_ICONS: ActionIconConfig = {
-  lead_criado: UserPlus,
-  lead_movido: ArrowRight,
-  lead_atualizado: ArrowRight,
-  tarefa_concluida: CheckSquare,
-};
-
 const CHART_CONFIG = {
   margin: { top: 20, right: 10, left: 0, bottom: 60 },
   barSize: 40,
@@ -41,26 +29,6 @@ const CHART_CONFIG = {
     stroke: '#000',
     tooltip: { bg: '#fff', border: '#e2e8f0', text: '#000', fontSize: '12px' },
   },
-};
-
-const formatRelativeTime = (timestamp: string): string => {
-  if (!timestamp || typeof timestamp !== 'string') return '';
-  
-  const date = new Date(timestamp);
-  if (isNaN(date.getTime())) return '';
-  
-  const now = new Date();
-  const diff = Math.floor((now.getTime() - date.getTime()) / 60000);
-  
-  if (diff < 1) return 'agora';
-  if (diff < 60) return `${diff}min`;
-  if (diff < 1440) return `${Math.floor(diff / 60)}h`;
-  return `${Math.floor(diff / 1440)}d`;
-};
-
-const sanitizeDescription = (desc: string | null | undefined): string => {
-  if (!desc || typeof desc !== 'string') return '';
-  return desc.trim().slice(0, 500);
 };
 
 const filterLeads = (leads: Lead[], filters: { stages?: string[]; niches?: string[]; dateFilter?: string }): Lead[] => {
@@ -122,7 +90,6 @@ const CHART_ICONS = { Users, Calendar, MessageSquare, Clock, FileText, UserX, Ch
 const CRMDashboard = () => {
   const { leads } = useCRM();
   const { filters, hasActiveFilters } = useFilters();
-  const { activityLogs, isLoadingLogs, fetchActivityLogsError } = useActivityLogs();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -150,10 +117,6 @@ const CRMDashboard = () => {
   }, [filteredLeads]);
 
   const stats = useMemo(() => calculateStats(filteredLeads, CHART_ICONS), [filteredLeads]);
-
-  const displayLogs = useMemo(() => {
-    return activityLogs.slice(0, 10).filter(log => log?.id && log?.acao);
-  }, [activityLogs]);
 
   const hasChartData = chartData.length > 0 && filteredLeads.length > 0;
 
@@ -289,44 +252,6 @@ const CRMDashboard = () => {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Atividades Recentes */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 md:p-8 shadow-sm">
-        <div className="flex items-center gap-2 mb-6">
-          <Activity className="w-4 h-4 text-black" aria-hidden="true" />
-          <h2 className="text-lg md:text-xl font-bold text-black">Atividades Recentes</h2>
-        </div>
-        {isLoadingLogs ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-            <span className="ml-2 text-sm text-neutral-500">Carregando atividades...</span>
-          </div>
-        ) : fetchActivityLogsError ? (
-          <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-100 rounded-md" role="alert">
-            <AlertCircle className="w-5 h-5 text-red-500" aria-hidden="true" />
-            <p className="text-sm text-red-600">{fetchActivityLogsError}</p>
-          </div>
-        ) : displayLogs.length === 0 ? (
-          <p className="text-slate-400 text-xs">Nenhuma atividade registrada.</p>
-        ) : (
-          <div className="space-y-3">
-            {displayLogs.map((log) => {
-              const Icon = ACTION_ICONS[log.acao] || Activity;
-              return (
-                <div key={log.id} className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <Icon className="w-3.5 h-3.5 text-black" strokeWidth={2} aria-hidden="true" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs md:text-sm text-black leading-snug">{sanitizeDescription(log.descricao)}</p>
-                    <p className="text-[10px] md:text-xs text-slate-400 font-medium mt-0.5">há {formatRelativeTime(log.timestamp)}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );
