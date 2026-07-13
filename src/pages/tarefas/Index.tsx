@@ -102,25 +102,26 @@ const Board = ({
   const { role, employeeName } = useAuth();
 
   const [localBoard, setLocalBoard] = useState(board);
-  const initialLoad = useRef(true);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSyncedRef = useRef<string>('');
+  const lastSyncedRef = useRef<string>(JSON.stringify(board));
+  const skipNextSyncRef = useRef(false);
 
   useEffect(() => {
-    if (initialLoad.current) {
-      initialLoad.current = false;
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false;
+      lastSyncedRef.current = JSON.stringify(board);
       return;
     }
     setLocalBoard(board);
   }, [board]);
 
   useEffect(() => {
-    if (initialLoad.current) return;
     const boardStr = JSON.stringify(localBoard);
     if (boardStr === lastSyncedRef.current) return;
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
       lastSyncedRef.current = boardStr;
+      skipNextSyncRef.current = true;
       onUpdateBoard(localBoard);
     }, 1000);
     return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
@@ -182,13 +183,10 @@ const Board = ({
   const renderCell = (row: Row, col: Column) => {
     const value = row.values[col.id] ?? '';
 
-    // Check if value looks like a phone number for WhatsApp
-    const isPhone = typeof value === 'string' && /[\d\s\-()]+$/.test(value) && value.replace(/\D/g, '').length >= 10;
-
     switch (col.type) {
       case 'text':
       case 'people': {
-                const isPhone = typeof value === 'string' && /[\d\s\-()]+$/.test(value) && value.replace(/\D/g, '').length >= 10;
+        const isPhone = typeof value === 'string' && /[\d\s\-()]+$/.test(value) && value.replace(/\D/g, '').length >= 10;
         return (
           <div className="flex items-center gap-1 w-full">
             <input
@@ -700,7 +698,7 @@ const Tarefas = () => {
     setShowAddColumnModal(true);
   };
 
-  const handleConfirmAddColumn = () => {
+  const handleConfirmAddColumn = async () => {
     if (!newColumnData.title.trim() || !selectedBoardForColumn) return;
 
     const board = boards.find(b => b.id === selectedBoardForColumn);
@@ -730,10 +728,14 @@ const Tarefas = () => {
         undefined,
     };
 
-    handleUpdateBoard({ ...board, columns: [...board.columns, newColumn] });
-    setShowAddColumnModal(false);
-    setSelectedBoardForColumn(null);
-    setNewColumnData({ title: '', type: 'text', width: 150 });
+    try {
+      await handleUpdateBoard({ ...board, columns: [...board.columns, newColumn] });
+      setShowAddColumnModal(false);
+      setSelectedBoardForColumn(null);
+      setNewColumnData({ title: '', type: 'text', width: 150 });
+    } catch {
+      // error already handled in handleUpdateBoard
+    }
   };
 
   const handleSaveNote = () => {

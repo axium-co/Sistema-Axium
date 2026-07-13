@@ -27,7 +27,11 @@ router.post('/', async (req, res) => {
         userId: req.user?.userId,
         columns: columns ? {
           create: columns.map((col: any, idx: number) => ({
-            ...col,
+            id: col.id,
+            title: col.title,
+            type: col.type,
+            width: col.width,
+            options: col.options,
             sortOrder: idx,
           })),
         } : undefined,
@@ -45,31 +49,38 @@ router.put('/:id', async (req, res) => {
   try {
     const { columns, rows, ...boardData } = req.body;
 
-    if (columns) {
-      await prisma.boardColumn.deleteMany({ where: { boardId: req.params.id } });
-    }
+    const board = await prisma.$transaction(async (tx) => {
+      if (columns) {
+        await tx.boardColumn.deleteMany({ where: { boardId: req.params.id } });
+      }
 
-    const board = await prisma.board.update({
-      where: { id: req.params.id },
-      data: {
-        ...boardData,
-        columns: columns ? {
-          create: columns.map((col: any, idx: number) => ({
-            ...col,
-            sortOrder: idx,
-          })),
-        } : undefined,
-        rows: rows ? {
-          deleteMany: {},
-          create: rows.map((row: any) => ({
-            id: row.id,
-            values: row.values || {},
-            lastModifiedBy: row.lastModifiedBy,
-          })),
-        } : undefined,
-      },
-      include: { columns: { orderBy: { sortOrder: 'asc' } }, rows: true },
+      return tx.board.update({
+        where: { id: req.params.id },
+        data: {
+          ...boardData,
+          columns: columns ? {
+            create: columns.map((col: any, idx: number) => ({
+              id: col.id,
+              title: col.title,
+              type: col.type,
+              width: col.width,
+              options: col.options,
+              sortOrder: idx,
+            })),
+          } : undefined,
+          rows: rows ? {
+            deleteMany: {},
+            create: rows.map((row: any) => ({
+              id: row.id,
+              values: row.values || {},
+              lastModifiedBy: row.lastModifiedBy,
+            })),
+          } : undefined,
+        },
+        include: { columns: { orderBy: { sortOrder: 'asc' } }, rows: true },
+      });
     });
+
     res.json(board);
   } catch (err) {
     console.error('[Boards] Update error:', err);
