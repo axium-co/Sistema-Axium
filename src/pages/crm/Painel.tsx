@@ -88,7 +88,7 @@ const calculateStats = (leads: Lead[], icons: typeof CHART_ICONS) => {
 const CHART_ICONS = { Users, Calendar, MessageSquare, Clock, FileText, UserX, CheckCircle };
 
 const CRMDashboard = () => {
-  const { leads } = useCRM();
+  const { leads, isLoading } = useCRM();
   const { filters, hasActiveFilters } = useFilters();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -119,6 +119,28 @@ const CRMDashboard = () => {
   const stats = useMemo(() => calculateStats(filteredLeads, CHART_ICONS), [filteredLeads]);
 
   const hasChartData = chartData.length > 0 && filteredLeads.length > 0;
+
+  if (isLoading) {
+    return (
+      <div className="relative min-h-screen bg-white animate-pulse">
+        <div className="mb-4 md:mb-6">
+          <div className="h-8 w-48 bg-neutral-100 rounded mb-2" />
+          <div className="h-4 w-64 bg-neutral-100 rounded" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-2 md:gap-3 mb-6 md:mb-10">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white border border-slate-200 rounded-md p-3 md:p-5">
+              <div className="h-4 w-16 bg-neutral-100 rounded mb-3" />
+              <div className="h-7 w-12 bg-neutral-100 rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 md:p-8">
+          <div className="h-[350px] bg-neutral-50 rounded" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-white">

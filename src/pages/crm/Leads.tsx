@@ -19,10 +19,19 @@ const formatBRL = (val: string) => {
 
 const EMPTY_LEAD: Partial<Lead> = {
   name: '', niche: '', whatsapp: '', email: '', instagram: '',
-  stage: 'Novos Leads', firstContact: '', closingDate: '',
+  stage: 'Novos Leads', prospectionMethod: '', firstContact: '', closingDate: '',
   followUpReminder: '', address: '', gmnReviews: '', gmnStars: '',
   notes: '', value: '',
 };
+
+const PROSPECTION_METHODS = [
+  'WhatsApp',
+  'Instagram',
+  'Email',
+  'Telefone',
+  'Conteúdo',
+  'Tráfego',
+];
 
 const STAGE_ORIGINS = [
   'Instagram',
@@ -88,7 +97,7 @@ const inputCls =
   'w-full bg-white border border-slate-200 rounded-md py-2.5 px-3.5 text-black text-sm placeholder-slate-300 focus:outline-none focus:border-black transition-colors';
 
 const CRMLeads = () => {
-  const { leads, addLead, updateLead, deleteLead, searchTerm } = useCRM();
+  const { leads, addLead, updateLead, deleteLead, searchTerm, isLoading } = useCRM();
   const { filters, setStagesFilter, setNichesFilter, setOriginsFilter, setDateFilter, clearFilters, hasActiveFilters } = useFilters();
   const { role, employeeName } = useAuth();
 
@@ -264,6 +273,27 @@ const CRMLeads = () => {
     return result;
   }, [leads, searchTerm, filters]);
 
+  if (isLoading) {
+    return (
+      <div className="relative min-h-screen animate-pulse p-4 md:p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div className="h-8 w-32 bg-neutral-100 rounded" />
+          <div className="h-9 w-24 bg-neutral-100 rounded" />
+        </div>
+        <div className="bg-white border border-neutral-200 rounded-md p-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4 py-4 border-b border-neutral-100 last:border-0">
+              <div className="h-4 w-32 bg-neutral-100 rounded" />
+              <div className="h-4 w-24 bg-neutral-100 rounded" />
+              <div className="h-4 w-20 bg-neutral-100 rounded" />
+              <div className="h-4 w-16 bg-neutral-100 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen">
       {isSidebarOpen && (
@@ -429,7 +459,7 @@ const CRMLeads = () => {
             <table className="w-full text-xs md:text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 bg-neutral-50">
-                  {['Nome / Nicho', 'WhatsApp', 'Instagram', 'GMN ⭐', 'Valor', 'Etapa', 'Ações'].map(h => (
+                  {['Nome / Nicho', 'WhatsApp', 'Instagram', 'Prospecção', 'GMN ⭐', 'Valor', 'Etapa', 'Ações'].map(h => (
                     <th key={h} className="px-3 md:px-5 py-2 md:py-3.5 text-left text-[10px] md:text-[11px] text-neutral-400 font-semibold uppercase tracking-wider last:text-center whitespace-nowrap">
                       {h}
                     </th>
@@ -461,6 +491,7 @@ const CRMLeads = () => {
                       )}
                     </td>
                     <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead?.instagram}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-4 text-neutral-600 text-xs md:text-sm whitespace-nowrap">{lead?.prospectionMethod || '—'}</td>
                     <td className="px-3 md:px-5 py-2 md:py-4">
                       <div className="text-black font-semibold text-xs md:text-sm">{lead?.gmnStars} ★</div>
                       <div className="text-[10px] md:text-xs text-neutral-400">{lead?.gmnReviews} avaliações</div>
@@ -484,7 +515,7 @@ const CRMLeads = () => {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={7} className="px-3 md:px-5 py-8 md:py-12 text-center text-neutral-400 font-medium italic text-xs md:text-sm">
+                    <td colSpan={8} className="px-3 md:px-5 py-8 md:py-12 text-center text-neutral-400 font-medium italic text-xs md:text-sm">
                       {hasActiveFilters ? 'Nenhum lead encontrado com os filtros aplicados' : `Nenhum lead encontrado para "${searchTerm}"`}
                     </td>
                   </tr>
@@ -532,6 +563,10 @@ const CRMLeads = () => {
                   <div className="px-4 py-2.5 flex justify-between items-center">
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Instagram</span>
                     <span className="text-xs text-neutral-600">{lead?.instagram || '—'}</span>
+                  </div>
+                  <div className="px-4 py-2.5 flex justify-between items-center">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Prospecção</span>
+                    <span className="text-xs text-neutral-600">{lead?.prospectionMethod || '—'}</span>
                   </div>
                   <div className="px-4 py-2.5 flex justify-between items-center">
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">GMN</span>
@@ -613,6 +648,13 @@ const CRMLeads = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  <Field label="Meio de Prospecção">
+                    <select value={current.prospectionMethod} onChange={e => updateField('prospectionMethod', e.target.value)}
+                      className={`${inputCls} appearance-none cursor-pointer`}>
+                      <option value="">Selecione...</option>
+                      {PROSPECTION_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </Field>
                   <Field label="Primeiro Contato">
                     <input type="date" value={current.firstContact} onChange={e => updateField('firstContact', e.target.value)}
                       className={`${inputCls} [color-scheme:light]`} />

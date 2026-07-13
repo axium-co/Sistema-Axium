@@ -63,6 +63,7 @@ model Lead {
   instagram       String?
   stage           String   @default("Novos Leads")
   origin          String?
+  prospectionMethod String? @map("prospection_method")
   firstContact    String?  @map("first_contact")
   closingDate     String?  @map("closing_date")
   followUpReminder String? @map("follow_up_reminder")

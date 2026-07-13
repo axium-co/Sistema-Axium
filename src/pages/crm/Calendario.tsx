@@ -4,7 +4,7 @@ import type { CalendarEvent } from '../../contexts/CRMContext';
 import { X, Clock, User, MessageSquare, Plus, Trash2, Calendar as CalendarIcon, Link as LinkIcon, FileText, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 
 const CRMCalendario = () => {
-  const { events, addEvent, updateEvent, deleteEvent } = useCRM();
+  const { events, addEvent, updateEvent, deleteEvent, isLoading } = useCRM();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -201,7 +201,19 @@ const CRMCalendario = () => {
                 const isToday = isCurrentMonth && dayNum === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
                 const dayEvents = isCurrentMonth ? getEventsForDay(dayNum) : [];
 
-                return (
+  if (isLoading) {
+    return (
+      <div className="min-h-screen p-2 md:p-8 animate-pulse">
+        <div className="mb-4 md:mb-8 flex justify-between">
+          <div className="h-8 w-32 bg-neutral-100 rounded" />
+          <div className="h-9 w-24 bg-neutral-100 rounded" />
+        </div>
+        <div className="bg-white border border-neutral-200 rounded-md p-6 h-[500px]" />
+      </div>
+    );
+  }
+
+  return (
                   <div 
                     key={idx} 
                     className={`min-h-[120px] p-2 border border-neutral-100 rounded-md flex flex-col gap-1 transition-all ${

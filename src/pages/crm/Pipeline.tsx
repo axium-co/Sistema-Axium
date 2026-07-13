@@ -124,7 +124,7 @@ function applyFilters(
 }
 
 const CRMPipeline = () => {
-  const { leads, updateLead } = useCRM();
+  const { leads, updateLead, isLoading } = useCRM();
   const { filters, hasActiveFilters } = useFilters();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [whatsAppTarget, setWhatsAppTarget] = useState<{ name: string; phone: string } | null>(null);
@@ -215,6 +215,32 @@ const CRMPipeline = () => {
   }, [filteredLeads]);
 
   // ─── Render ──────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="relative flex flex-col h-full animate-pulse">
+        <div className="mb-4">
+          <div className="h-8 w-32 bg-neutral-100 rounded mb-2" />
+          <div className="h-4 w-64 bg-neutral-100 rounded" />
+        </div>
+        <div className="flex gap-5 overflow-x-auto pb-6">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="w-[300px] shrink-0 bg-neutral-50 rounded-md p-5">
+              <div className="h-5 w-24 bg-neutral-100 rounded mb-3" />
+              <div className="space-y-3">
+                {Array.from({ length: 2 }).map((_, j) => (
+                  <div key={j} className="bg-white p-4 rounded-md border border-neutral-100">
+                    <div className="h-4 w-32 bg-neutral-100 rounded mb-2" />
+                    <div className="h-3 w-20 bg-neutral-100 rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex flex-col h-full">
       {isSidebarOpen && (

@@ -14,6 +14,7 @@ export interface Lead {
   instagram: string;
   stage: string;
   origin?: string;
+  prospectionMethod?: string;
   firstContact: string;
   closingDate: string;
   followUpReminder: string;
@@ -52,6 +53,7 @@ interface CRMContextType {
   events: CalendarEvent[];
   searchTerm: string;
   notifications: Notification[];
+  isLoading: boolean;
   setSearchTerm: (term: string) => void;
   markNotificationsAsRead: () => void;
   clearNotifications: () => void;
@@ -153,6 +155,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   const events = eventsData;
   const syncError = leadsError;
   const syncStatus = leadsStatus === 'error' || eventsStatus === 'error' ? 'error' : leadsStatus;
+  const isLoading = leadsStatus === 'loading' && eventsStatus === 'loading';
 
   const leadsByStage = useMemo(() => groupLeadsByStage(leads), [leads]);
   const totalPipelineValue = useMemo(() => calculateTotalValue(leads), [leads]);
@@ -297,6 +300,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     events,
     searchTerm,
     notifications,
+    isLoading,
     setSearchTerm,
     markNotificationsAsRead,
     clearNotifications,
@@ -316,7 +320,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     syncError,
     syncStatus,
   }), [
-    leads, events, searchTerm, notifications, markNotificationsAsRead,
+    leads, events, searchTerm, notifications, isLoading, markNotificationsAsRead,
     clearNotifications, removeNotification, pushNotificationCb,
     addLead, updateLead, updateLeadStage, deleteLead,
     getLeadsByStage, getTotalValueByStage,

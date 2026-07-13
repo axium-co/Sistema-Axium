@@ -26,30 +26,27 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     mountedRef.current = true;
-    const checkAuth = () => {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        setIsLoadingLogs(false);
-        return;
-      }
-      api.get<ActivityLog[]>('/activity-logs')
-        .then((logs) => {
-          if (mountedRef.current) {
-            setActivityLogs(logs);
-            setIsLoadingLogs(false);
-            setFetchActivityLogsError(null);
-          }
-        })
-        .catch((err) => {
-          console.error('[ActivityLogs] Erro ao carregar:', err);
-          if (mountedRef.current) {
-            setFetchActivityLogsError('Erro ao carregar atividades.');
-            setIsLoadingLogs(false);
-          }
-        });
-    };
-    const timer = setTimeout(checkAuth, 500);
-    return () => { mountedRef.current = false; clearTimeout(timer); };
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setIsLoadingLogs(false);
+      return;
+    }
+    api.get<ActivityLog[]>('/activity-logs')
+      .then((logs) => {
+        if (mountedRef.current) {
+          setActivityLogs(logs);
+          setIsLoadingLogs(false);
+          setFetchActivityLogsError(null);
+        }
+      })
+      .catch((err) => {
+        console.error('[ActivityLogs] Erro ao carregar:', err);
+        if (mountedRef.current) {
+          setFetchActivityLogsError('Erro ao carregar atividades.');
+          setIsLoadingLogs(false);
+        }
+      });
+    return () => { mountedRef.current = false; };
   }, []);
 
   const logActivity = useCallback(async (acao: ActivityLog['acao'], descricao: string) => {
