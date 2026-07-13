@@ -25,12 +25,13 @@ const EMPTY_LEAD: Partial<Lead> = {
 };
 
 const PROSPECTION_METHODS = [
-  'WhatsApp',
   'Instagram',
-  'Email',
-  'Telefone',
-  'Conteúdo',
-  'Tráfego',
+  'Indicação',
+  'WhatsApp',
+  'Facebook',
+  'Google',
+  'Site',
+  'Evento',
 ];
 
 const STAGE_ORIGINS = [
