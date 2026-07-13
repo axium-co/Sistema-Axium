@@ -134,6 +134,12 @@ const Configuracoes = () => {
     }
   };
 
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('[CONFIG] handleSaveProfile iniciado', { userId: user?.id, name: profileData.name });
@@ -164,6 +170,10 @@ const Configuracoes = () => {
       telefone: profileData.phone.trim()
     };
 
+    if (profileData.email && profileData.email.trim()) {
+      updateData.email = profileData.email.trim();
+    }
+
     if (avatarPreview && avatarPreview !== profileData.avatar) {
       updateData.avatar = avatarPreview;
     }
@@ -171,15 +181,16 @@ const Configuracoes = () => {
     try {
       await api.put(`/profiles/${user.id}`, updateData);
       setProfileSuccess('Perfil atualizado com sucesso!');
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setProfileSuccess('');
+        setActiveModal(null);
+      }, 1500);
     } catch (err: unknown) {
       const error = err as { code?: string; message?: string };
       console.error('[CONFIG] Erro ao salvar perfil na API:', error);
       setProfileError('Erro ao salvar perfil. Tente novamente.');
     } finally {
-      setTimeout(() => {
-        setProfileSuccess('');
-        setActiveModal(null);
-      }, 1500);
       setIsSavingProfile(false);
     }
   };
@@ -188,7 +199,7 @@ const Configuracoes = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    const validTypes = ['image/jpeg', 'image/png'];
     if (!validTypes.includes(file.type)) {
       setProfileError('Apenas PNG ou JPG são aceitos');
       return;
@@ -331,7 +342,7 @@ const Configuracoes = () => {
           <div className="bg-white border border-neutral-200 rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden transform animate-in slide-in-from-bottom-8 duration-500">
             {activeModal === 'perfil' ? (
               <form onSubmit={handleSaveProfile}>
-                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
+                <div className="px-6 md:px-12 py-8 md:py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
                   <div>
                     <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
                     <h2 className="text-4xl font-black text-black tracking-tighter">Configurações de Perfil</h2>
@@ -340,7 +351,7 @@ const Configuracoes = () => {
                     <X size={24} />
                   </button>
                 </div>
-                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div className="px-6 md:px-12 py-8 md:py-10 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
                   {profileError && (
                     <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
                       <AlertCircle size={20} />
@@ -383,7 +394,7 @@ const Configuracoes = () => {
                     </div>
                   </div>
                 </div>
-                <div className="px-12 py-10 bg-neutral-50 flex gap-4">
+                <div className="px-6 md:px-12 py-8 md:py-10 bg-neutral-50 flex gap-4">
                   <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Cancelar</button>
                   <button type="submit" disabled={isSavingProfile} className="flex-[2] text-white py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest hover:brightness-90 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--primary)' }}>
                     {isSavingProfile ? <><RefreshCw size={18} className="animate-spin" /> Salvando...</> : <><Save size={18} /> Salvar Perfil</>}
@@ -392,7 +403,7 @@ const Configuracoes = () => {
                 </form>
             ) : activeModal === 'equipe' ? (
               <div>
-                <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
+                <div className="px-6 md:px-12 py-8 md:py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
                   <div>
                     <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">Preferências do Sistema</span>
                     <h2 className="text-4xl font-black text-black tracking-tighter">Equipe</h2>
@@ -401,7 +412,7 @@ const Configuracoes = () => {
                     <X size={24} />
                   </button>
                 </div>
-                <div className="p-12 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div className="px-6 md:px-12 py-8 md:py-10 space-y-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
                   {inviteError && (
                     <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
                       <AlertCircle size={20} />
@@ -461,7 +472,7 @@ const Configuracoes = () => {
                     )}
                   </div>
                 </div>
-                <div className="px-12 py-10 bg-neutral-50">
+                <div className="px-6 md:px-12 py-8 md:py-10 bg-neutral-50">
                   <button type="button" onClick={() => setActiveModal(null)} className="w-full py-5 rounded-[20px] font-black text-[11px] uppercase tracking-widest text-neutral-400 hover:text-black hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200">Fechar</button>
                 </div>
               </div>

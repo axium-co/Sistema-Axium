@@ -103,6 +103,8 @@ const Board = ({
 
   const [localBoard, setLocalBoard] = useState(board);
   const initialLoad = useRef(true);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSyncedRef = useRef<string>('');
 
   useEffect(() => {
     if (initialLoad.current) {
@@ -111,6 +113,18 @@ const Board = ({
     }
     setLocalBoard(board);
   }, [board]);
+
+  useEffect(() => {
+    if (initialLoad.current) return;
+    const boardStr = JSON.stringify(localBoard);
+    if (boardStr === lastSyncedRef.current) return;
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      lastSyncedRef.current = boardStr;
+      onUpdateBoard(localBoard);
+    }, 1000);
+    return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
+  }, [localBoard, onUpdateBoard]);
 
   const handleAddRow = () => {
     const newRow: Row = {
@@ -121,26 +135,22 @@ const Board = ({
       }, {} as Record<string, unknown>),
       lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário'),
     };
-    const updated = { ...localBoard, rows: [...localBoard.rows, newRow] };
-    setLocalBoard(updated);
-    onUpdateBoard(updated);
+    setLocalBoard(prev => ({ ...prev, rows: [...prev.rows, newRow] }));
   };
 
   const handleDeleteRow = (rowId: string) => {
     if (!confirm('Excluir esta linha?')) return;
-    const updated = { ...localBoard, rows: localBoard.rows.filter(r => r.id !== rowId) };
-    setLocalBoard(updated);
-    onUpdateBoard(updated);
+    setLocalBoard(prev => ({ ...prev, rows: prev.rows.filter(r => r.id !== rowId) }));
   };
 
-  const handleCellChange = (rowId: string, colId: string, value: unknown) => {
-    const updated = localBoard.rows.map(r => 
-      r.id === rowId ? { ...r, values: { ...r.values, [colId]: value }, lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário') } : r
-    );
-    const updatedBoard = { ...localBoard, rows: updated };
-    setLocalBoard(updatedBoard);
-    onUpdateBoard(updatedBoard);
-  };
+  const handleCellChange = useCallback((rowId: string, colId: string, value: unknown) => {
+    setLocalBoard(prev => {
+      const updated = prev.rows.map(r =>
+        r.id === rowId ? { ...r, values: { ...r.values, [colId]: value }, lastModifiedBy: employeeName || (role === 'admin' ? 'Administrador' : 'Funcionário') } : r
+      );
+      return { ...prev, rows: updated };
+    });
+  }, [employeeName, role]);
 
   const getOptionColor = (colId: string, value: string) => {
     const col = localBoard.columns.find(c => c.id === colId);
@@ -158,17 +168,15 @@ const Board = ({
       return;
     }
     
-    const updatedBoard = {
-      ...localBoard,
-      columns: localBoard.columns.filter(c => c.id !== colId),
-      rows: localBoard.rows.map(row => {
+    setLocalBoard(prev => ({
+      ...prev,
+      columns: prev.columns.filter(c => c.id !== colId),
+      rows: prev.rows.map(row => {
         const newValues = { ...row.values };
         delete newValues[colId];
         return { ...row, values: newValues };
       }),
-    };
-    setLocalBoard(updatedBoard);
-    onUpdateBoard(updatedBoard);
+    }));
   };
 
   const renderCell = (row: Row, col: Column) => {
@@ -269,16 +277,17 @@ const Board = ({
           
           const newOption = { id: generateUUID(), label: tagName, color: tagColor };
           const updatedOptions = [...options, newOption];
-          const updatedColumns = localBoard.columns.map(c =>
-            c.id === col.id ? { ...c, options: updatedOptions } : c
-          );
-          const newTags = [...currentTags, tagName];
-          const updatedRows = localBoard.rows.map(r =>
-            r.id === row.id ? { ...r, values: { ...r.values, [col.id]: newTags } } : r
-          );
-          const updatedBoard = { ...localBoard, columns: updatedColumns, rows: updatedRows };
-          setLocalBoard(updatedBoard);
-          onUpdateBoard(updatedBoard);
+
+          setLocalBoard(prev => {
+            const updatedColumns = prev.columns.map(c =>
+              c.id === col.id ? { ...c, options: updatedOptions } : c
+            );
+            const newTags = [...currentTags, tagName];
+            const updatedRows = prev.rows.map(r =>
+              r.id === row.id ? { ...r, values: { ...r.values, [col.id]: newTags } } : r
+            );
+            return { ...prev, columns: updatedColumns, rows: updatedRows };
+          });
           
           if (input) input.value = '';
           if (colorInput) colorInput.value = '#6b7280';

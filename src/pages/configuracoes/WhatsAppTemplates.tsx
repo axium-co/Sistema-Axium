@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Plus, Pencil, Trash2, Copy, ArrowUp, ArrowDown,
   X, Save, CheckCircle2, AlertCircle, Eye, ToggleLeft, ToggleRight
@@ -30,9 +30,16 @@ const WhatsAppTemplatesPage = () => {
     [templates]
   );
 
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
   const showSuccess = (msg: string) => {
     setSuccessMessage(msg);
-    setTimeout(() => setSuccessMessage(''), 3000);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   const openAdd = () => {
@@ -112,7 +119,7 @@ const WhatsAppTemplatesPage = () => {
 
   return (
     <div className="min-h-screen pb-20 relative">
-      <div className="mb-10 flex justify-between items-end">
+              <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 sm:gap-0">
         <div>
           <button
             type="button"
@@ -186,7 +193,7 @@ const WhatsAppTemplatesPage = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button
                     type="button"
                     onClick={() => openEdit(t)}
@@ -248,7 +255,7 @@ const WhatsAppTemplatesPage = () => {
       {modalMode && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white border border-neutral-200 rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden transform animate-in slide-in-from-bottom-8 duration-500">
-            <div className="px-12 py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
+            <div className="px-6 md:px-12 py-8 md:py-10 border-b border-neutral-100 flex justify-between items-start bg-neutral-50/30">
               <div>
                 <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[3px] mb-3 block">
                   Templates de WhatsApp
@@ -266,7 +273,7 @@ const WhatsAppTemplatesPage = () => {
               </button>
             </div>
 
-            <div className="p-12 space-y-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            <div className="px-6 md:px-12 py-8 md:py-10 space-y-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
               {errorMessage && (
                 <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium">
                   <AlertCircle size={20} />
@@ -343,7 +350,7 @@ const WhatsAppTemplatesPage = () => {
               </div>
             </div>
 
-            <div className="px-12 py-10 bg-neutral-50 flex gap-4">
+            <div className="px-6 md:px-12 py-8 md:py-10 bg-neutral-50 flex gap-4">
               <button
                 type="button"
                 onClick={closeModal}

@@ -1,6 +1,8 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 let _authToken: string | null = null;
+let _onAuthError: (() => void) | null = null;
+let _isRedirecting = false;
 
 export function setAuthToken(token: string | null) {
   _authToken = token;
@@ -15,6 +17,10 @@ export function getAuthToken(): string | null {
   return _authToken;
 }
 
+export function setOnAuthError(handler: (() => void) | null) {
+  _onAuthError = handler;
+}
+
 class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -27,6 +33,7 @@ class ApiError extends Error {
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
+  retryCount = 0,
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -37,17 +44,45 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${_authToken}`;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-    throw new ApiError(body.error || `Erro ${response.status}`, response.status);
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.status === 401 && !_isRedirecting) {
+      _isRedirecting = true;
+      setAuthToken(null);
+      _onAuthError?.();
+      setTimeout(() => { _isRedirecting = false; }, 1000);
+      throw new ApiError('Sessão expirada. Faça login novamente.', 401);
+    }
+
+    if (!response.ok) {
+      if (response.status === 429 && retryCount < 2) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return request<T>(endpoint, options, retryCount + 1);
+      }
+      const body = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+      throw new ApiError(body.error || `Erro ${response.status}`, response.status);
+    }
+
+    return response.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof ApiError) throw err;
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiError('Requisição cancelada por timeout.', 408);
+    }
+    throw err;
   }
-
-  return response.json();
 }
 
 export const api = {

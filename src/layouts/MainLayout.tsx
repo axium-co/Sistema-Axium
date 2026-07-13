@@ -33,7 +33,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
           </div>
         )}
 
-        <div className="flex-1 bg-neutral-50 w-full pb-16 md:pb-0">
+        <div className="flex-1 bg-neutral-50 w-full pb-20 md:pb-0" style={{ paddingBottom: 'max(5rem, calc(5rem + env(safe-area-inset-bottom, 0px)))' }}>
           <div className="px-4 p-4 pt-2 md:p-8 w-full">
             {children}
           </div>
@@ -41,7 +41,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       </main>
 
       {/* Bottom Navigation Bar - Mobile only */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-neutral-200 flex items-center justify-around md:hidden safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-neutral-200 flex items-center justify-around md:hidden safe-area-bottom" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {[
           { id: 'crm', label: 'CRM', icon: BarChart3, path: '/crm', allowedRoles: ['admin', 'manager', 'user'] as const },
           { id: 'financeiro', label: 'Financeiro', icon: DollarSign, path: '/financeiro', allowedRoles: ['admin', 'manager'] as const },

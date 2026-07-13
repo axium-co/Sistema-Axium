@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
 import { generateUUID } from '../lib/uuid';
@@ -110,40 +110,49 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     remove: removeLeadApi,
   } = useApiCrud<Lead>('/leads');
 
-  const eventsLoadedRef = useRef(false);
-  const notifLoadedRef = useRef(false);
-
   useEffect(() => {
-    if (eventsLoadedRef.current) return;
-    eventsLoadedRef.current = true;
+    let active = true;
 
-    api.get<CalendarEvent[]>('/events')
-      .then(data => {
-        setEventsData(data);
-        setEventsStatus('synced');
-      })
-      .catch(err => {
-        console.error('[CRM] Erro ao carregar eventos:', err);
-        setEventsStatus('error');
-      });
+    const fetchEvents = () => {
+      api.get<CalendarEvent[]>('/events')
+        .then(data => {
+          if (active) {
+            setEventsData(data);
+            setEventsStatus('synced');
+          }
+        })
+        .catch(err => {
+          console.error('[CRM] Erro ao carregar eventos:', err);
+          if (active) setEventsStatus('error');
+        });
+    };
+
+    fetchEvents();
+    const interval = setInterval(fetchEvents, 30000);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
   useEffect(() => {
-    if (notifLoadedRef.current) return;
-    notifLoadedRef.current = true;
+    let active = true;
 
-    api.get<Notification[]>('/notifications')
-      .then(data => {
-        setNotifications(data);
-      })
-      .catch(err => {
-        console.error('[CRM] Erro ao carregar notificações:', err);
-      });
+    const fetchNotifications = () => {
+      api.get<Notification[]>('/notifications')
+        .then(data => {
+          if (active) setNotifications(data);
+        })
+        .catch(err => {
+          console.error('[CRM] Erro ao carregar notificações:', err);
+        });
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
   const events = eventsData;
   const syncError = leadsError;
-  const syncStatus = leadsStatus === 'offline' || eventsStatus === 'offline' ? 'offline' : leadsStatus;
+  const syncStatus = leadsStatus === 'error' || eventsStatus === 'error' ? 'error' : leadsStatus;
 
   const leadsByStage = useMemo(() => groupLeadsByStage(leads), [leads]);
   const totalPipelineValue = useMemo(() => calculateTotalValue(leads), [leads]);

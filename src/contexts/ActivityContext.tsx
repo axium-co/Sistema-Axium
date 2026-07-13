@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { api } from '../lib/api';
 import type { ActivityLog } from '../types/activity';
 
@@ -22,19 +22,34 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [fetchActivityLogsError, setFetchActivityLogsError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    api.get<ActivityLog[]>('/activity-logs')
-      .then((logs) => {
-        setActivityLogs(logs);
+    mountedRef.current = true;
+    const checkAuth = () => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
         setIsLoadingLogs(false);
-        setFetchActivityLogsError(null);
-      })
-      .catch((err) => {
-        console.error('[ActivityLogs] Erro ao carregar:', err);
-        setFetchActivityLogsError('Erro ao carregar atividades.');
-        setIsLoadingLogs(false);
-      });
+        return;
+      }
+      api.get<ActivityLog[]>('/activity-logs')
+        .then((logs) => {
+          if (mountedRef.current) {
+            setActivityLogs(logs);
+            setIsLoadingLogs(false);
+            setFetchActivityLogsError(null);
+          }
+        })
+        .catch((err) => {
+          console.error('[ActivityLogs] Erro ao carregar:', err);
+          if (mountedRef.current) {
+            setFetchActivityLogsError('Erro ao carregar atividades.');
+            setIsLoadingLogs(false);
+          }
+        });
+    };
+    const timer = setTimeout(checkAuth, 500);
+    return () => { mountedRef.current = false; clearTimeout(timer); };
   }, []);
 
   const logActivity = useCallback(async (acao: ActivityLog['acao'], descricao: string) => {

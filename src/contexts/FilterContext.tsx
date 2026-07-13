@@ -71,12 +71,17 @@ function FilterProvider({ children }: { children: ReactNode }) {
     setFilters(defaultFilters);
   }, []);
 
-  const hasActiveFilters = 
-    (filters.stages?.length ?? 0) > 0 || 
+  const hasActiveFilters =
+    filters.responsible !== null ||
+    filters.status !== null ||
+    filters.origin !== null ||
+    filters.priority !== null ||
+    filters.dateFrom !== null ||
+    filters.dateTo !== null ||
+    (filters.stages?.length ?? 0) > 0 ||
     (filters.niches?.length ?? 0) > 0 ||
-    (filters.origins?.length ?? 0) > 0 || 
-    filters.dateFilter !== '' ||
-    Object.values(filters).some(v => v !== null && (Array.isArray(v) ? v.length > 0 : true));
+    (filters.origins?.length ?? 0) > 0 ||
+    filters.dateFilter !== '';
 
   return (
     <FilterContext.Provider value={{ filters, setFilter, setStagesFilter, setNichesFilter, setOriginsFilter, setDateFilter, clearFilters, hasActiveFilters }}>

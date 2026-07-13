@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { loginApi, ApiError, setAuthToken, getMe, api } from '../lib/api';
+import { loginApi, ApiError, setAuthToken, getMe, api, setOnAuthError } from '../lib/api';
 
 type UserRole = 'admin' | 'manager' | 'user';
 export type { UserRole };
@@ -44,8 +44,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return allowedRoles.includes(user.role);
   }, [isAuthenticated, user]);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'auth_token') {
+        if (!e.newValue) {
+          setUser(null);
+          setRole(null);
+          setEmployeeName(null);
+          setIsAuthenticated(false);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  useEffect(() => {
+    setOnAuthError(() => {
+      setUser(null);
+      setRole(null);
+      setEmployeeName(null);
+      setIsAuthenticated(false);
+      window.location.href = '/login';
+    });
+
     async function init() {
+      abortRef.current = new AbortController();
+
       const savedToken = localStorage.getItem('auth_token');
       if (savedToken) {
         setAuthToken(savedToken);
@@ -78,6 +105,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
     }
     init();
+    return () => {
+      abortRef.current?.abort();
+    };
   }, []);
 
   function clearAuth() {

@@ -1,5 +1,6 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { api } from '../../lib/api';
+import { Menu, X } from 'lucide-react';
 
 function trackEvent(eventType: 'page_view' | 'button_click', label?: string) {
   api.post('/page-events', {
@@ -18,6 +19,8 @@ const buttonItems = [
 ];
 
 const PublicLanding = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     trackEvent('page_view');
   }, []);
@@ -49,11 +52,40 @@ const PublicLanding = () => {
               Entrar
             </a>
           </nav>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 text-neutral-600 hover:text-black"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-neutral-100 bg-white">
+            <div className="px-6 py-4 space-y-3">
+              {buttonItems.map(item => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => { handleClick(item.label); setMobileMenuOpen(false); }}
+                  className="block text-sm font-medium text-neutral-600 hover:text-black transition-colors py-2"
+                >
+                  {item.label}
+                </a>
+              ))}
+              <a
+                href="/login"
+                className="block text-sm font-bold text-black hover:text-neutral-600 transition-colors py-2 border-t border-neutral-100 mt-2 pt-3"
+              >
+                Entrar
+              </a>
+            </div>
+          </div>
+        )}
       </header>
 
       <section className="max-w-6xl mx-auto px-6 pt-24 pb-16 text-center">
-        <h1 className="text-6xl md:text-7xl font-black text-black tracking-tighter leading-tight mb-6">
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-black tracking-tighter leading-tight mb-6">
           Transforme seu negócio<br />com a <span className="text-neutral-400">Axium</span>
         </h1>
         <p className="text-lg text-neutral-500 max-w-2xl mx-auto mb-10 leading-relaxed">

@@ -4,7 +4,7 @@ import type { DropResult } from '@hello-pangea/dnd';
 import { useCRM } from '../../contexts/CRMContext';
 import { useFilters } from '../../contexts/FilterContext';
 import type { Lead } from '../../contexts/CRMContext';
-import { Filter, XCircle, MessageCircle } from 'lucide-react';
+import { Filter, XCircle, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   STAGES,
   type Stage,
@@ -128,6 +128,7 @@ const CRMPipeline = () => {
   const { filters, hasActiveFilters } = useFilters();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [whatsAppTarget, setWhatsAppTarget] = useState<{ name: string; phone: string } | null>(null);
+  const [expandedMobileStage, setExpandedMobileStage] = useState<string | null>(null);
 
   // ─── Optimistic updates ──────────────────────────────────
   // Garante que o card se mova visualmente na tela antes mesmo
@@ -250,7 +251,8 @@ const CRMPipeline = () => {
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex-1 overflow-x-auto pb-6">
+        {/* Desktop: Horizontal scroll columns */}
+        <div className="hidden md:block flex-1 overflow-x-auto pb-6">
           <div className="flex gap-5 min-w-max h-full items-start">
             {columnData.map(({ stage, leads: columnLeads, count, totalValue }) => {
               const config = STAGE_CONFIG[stage];
@@ -301,7 +303,7 @@ const CRMPipeline = () => {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`bg-white p-2 md:p-4 rounded-md border shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group ${
+                                  className={`bg-white p-4 rounded-md border shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-black hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group ${
                                     snapshot.isDragging
                                       ? 'border-black shadow-lg rotate-2 scale-105 !opacity-90'
                                       : 'border-neutral-200'
@@ -337,6 +339,60 @@ const CRMPipeline = () => {
               );
             })}
           </div>
+        </div>
+
+        {/* Mobile: Accordion-style columns */}
+        <div className="md:hidden space-y-2 pb-6">
+          {columnData.map(({ stage, leads: columnLeads, count, totalValue }) => {
+            const config = STAGE_CONFIG[stage];
+            const isExpanded = expandedMobileStage === stage;
+            return (
+              <div key={stage} className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setExpandedMobileStage(isExpanded ? null : stage)}
+                  className="w-full p-4 flex items-center justify-between active:bg-neutral-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-8 rounded-full" style={{ backgroundColor: config.color || '#000' }} />
+                    <div className="text-left">
+                      <h3 className="text-[11px] font-black text-black uppercase tracking-widest">{stage}</h3>
+                      <span className="text-[10px] font-bold text-neutral-400">{count} lead{count !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {config.isClosed && (
+                      <span className="text-[11px] font-black text-black">{formatCurrency(totalValue)}</span>
+                    )}
+                    {isExpanded ? <ChevronDown size={16} className="text-neutral-400" /> : <ChevronRight size={16} className="text-neutral-400" />}
+                  </div>
+                </button>
+                {isExpanded && (
+                  <div className="border-t border-neutral-100 p-3 space-y-2">
+                    {columnLeads.map((lead) => (
+                      <div
+                        key={lead.id}
+                        className="bg-neutral-50 p-3 rounded-lg border border-neutral-100"
+                      >
+                        <LeadCardInner
+                          lead={lead}
+                          isClosed={config.isClosed}
+                          onWhatsAppClick={(name, phone) =>
+                            setWhatsAppTarget({ name, phone })
+                          }
+                        />
+                      </div>
+                    ))}
+                    {columnLeads.length === 0 && (
+                      <div className="py-8 text-center opacity-40">
+                        <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-widest">Sem leads</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </DragDropContext>
 

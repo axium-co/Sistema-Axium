@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useCRM } from '../../contexts/CRMContext';
 import type { CalendarEvent } from '../../contexts/CRMContext';
-import { generateUUID } from '../../lib/uuid';
-import { X, Clock, User, MessageSquare, Plus, Trash2, Calendar as CalendarIcon, Link as LinkIcon, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Clock, User, MessageSquare, Plus, Trash2, Calendar as CalendarIcon, Link as LinkIcon, FileText, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 
 const CRMCalendario = () => {
   const { events, addEvent, updateEvent, deleteEvent } = useCRM();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
@@ -113,6 +114,8 @@ const CRMCalendario = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
+    setIsSaving(true);
     try {
       if (modalMode === 'create') {
         await addEvent(formData);
@@ -122,6 +125,9 @@ const CRMCalendario = () => {
       setIsModalOpen(false);
     } catch (err) {
       console.error('Erro ao salvar evento:', err);
+      setErrorMessage('Erro ao salvar evento. Tente novamente.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -215,7 +221,7 @@ const CRMCalendario = () => {
                     <div className="space-y-1">
                       {dayEvents.map(event => (
                         <button
-                          key={event?.id || generateUUID()}
+                          key={event?.id || `day-${dayNum}-unknown`}
                           onClick={() => handleOpenEdit(event)}
                           className="w-full text-left p-1.5 rounded-md bg-neutral-50 border border-neutral-100 hover:border-black transition-all group overflow-hidden"
                         >
@@ -243,9 +249,9 @@ const CRMCalendario = () => {
               Próximos Eventos
             </h3>
             <div className="space-y-5">
-              {safeEvents.slice(0, 5).map((event) => (
+              {safeEvents.slice(0, 5).map((event, idx) => (
                 <div 
-                  key={event?.id || generateUUID()} 
+                  key={event?.id || `event-${idx}`} 
                   className="group cursor-pointer"
                   onClick={() => handleOpenEdit(event)}
                 >
@@ -302,6 +308,12 @@ const CRMCalendario = () => {
               </div>
 
               <div className="p-8 space-y-6">
+                {errorMessage && (
+                  <div className="p-3 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 text-red-600 text-xs font-medium">
+                    <AlertCircle size={16} />
+                    {errorMessage}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-[9px] font-black text-neutral-400 uppercase tracking-widest">
@@ -400,8 +412,10 @@ const CRMCalendario = () => {
                   </button>
                   <button 
                     type="submit"
-                    className="bg-black text-white px-8 py-2.5 rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
+                    disabled={isSaving}
+                    className="bg-black text-white px-8 py-2.5 rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 flex items-center gap-2"
                   >
+                    {isSaving && <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                     {modalMode === 'create' ? 'Salvar Evento' : 'Atualizar'}
                   </button>
                 </div>

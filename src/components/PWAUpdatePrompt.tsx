@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { X } from 'lucide-react';
 import type { RegisterSWOptions } from 'virtual:pwa-register';
 
 type SWRegistration = {
@@ -52,11 +53,11 @@ const PWAUpdatePrompt = () => {
   useEffect(() => {
     if (state.needRefresh) {
       const timer = setTimeout(() => {
-        state.updateServiceWorker(true);
-      }, 5000);
+        setState(prev => ({ ...prev, needRefresh: false }));
+      }, 15000);
       return () => clearTimeout(timer);
     }
-  }, [state.needRefresh, state.updateServiceWorker]);
+  }, [state.needRefresh]);
 
   if (state.offlineReady) {
     return (
@@ -76,6 +77,13 @@ const PWAUpdatePrompt = () => {
         className="bg-white text-black px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-neutral-200 transition-colors shrink-0"
       >
         Atualizar agora
+      </button>
+      <button
+        onClick={() => setState(prev => ({ ...prev, needRefresh: false }))}
+        className="text-neutral-400 hover:text-white transition-colors shrink-0"
+        title="Dispensar"
+      >
+        <X size={14} />
       </button>
     </div>
   );
