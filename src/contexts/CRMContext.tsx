@@ -195,12 +195,12 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
   const addLead = useCallback(async (lead: LeadInput) => {
     try {
       await addLeadApi(lead);
-      pushNotification(setNotifications, 'Novo Lead', `${lead.name} foi adicionado ao sistema.`, 'lead');
+      pushNotificationCb('Novo Lead', `${lead.name} foi adicionado ao sistema.`, 'lead');
     } catch (error) {
       console.error('Erro ao adicionar lead:', error);
       throw error;
     }
-  }, [addLeadApi]);
+  }, [addLeadApi, pushNotificationCb]);
 
   const updateLead = useCallback(async (id: string, fields: LeadUpdate) => {
     try {
@@ -211,40 +211,40 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
           (fields as unknown as Record<string, unknown>)[k] !== (old as unknown as Record<string, unknown>)[k]
         );
         if (changedFields.length > 0) {
-          pushNotification(setNotifications, 'Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
+          pushNotificationCb('Lead Atualizado', `${old.name} teve dados alterados.`, 'lead');
         }
       }
     } catch (error) {
       console.error('Erro ao atualizar lead:', error);
       throw error;
     }
-  }, [leads, updateLeadApi]);
+  }, [leads, updateLeadApi, pushNotificationCb]);
 
   const updateLeadStage = useCallback(async (id: string, stage: string) => {
     try {
       await updateLeadApi(id, { stage } as Partial<Lead>);
       const old = leads.find(l => l.id === id);
       if (old && old.stage !== stage) {
-        pushNotification(setNotifications, 'Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
+        pushNotificationCb('Lead Movido', `${old.name} movido de "${old.stage}" para "${stage}".`, 'lead');
       }
     } catch (error) {
       console.error('Erro ao mover lead:', error);
       throw error;
     }
-  }, [leads, updateLeadApi]);
+  }, [leads, updateLeadApi, pushNotificationCb]);
 
   const deleteLead = useCallback(async (id: string) => {
     try {
       await removeLeadApi(id);
       const old = leads.find(l => l.id === id);
       if (old) {
-        pushNotification(setNotifications, 'Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
+        pushNotificationCb('Lead Removido', `${old.name} foi removido do sistema.`, 'lead');
       }
     } catch (error) {
       console.error('Erro ao remover lead:', error);
       throw error;
     }
-  }, [leads, removeLeadApi]);
+  }, [leads, removeLeadApi, pushNotificationCb]);
 
   const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id'>) => {
     try {

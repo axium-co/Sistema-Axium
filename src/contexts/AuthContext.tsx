@@ -26,6 +26,7 @@ interface AuthContextType {
   hasPermission: (allowedRoles: UserRole[]) => boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   selectEmployee: (name: string) => void;
+  refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -54,6 +55,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setRole(null);
           setEmployeeName(null);
           setIsAuthenticated(false);
+        } else {
+          setAuthToken(e.newValue);
+          getMe().then(res => {
+            const authUser: AuthUser = {
+              id: res.user.id,
+              email: res.user.email,
+              name: res.user.name,
+              role: res.user.role as UserRole,
+              createdAt: res.user.createdAt,
+            };
+            setUser(authUser);
+            setRole(authUser.role);
+            setEmployeeName(authUser.name);
+            setIsAuthenticated(true);
+          }).catch(() => {});
         }
       }
     };
@@ -161,6 +177,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(prev => prev ? { ...prev, name } : null);
   };
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await getMe();
+      const authUser: AuthUser = {
+        id: res.user.id,
+        email: res.user.email,
+        name: res.user.name,
+        role: res.user.role as UserRole,
+        createdAt: res.user.createdAt,
+      };
+      setUser(authUser);
+      setRole(authUser.role);
+      setEmployeeName(authUser.name);
+    } catch {
+      console.error('[Auth] Erro ao atualizar dados do usuário');
+    }
+  }, []);
+
   const logout = async () => {
     clearAuth();
   };
@@ -177,6 +211,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         hasPermission,
         login,
         selectEmployee,
+        refreshUser,
         logout,
       }}
     >

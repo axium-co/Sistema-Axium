@@ -105,6 +105,8 @@ const Board = ({
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSyncedRef = useRef<string>(JSON.stringify(board));
   const skipNextSyncRef = useRef(false);
+  const localBoardRef = useRef(localBoard);
+  localBoardRef.current = localBoard;
 
   useEffect(() => {
     if (skipNextSyncRef.current) {
@@ -126,6 +128,16 @@ const Board = ({
     }, 1000);
     return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
   }, [localBoard, onUpdateBoard]);
+
+  useEffect(() => {
+    return () => {
+      const boardStr = JSON.stringify(localBoardRef.current);
+      if (boardStr !== lastSyncedRef.current) {
+        lastSyncedRef.current = boardStr;
+        onUpdateBoard(localBoardRef.current);
+      }
+    };
+  }, []);
 
   const handleAddRow = () => {
     const newRow: Row = {

@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar';
 import CRMSubmenu from '../components/CRMSubmenu';
 import TopHeader from '../components/TopHeader';
 import { useAuth } from '../contexts/AuthContext';
-import { BarChart3, DollarSign, CheckCircle, Settings } from 'lucide-react';
+import { BarChart3, BarChart4, DollarSign, CheckCircle, Settings } from 'lucide-react';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -46,6 +46,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
           { id: 'crm', label: 'CRM', icon: BarChart3, path: '/crm', allowedRoles: ['admin', 'manager', 'user'] as const },
           { id: 'financeiro', label: 'Financeiro', icon: DollarSign, path: '/financeiro', allowedRoles: ['admin', 'manager'] as const },
           { id: 'tarefas', label: 'Tarefas', icon: CheckCircle, path: '/tarefas', allowedRoles: ['admin', 'manager', 'user'] as const },
+          { id: 'landing', label: 'Landing', icon: BarChart4, path: '/landing', allowedRoles: ['admin', 'manager', 'user'] as const },
           { id: 'configuracoes', label: 'Config', icon: Settings, path: '/configuracoes', allowedRoles: ['admin'] as const },
         ].filter(item => item.allowedRoles.includes(user?.role as any)).map((item) => {
           const Icon = item.icon;

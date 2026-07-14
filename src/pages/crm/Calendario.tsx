@@ -138,6 +138,18 @@ const CRMCalendario = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen p-2 md:p-8 animate-pulse">
+        <div className="mb-4 md:mb-8 flex justify-between">
+          <div className="h-8 w-32 bg-neutral-100 rounded" />
+          <div className="h-9 w-24 bg-neutral-100 rounded" />
+        </div>
+        <div className="bg-white border border-neutral-200 rounded-md p-6 h-[500px]" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-2 md:p-8">
       <div className="mb-4 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-0">
@@ -201,19 +213,7 @@ const CRMCalendario = () => {
                 const isToday = isCurrentMonth && dayNum === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
                 const dayEvents = isCurrentMonth ? getEventsForDay(dayNum) : [];
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen p-2 md:p-8 animate-pulse">
-        <div className="mb-4 md:mb-8 flex justify-between">
-          <div className="h-8 w-32 bg-neutral-100 rounded" />
-          <div className="h-9 w-24 bg-neutral-100 rounded" />
-        </div>
-        <div className="bg-white border border-neutral-200 rounded-md p-6 h-[500px]" />
-      </div>
-    );
-  }
-
-  return (
+                return (
                   <div 
                     key={idx} 
                     className={`min-h-[120px] p-2 border border-neutral-100 rounded-md flex flex-col gap-1 transition-all ${

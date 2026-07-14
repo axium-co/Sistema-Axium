@@ -34,7 +34,7 @@ const PROSPECTION_METHODS = [
   'Evento',
 ];
 
-const STAGE_ORIGINS = [
+const PROSPECTION_METHODS_FILTER = [
   'Instagram',
   'Indicação',
   'WhatsApp',
@@ -42,7 +42,7 @@ const STAGE_ORIGINS = [
   'Google',
   'Site',
   'Evento',
-  'Outros'
+  'Outros',
 ];
 
 const stageStyle: Record<string, string> = {
@@ -235,7 +235,7 @@ const CRMLeads = () => {
     }
 
     if (filters.origins && filters.origins.length > 0) {
-      result = result.filter(lead => lead.origin !== undefined && filters.origins.includes(lead.origin));
+      result = result.filter(lead => lead.prospectionMethod !== undefined && filters.origins.includes(lead.prospectionMethod));
     }
 
     if (filters.niches && filters.niches.length > 0) {
@@ -334,13 +334,13 @@ const CRMLeads = () => {
               ))}
             </FilterSection>
 
-            <FilterSection title="Origem">
-              {(STAGE_ORIGINS || []).map(origin => (
+            <FilterSection title="Meio de Prospecção">
+              {(PROSPECTION_METHODS_FILTER || []).map(method => (
                 <CheckboxFilter
-                  key={origin}
-                  label={origin}
-                  checked={(filters?.origins || []).includes(origin)}
-                  onChange={() => toggleOriginFilter(origin)}
+                  key={method}
+                  label={method}
+                  checked={(filters?.origins || []).includes(method)}
+                  onChange={() => toggleOriginFilter(method)}
                 />
               ))}
             </FilterSection>

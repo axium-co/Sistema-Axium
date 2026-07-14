@@ -22,7 +22,7 @@ interface Employee {
 type ModalType = 'perfil' | 'equipe';
 
 const Configuracoes = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -180,6 +180,7 @@ const Configuracoes = () => {
 
     try {
       await api.put(`/profiles/${user.id}`, updateData);
+      await refreshUser();
       setProfileSuccess('Perfil atualizado com sucesso!');
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
