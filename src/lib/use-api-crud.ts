@@ -17,7 +17,7 @@ export function useApiCrud<T extends { id: string }>(
 ) {
   const [state, setState] = useState<CrudState<T>>({
     data: [],
-    status: 'loading',
+    status: enabled ? 'loading' : 'synced',
     error: null,
   });
 
@@ -30,7 +30,9 @@ export function useApiCrud<T extends { id: string }>(
       return;
     }
     mountedRef.current = true;
-    fetchAll();
+    if (enabled) {
+      fetchAll();
+    }
     return () => { mountedRef.current = false; };
   }, [endpoint, enabled]);
 

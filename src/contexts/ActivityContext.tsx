@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from './AuthContext';
 import type { ActivityLog } from '../types/activity';
@@ -27,11 +27,10 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
   const mountedRef = useRef(true);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setIsLoadingLogs(false);
-      return;
-    }
     mountedRef.current = true;
+    if (!isAuthenticated) {
+      return () => { mountedRef.current = false; };
+    }
     api.get<ActivityLog[]>('/activity-logs')
       .then((logs) => {
         if (mountedRef.current) {
@@ -59,8 +58,15 @@ export const ActivityLogsProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const value = useMemo(() => ({
+    activityLogs: isAuthenticated ? activityLogs : [],
+    isLoadingLogs: isAuthenticated ? isLoadingLogs : false,
+    fetchActivityLogsError: isAuthenticated ? fetchActivityLogsError : null,
+    logActivity,
+  }), [isAuthenticated, activityLogs, isLoadingLogs, fetchActivityLogsError, logActivity]);
+
   return (
-    <ActivityLogsContext.Provider value={{ activityLogs, isLoadingLogs, fetchActivityLogsError, logActivity }}>
+    <ActivityLogsContext.Provider value={value}>
       {children}
     </ActivityLogsContext.Provider>
   );

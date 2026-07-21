@@ -83,6 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     async function init() {
       abortRef.current = new AbortController();
 
+      let authenticated = false;
       const savedToken = localStorage.getItem('auth_token');
       if (savedToken) {
         setAuthToken(savedToken);
@@ -99,19 +100,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setRole(authUser.role);
           setEmployeeName(authUser.name);
           setIsAuthenticated(true);
+          authenticated = true;
         } catch {
           localStorage.removeItem('auth_token');
           setAuthToken(null);
         }
       }
 
-      try {
-        if (getAuthToken()) {
+      if (authenticated) {
+        try {
           const emps = await api.get<{ id: string; name: string }[]>('/employees');
           setEmployees(emps.map(e => e.name));
+        } catch {
+          console.warn('[Auth] Não foi possível carregar funcionários da API');
         }
-      } catch {
-        console.warn('[Auth] Não foi possível carregar funcionários da API');
       }
 
       setIsLoading(false);
@@ -130,7 +132,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setRole(null);
       setEmployeeName(null);
       setIsAuthenticated(false);
-      navigate('/login', { replace: true });
+      if (window.location.pathname !== '/login') {
+        navigate('/login', { replace: true });
+      }
     });
 
     return () => {
