@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { api, ApiError } from './api';
+import { api, ApiError, getAuthToken } from './api';
 
 export type SyncStatus = 'loading' | 'synced' | 'error' | 'offline';
 
@@ -25,6 +25,10 @@ export function useApiCrud<T extends { id: string }>(
   const dataRef = useRef<T[]>([]);
 
   useEffect(() => {
+    if (!getAuthToken()) {
+      setState(prev => ({ ...prev, status: 'error', error: 'Não autenticado' }));
+      return;
+    }
     mountedRef.current = true;
     fetchAll();
     return () => { mountedRef.current = false; };
@@ -33,7 +37,7 @@ export function useApiCrud<T extends { id: string }>(
   useEffect(() => {
     if (!polling) return;
     const interval = setInterval(() => {
-      if (mountedRef.current) fetchAll();
+      if (mountedRef.current && getAuthToken()) fetchAll();
     }, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [endpoint, polling]);

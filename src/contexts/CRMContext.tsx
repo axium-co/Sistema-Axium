@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect } 
 import type { ReactNode } from 'react';
 import { parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
 import { generateUUID } from '../lib/uuid';
-import { api } from '../lib/api';
+import { api, getAuthToken } from '../lib/api';
 import { useApiCrud } from '../lib/use-api-crud';
 
 export interface Lead {
@@ -116,6 +116,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     let active = true;
 
     const fetchEvents = () => {
+      if (!getAuthToken()) return;
       api.get<CalendarEvent[]>('/events')
         .then(data => {
           if (active) {
@@ -138,6 +139,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     let active = true;
 
     const fetchNotifications = () => {
+      if (!getAuthToken()) return;
       api.get<Notification[]>('/notifications')
         .then(data => {
           if (active) setNotifications(data);

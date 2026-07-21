@@ -3,6 +3,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 let _authToken: string | null = localStorage.getItem('auth_token');
 let _onAuthError: (() => void) | null = null;
 let _isRedirecting = false;
+let _stopped = false;
 
 export function setAuthToken(token: string | null) {
   _authToken = token;
@@ -15,6 +16,11 @@ export function setAuthToken(token: string | null) {
 
 export function getAuthToken(): string | null {
   return _authToken;
+}
+
+export function resetAuthFlags() {
+  _isRedirecting = false;
+  _stopped = false;
 }
 
 export function setOnAuthError(handler: (() => void) | null) {
@@ -35,6 +41,10 @@ async function request<T>(
   options: RequestInit = {},
   retryCount = 0,
 ): Promise<T> {
+  if (_stopped) {
+    throw new ApiError('Sessão expirada. Faça login novamente.', 401);
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -58,9 +68,9 @@ async function request<T>(
 
     if (response.status === 401 && !_isRedirecting) {
       _isRedirecting = true;
+      _stopped = true;
       setAuthToken(null);
       _onAuthError?.();
-      setTimeout(() => { _isRedirecting = false; }, 1000);
       throw new ApiError('Sessão expirada. Faça login novamente.', 401);
     }
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { loginApi, ApiError, setAuthToken, getMe, api, setOnAuthError } from '../lib/api';
+import { useNavigate } from 'react-router-dom';
+import { loginApi, ApiError, setAuthToken, getMe, api, setOnAuthError, resetAuthFlags } from '../lib/api';
 
 type UserRole = 'admin' | 'manager' | 'user';
 export type { UserRole };
@@ -33,6 +34,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -78,14 +80,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    setOnAuthError(() => {
-      setUser(null);
-      setRole(null);
-      setEmployeeName(null);
-      setIsAuthenticated(false);
-      window.location.href = '/login';
-    });
-
     async function init() {
       abortRef.current = new AbortController();
 
@@ -112,8 +106,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       try {
-        const emps = await api.get<{ id: string; name: string }[]>('/employees');
-        setEmployees(emps.map(e => e.name));
+        if (getAuthToken()) {
+          const emps = await api.get<{ id: string; name: string }[]>('/employees');
+          setEmployees(emps.map(e => e.name));
+        }
       } catch {
         console.warn('[Auth] Não foi possível carregar funcionários da API');
       }
@@ -125,6 +121,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       abortRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    setOnAuthError(() => {
+      setUser(null);
+      setRole(null);
+      setEmployeeName(null);
+      setIsAuthenticated(false);
+      navigate('/login', { replace: true });
+    });
+
+    return () => {
+      setOnAuthError(null);
+    };
+  }, [isLoading, navigate]);
 
   function clearAuth() {
     setUser(null);
@@ -139,6 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const normalizedEmail = email.trim().toLowerCase();
 
       try {
+        resetAuthFlags();
         const result = await loginApi(normalizedEmail, password);
         const authUser: AuthUser = {
           id: result.user.id,
