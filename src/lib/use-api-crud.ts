@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { api, ApiError, getAuthToken } from './api';
+import { api, ApiError } from './api';
 
 export type SyncStatus = 'loading' | 'synced' | 'error' | 'offline';
 
@@ -13,7 +13,7 @@ const POLL_INTERVAL = 30000;
 
 export function useApiCrud<T extends { id: string }>(
   endpoint: string,
-  { polling = true }: { polling?: boolean } = {},
+  { polling = true, enabled = true }: { polling?: boolean; enabled?: boolean } = {},
 ) {
   const [state, setState] = useState<CrudState<T>>({
     data: [],
@@ -25,22 +25,22 @@ export function useApiCrud<T extends { id: string }>(
   const dataRef = useRef<T[]>([]);
 
   useEffect(() => {
-    if (!getAuthToken()) {
+    if (!enabled) {
       setState(prev => ({ ...prev, status: 'error', error: 'Não autenticado' }));
       return;
     }
     mountedRef.current = true;
     fetchAll();
     return () => { mountedRef.current = false; };
-  }, [endpoint]);
+  }, [endpoint, enabled]);
 
   useEffect(() => {
-    if (!polling) return;
+    if (!polling || !enabled) return;
     const interval = setInterval(() => {
-      if (mountedRef.current && getAuthToken()) fetchAll();
+      if (mountedRef.current) fetchAll();
     }, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [endpoint, polling]);
+  }, [endpoint, polling, enabled]);
 
   async function fetchAll() {
     try {

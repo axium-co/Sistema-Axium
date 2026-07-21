@@ -2,6 +2,7 @@ import { createContext, useContext, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { type WhatsAppTemplate } from '../lib/whatsapp';
 import { useApiCrud } from '../lib/use-api-crud';
+import { useAuth } from './AuthContext';
 
 interface WhatsAppTemplatesContextType {
   templates: WhatsAppTemplate[];
@@ -17,12 +18,13 @@ interface WhatsAppTemplatesContextType {
 const WhatsAppTemplatesContext = createContext<WhatsAppTemplatesContextType | undefined>(undefined);
 
 export const WhatsAppTemplatesProvider = ({ children }: { children: ReactNode }) => {
+  const { isAuthenticated } = useAuth();
   const {
     data: templates,
     add: addToApi,
     update: updateInApi,
     remove: removeFromApi,
-  } = useApiCrud<WhatsAppTemplate>('/whatsapp-templates');
+  } = useApiCrud<WhatsAppTemplate>('/whatsapp-templates', { enabled: isAuthenticated });
 
   const addTemplate = useCallback(async (template: Omit<WhatsAppTemplate, 'id'>) => {
     await addToApi(template);

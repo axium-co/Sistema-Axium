@@ -2,8 +2,9 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect } 
 import type { ReactNode } from 'react';
 import { parseMonetaryValue, calculateTotalValue, groupLeadsByStage, type Stage } from '../lib/crmHelpers';
 import { generateUUID } from '../lib/uuid';
-import { api, getAuthToken } from '../lib/api';
+import { api } from '../lib/api';
 import { useApiCrud } from '../lib/use-api-crud';
+import { useAuth } from './AuthContext';
 
 export interface Lead {
   id: string;
@@ -98,6 +99,7 @@ function pushNotification(
 }
 
 export const CRMProvider = ({ children }: { children: ReactNode }) => {
+  const { isAuthenticated } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [eventsData, setEventsData] = useState<CalendarEvent[]>([]);
@@ -110,13 +112,13 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     add: addLeadApi,
     update: updateLeadApi,
     remove: removeLeadApi,
-  } = useApiCrud<Lead>('/leads');
+  } = useApiCrud<Lead>('/leads', { enabled: isAuthenticated });
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     let active = true;
 
     const fetchEvents = () => {
-      if (!getAuthToken()) return;
       api.get<CalendarEvent[]>('/events')
         .then(data => {
           if (active) {
@@ -133,13 +135,13 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     fetchEvents();
     const interval = setInterval(fetchEvents, 30000);
     return () => { active = false; clearInterval(interval); };
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     let active = true;
 
     const fetchNotifications = () => {
-      if (!getAuthToken()) return;
       api.get<Notification[]>('/notifications')
         .then(data => {
           if (active) setNotifications(data);
@@ -152,7 +154,7 @@ export const CRMProvider = ({ children }: { children: ReactNode }) => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => { active = false; clearInterval(interval); };
-  }, []);
+  }, [isAuthenticated]);
 
   const events = eventsData;
   const syncError = leadsError;
