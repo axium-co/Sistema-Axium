@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, GitBranch, Calendar, Upload, Zap, ChevronDown } from 'lucide-react';
 
 const CRMSubmenu = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const crmSubItems = [
     { id: 'painel', label: 'Painel', icon: LayoutDashboard, path: '/crm/painel' },
@@ -25,19 +26,21 @@ const CRMSubmenu = () => {
         <button
           type="button"
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="flex items-center justify-between w-full px-3 py-2.5 cursor-pointer"
+          className="flex items-center justify-between w-full px-3 py-3 cursor-pointer min-h-[44px]"
         >
           <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
             {currentItem?.label || 'CRM'}
           </span>
           <ChevronDown
-            className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${
+            className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-300 ${
               mobileOpen ? 'rotate-180' : ''
             }`}
           />
         </button>
 
-        {mobileOpen && (
+        <div className={`overflow-hidden transition-all duration-300 ease-out ${
+          mobileOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'
+        }`}>
           <div className="px-3 pb-3 space-y-0.5">
             {crmSubItems.map((item) => {
               const Icon = item.icon;
@@ -47,7 +50,7 @@ const CRMSubmenu = () => {
                   key={item.id}
                   to={item.path}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-2.5 px-3 py-3 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
                     active
                       ? 'bg-black text-white'
                       : 'text-neutral-500 hover:bg-neutral-100'
@@ -59,14 +62,12 @@ const CRMSubmenu = () => {
               );
             })}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Desktop horizontal scroll bar */}
-      <div
-        className="hidden md:flex bg-white/70 backdrop-blur-md border-b border-neutral-200/60 px-2 md:px-8"
-      >
-        <div className="flex items-center gap-1 overflow-x-auto scroll-smooth scrollbar-hide">
+      <div className="hidden md:flex bg-white/80 backdrop-blur-xl border-b border-neutral-200/60 px-2 md:px-8">
+        <div ref={scrollRef} className="flex items-center gap-1 overflow-x-auto scroll-smooth scrollbar-hide">
           {crmSubItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);

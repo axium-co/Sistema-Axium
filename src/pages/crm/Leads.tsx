@@ -276,7 +276,7 @@ const CRMLeads = () => {
 
   if (isLoading) {
     return (
-      <div className="relative min-h-screen animate-pulse p-4 md:p-6">
+      <div className="relative min-h-screen animate-pulse">
         <div className="flex justify-between items-start mb-4">
           <div className="h-8 w-32 bg-neutral-100 rounded" />
           <div className="h-9 w-24 bg-neutral-100 rounded" />
@@ -423,13 +423,13 @@ const CRMLeads = () => {
       )}
 
       <main className="flex-1 overflow-hidden">
-        <div className="p-4 md:p-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-start gap-4 mb-2 md:mb-4">
-            <div className="flex items-center gap-3">
+        <div>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-start gap-3 mb-3 md:mb-4">
+            <div className="flex items-center gap-3 w-full md:w-auto">
               <div className="relative group">
                 <button 
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                  className={`p-2 rounded-lg border transition-all relative ${hasActiveFilters ? 'bg-neutral-100 text-black border-neutral-200' : 'bg-transparent border-transparent text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50'}`}
+                  className={`p-2.5 rounded-lg border transition-all relative min-w-[44px] min-h-[44px] flex items-center justify-center ${hasActiveFilters ? 'bg-neutral-100 text-black border-neutral-200' : 'bg-transparent border-transparent text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50'}`}
                 >
                   <Filter size={16} strokeWidth={hasActiveFilters ? 2.5 : 1.5} />
                   {hasActiveFilters && (
@@ -440,15 +440,15 @@ const CRMLeads = () => {
                   Filtros
                 </span>
               </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Leads</h1>
+              <div className="flex-1 md:flex-none">
+                <h1 className="text-xl md:text-3xl font-black text-black tracking-tight mb-0.5">Leads</h1>
                 <p className="text-neutral-500 text-xs md:text-sm">
                   {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} encontrado{filteredLeads.length !== 1 ? 's' : ''}
                   {hasActiveFilters && <span className="text-neutral-400"> (filtrado{filteredLeads.length !== 1 ? 's' : ''})</span>}
                 </p>
               </div>
             </div>
-            <button onClick={openAdd} className="btn-primary flex items-center gap-2 whitespace-nowrap">
+            <button onClick={openAdd} className="btn-primary flex items-center gap-2 whitespace-nowrap min-w-[44px] min-h-[44px] self-end md:self-auto">
               <Plus size={15} strokeWidth={2.5} />
               <span className="hidden sm:inline">Novo Lead</span>
               <span className="sm:hidden text-xs">Novo</span>

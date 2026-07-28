@@ -151,45 +151,47 @@ const CRMCalendario = () => {
   }
 
   return (
-    <div className="min-h-screen p-2 md:p-8">
+    <div className="min-h-screen">
       <div className="mb-4 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-0">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black text-black tracking-tight mb-1">Calendário</h1>
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex-1 md:flex-none">
+            <h1 className="text-xl md:text-3xl font-black text-black tracking-tight mb-1">Calendário</h1>
             <p className="text-neutral-500 text-xs md:text-sm">Visualize e acompanhe seus compromissos agendados.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+          <div className="flex items-center gap-2">
+            <button 
+              type="button"
+              onClick={handlePrevMonth}
+              className="p-2 hover:bg-neutral-100 rounded-md transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              <ChevronLeft size={20} className="text-neutral-600" />
+            </button>
+            <span className="text-xs md:text-sm font-black text-black min-w-[100px] text-center">
+              {monthNames[currentMonth]} {currentYear}
+            </span>
+            <button 
+              type="button"
+              onClick={handleNextMonth}
+              className="p-2 hover:bg-neutral-100 rounded-md transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              <ChevronRight size={20} className="text-neutral-600" />
+            </button>
+          </div>
           <button 
-            type="button"
-            onClick={handlePrevMonth}
-            className="p-2 hover:bg-neutral-100 rounded-md transition-colors cursor-pointer"
+            onClick={handleOpenCreate}
+            className="bg-black text-white px-4 md:px-6 py-2.5 md:py-3 rounded-md font-black text-[10px] md:text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm min-w-[44px] min-h-[44px]"
           >
-            <ChevronLeft size={20} className="text-neutral-600" />
-          </button>
-          <span className="text-sm font-black text-black min-w-[100px] text-center">
-            {monthNames[currentMonth]} {currentYear}
-          </span>
-          <button 
-            type="button"
-            onClick={handleNextMonth}
-            className="p-2 hover:bg-neutral-100 rounded-md transition-colors cursor-pointer"
-          >
-            <ChevronRight size={20} className="text-neutral-600" />
+            <Plus size={14} className="md:w-4 md:h-4" strokeWidth={3} />
+            <span className="hidden sm:inline">Criar</span>
+            <span className="sm:hidden">Novo</span>
           </button>
         </div>
-        <button 
-          onClick={handleOpenCreate}
-          className="w-full md:w-auto bg-black text-white px-4 md:px-6 py-2 md:py-3 rounded-md font-black text-[10px] md:text-[11px] uppercase tracking-widest flex items-center justify-center md:justify-start gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] shadow-sm"
-        >
-          <Plus size={14} className="md:w-4 md:h-4" strokeWidth={3} />
-          <span className="hidden sm:inline">Criar</span>
-          <span className="sm:hidden">Novo</span>
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-6">
-        <div className="lg:col-span-3 bg-white border border-neutral-200 rounded-md p-6 shadow-sm overflow-x-auto">
+        <div className="lg:col-span-3 bg-white border border-neutral-200 rounded-md p-3 md:p-6 shadow-sm overflow-x-auto">
           {/* Calendar Grid Header */}
           <div className="grid grid-cols-7 gap-1 mb-4">
             {days.map((day) => (
@@ -214,39 +216,44 @@ const CRMCalendario = () => {
                 const dayEvents = isCurrentMonth ? getEventsForDay(dayNum) : [];
 
                 return (
-                  <div 
-                    key={idx} 
-                    className={`min-h-[120px] p-2 border border-neutral-100 rounded-md flex flex-col gap-1 transition-all ${
-                      isCurrentMonth ? 'bg-white hover:border-neutral-300' : 'bg-neutral-50/10'
-                    } ${isToday ? 'ring-1 ring-black ring-inset' : ''}`}
-                  >
-                    <div className="flex justify-between items-center mb-1">
-                      <span className={`text-[10px] font-black ${
-                        isToday ? 'bg-black text-white w-5 h-5 flex items-center justify-center rounded-full' : 
-                        isCurrentMonth ? 'text-black' : 'text-neutral-200'
-                      }`}>
-                        {isCurrentMonth && dayNum}
-                      </span>
-                    </div>
+                    <div 
+                      key={idx} 
+                      className={`min-h-[80px] md:min-h-[120px] p-1 md:p-2 border border-neutral-100 rounded-md flex flex-col gap-1 transition-all ${
+                        isCurrentMonth ? 'bg-white hover:border-neutral-300' : 'bg-neutral-50/10'
+                      } ${isToday ? 'ring-1 ring-black ring-inset' : ''}`}
+                    >
+                      <div className="flex justify-between items-center mb-0.5 md:mb-1">
+                        <span className={`text-[9px] md:text-[10px] font-black ${
+                          isToday ? 'bg-black text-white w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full' : 
+                          isCurrentMonth ? 'text-black' : 'text-neutral-200'
+                        }`}>
+                          {isCurrentMonth && dayNum}
+                        </span>
+                      </div>
 
-                    {/* Day Events Tags */}
-                    <div className="space-y-1">
-                      {dayEvents.map(event => (
-                        <button
-                          key={event?.id || `day-${dayNum}-unknown`}
-                          onClick={() => handleOpenEdit(event)}
-                          className="w-full text-left p-1.5 rounded-md bg-neutral-50 border border-neutral-100 hover:border-black transition-all group overflow-hidden"
-                        >
-                          <div className="text-[9px] font-black text-black leading-none mb-1">
-                            {formatTime(event?.dateTime)}
+                      {/* Day Events Tags */}
+                      <div className="space-y-0.5 md:space-y-1">
+                        {dayEvents.slice(0, 2).map(event => (
+                          <button
+                            key={event?.id || `day-${dayNum}-unknown`}
+                            onClick={() => handleOpenEdit(event)}
+                            className="w-full text-left p-1 md:p-1.5 rounded-md bg-neutral-50 border border-neutral-100 hover:border-black transition-all group overflow-hidden"
+                          >
+                            <div className="hidden md:block text-[9px] font-black text-black leading-none mb-1">
+                              {formatTime(event?.dateTime)}
+                            </div>
+                            <div className="text-[8px] md:text-[9px] font-bold text-neutral-500 truncate leading-none">
+                              {event?.activityType || 'Atividade'}
+                            </div>
+                          </button>
+                        ))}
+                        {dayEvents.length > 2 && (
+                          <div className="text-[8px] text-neutral-400 font-bold text-center">
+                            +{dayEvents.length - 2}
                           </div>
-                          <div className="text-[9px] font-bold text-neutral-500 truncate leading-none">
-                            {event?.activityType || 'Atividade'}
-                          </div>
-                        </button>
-                      ))}
+                        )}
+                      </div>
                     </div>
-                  </div>
                 );
               });
             })()}

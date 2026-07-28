@@ -33,31 +33,32 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   return (
     <>
+      {/* Mobile overlay with blur */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
           onClick={onClose}
         />
       )}
       
-      <aside className={`fixed md:hidden left-0 top-0 h-screen w-[85%] max-w-80 bg-white border-r border-neutral-200 flex-col overflow-y-auto z-50 transform transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-md hover:bg-neutral-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
-          aria-label="Fechar menu"
-        >
-          <X className="w-5 h-5 text-neutral-600" />
-        </button>
-        
-        <div className="px-4 pt-8 pb-6 border-b border-neutral-100">
+      {/* Mobile Drawer */}
+      <aside className={`fixed md:hidden left-0 top-0 h-dvh w-[85%] max-w-80 bg-white border-r border-neutral-200 flex-col overflow-y-auto z-50 transform transition-all duration-300 ease-out shadow-2xl ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top,0px),8px)] pb-4 border-b border-neutral-100">
           <img
             src="/logo.png"
             alt="Universo Axium"
-            className="h-10 w-auto object-contain"
+            className="h-8 md:h-10 w-auto object-contain"
           />
+          <button
+            onClick={onClose}
+            className="p-2 rounded-md hover:bg-neutral-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Fechar menu"
+          >
+            <X className="w-5 h-5 text-neutral-600" />
+          </button>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        <nav className="flex-1 px-4 py-4 space-y-1">
           {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -66,20 +67,20 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 key={item.id}
                 to={item.path}
                 onClick={onClose}
-                className={`sidebar-item ${active ? 'active' : ''}`}
+                className={`sidebar-item min-h-[44px] ${active ? 'active' : ''}`}
               >
-                <Icon className="w-4 h-4 shrink-0" strokeWidth={2} />
+                <Icon className="w-4 h-4 shrink-0" strokeWidth={active ? 2.5 : 2} />
                 <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="px-4 pb-6 border-t border-neutral-100 pt-4">
+        <div className="px-4 pb-[max(env(safe-area-inset-bottom,0px),24px)] border-t border-neutral-100 pt-4">
           <div className="mb-3 px-2">
             <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider mb-0.5">Conectado como</p>
             <p className="text-sm text-neutral-700 font-medium truncate flex items-center gap-2">
-              <User className="w-4 h-4" />
+              <User className="w-4 h-4 shrink-0" />
               {user?.name || 'Usuário'}
             </p>
             <p className="text-xs text-neutral-400 capitalize mt-1">
@@ -88,7 +89,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all duration-150 cursor-pointer text-neutral-500 hover:text-red-600 hover:bg-red-50 font-medium text-sm"
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all duration-150 cursor-pointer text-neutral-500 hover:text-red-600 hover:bg-red-50 font-medium text-sm min-h-[44px]"
           >
             <LogOut className="w-4 h-4 shrink-0" strokeWidth={2} />
             <span>Sair</span>
@@ -97,8 +98,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         </div>
       </aside>
 
-      <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-neutral-200 flex-col overflow-y-auto z-40 hidden md:flex">
-        <div className="px-6 pt-8 pb-6 border-b border-neutral-100">
+      {/* Desktop Sidebar */}
+      <aside className="fixed left-0 top-0 h-dvh w-64 bg-white border-r border-neutral-200 flex-col overflow-y-auto z-40 hidden md:flex">
+        <div className="px-6 pt-8 pb-6 border-b border-neutral-100 shrink-0">
           <img
             src="/logo.png"
             alt="Universo Axium"
@@ -106,7 +108,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           />
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -116,18 +118,18 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 to={item.path}
                 className={`sidebar-item ${active ? 'active' : ''}`}
               >
-                <Icon className="w-4 h-4 shrink-0" strokeWidth={2} />
+                <Icon className="w-4 h-4 shrink-0" strokeWidth={active ? 2.5 : 2} />
                 <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="px-4 pb-6 border-t border-neutral-100 pt-4">
+        <div className="px-4 pb-6 border-t border-neutral-100 pt-4 shrink-0">
           <div className="mb-3 px-2">
             <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider mb-0.5">Conectado como</p>
             <p className="text-sm text-neutral-700 font-medium truncate flex items-center gap-2">
-              <User className="w-4 h-4" />
+              <User className="w-4 h-4 shrink-0" />
               {user?.name || 'Usuário'}
             </p>
             <p className="text-xs text-neutral-400 capitalize mt-1">

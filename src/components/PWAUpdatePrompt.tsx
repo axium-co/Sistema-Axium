@@ -61,7 +61,7 @@ const PWAUpdatePrompt = () => {
 
   if (state.offlineReady) {
     return (
-      <div className="fixed bottom-20 md:bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4 duration-300">
+      <div className="fixed bottom-24 md:bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4 duration-300 backdrop-blur-sm" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         App pronto para uso offline
       </div>
     );
@@ -70,17 +70,17 @@ const PWAUpdatePrompt = () => {
   if (!state.needRefresh) return null;
 
   return (
-    <div className="fixed bottom-20 md:bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-black text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm font-medium animate-in slide-in-from-bottom-4 duration-300 max-w-[90vw]">
-      <span className="whitespace-nowrap">Nova versão disponível</span>
+    <div className="fixed bottom-24 md:bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-black/90 backdrop-blur-lg text-white px-4 md:px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 md:gap-3 text-sm font-medium animate-in slide-in-from-bottom-4 duration-300 max-w-[90vw]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <span className="whitespace-nowrap text-xs md:text-sm">Nova versão disponível</span>
       <button
         onClick={handleUpdate}
         className="bg-white text-black px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-neutral-200 transition-colors shrink-0"
       >
-        Atualizar agora
+        Atualizar
       </button>
       <button
         onClick={() => setState(prev => ({ ...prev, needRefresh: false }))}
-        className="text-neutral-400 hover:text-white transition-colors shrink-0"
+        className="text-neutral-400 hover:text-white transition-colors shrink-0 min-w-[32px] min-h-[32px] flex items-center justify-center"
         title="Dispensar"
       >
         <X size={14} />
