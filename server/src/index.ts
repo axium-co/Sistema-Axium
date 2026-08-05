@@ -25,7 +25,15 @@ const app = express();
 
 app.use(helmet());
 const corsOrigins = env.CORS_ORIGIN.split(',').map(s => s.trim()).filter(Boolean);
-app.use(cors({ origin: corsOrigins, credentials: true, maxAge: 86400 }));
+app.use(
+  cors({
+    origin: corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 86400,
+  }),
+);
 app.use(express.json({ limit: '10mb' }));
 
 const limiter = rateLimit({
